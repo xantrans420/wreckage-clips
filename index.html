@@ -1,0 +1,2904 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WRECKAGE.SYS — PROMPT ENGINEERING SYSTEM</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Bebas+Neue&family=Inter:wght@300;400;500&display=swap');
+
+  :root {
+    --bg: #0a0a0a;
+    --bg2: #111111;
+    --bg3: #1a1a1a;
+    --bg4: #222222;
+    --border: #2a2a2a;
+    --border2: #333333;
+    --text: #e0e0e0;
+    --text2: #888888;
+    --text3: #555555;
+    --accent: #ff3c00;
+    --accent2: #ff7a00;
+    --accent3: #ffcc00;
+    --green: #00ff88;
+    --blue: #00aaff;
+    --purple: #aa44ff;
+    --red: #ff2244;
+    --mono: 'Space Mono', monospace;
+    --display: 'Bebas Neue', sans-serif;
+    --body: 'Inter', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--body);
+    font-size: 13px;
+    line-height: 1.6;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* SCAN LINE OVERLAY */
+  body::after {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  /* HEADER */
+  .header {
+    padding: 20px 24px 0;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .header-top {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+
+  .logo {
+    font-family: var(--display);
+    font-size: 32px;
+    letter-spacing: 3px;
+    color: var(--accent);
+    line-height: 1;
+  }
+
+  .logo-sub {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text3);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  .version-tag {
+    font-family: var(--mono);
+    font-size: 10px;
+    background: var(--accent);
+    color: #000;
+    padding: 2px 6px;
+    letter-spacing: 1px;
+  }
+
+  /* TABS */
+  .tabs {
+    display: flex;
+    gap: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+
+  .tab {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 10px 16px;
+    border: none;
+    background: transparent;
+    color: var(--text3);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+
+  .tab:hover { color: var(--text); }
+  .tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+
+  .tab-special {
+    color: var(--accent3) !important;
+    font-weight: 700;
+  }
+  .tab-special.active { border-bottom-color: var(--accent3); }
+
+  /* MAIN CONTENT */
+  .content {
+    padding: 24px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* SECTION */
+  .section-title {
+    font-family: var(--display);
+    font-size: 22px;
+    letter-spacing: 2px;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+
+  .section-desc {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text3);
+    letter-spacing: 1px;
+    margin-bottom: 20px;
+  }
+
+  /* CARDS GRID */
+  .cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 12px;
+  }
+
+  .card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    padding: 14px;
+    transition: border-color 0.15s;
+    position: relative;
+  }
+
+  .card:hover { border-color: var(--border2); }
+
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 8px;
+  }
+
+  .card-name {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .card-tag {
+    font-family: var(--mono);
+    font-size: 9px;
+    padding: 2px 6px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .tag-impossible { background: #1a0a00; color: var(--accent); border: 1px solid var(--accent); }
+  .tag-temporal { background: #0a001a; color: var(--purple); border: 1px solid var(--purple); }
+  .tag-spatial { background: #001a0a; color: var(--green); border: 1px solid var(--green); }
+  .tag-fast { background: #001a1a; color: var(--blue); border: 1px solid var(--blue); }
+  .tag-warp { background: #1a0010; color: #ff44aa; border: 1px solid #ff44aa; }
+  .tag-combo { background: #1a1a00; color: var(--accent3); border: 1px solid var(--accent3); }
+
+  .card-prompt {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text2);
+    background: var(--bg3);
+    padding: 8px;
+    border-left: 2px solid var(--border2);
+    margin-bottom: 8px;
+    line-height: 1.5;
+  }
+
+  .card-meta {
+    font-size: 11px;
+    color: var(--text3);
+    margin-bottom: 8px;
+    line-height: 1.5;
+  }
+
+  .copy-btn {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    background: transparent;
+    border: 1px solid var(--border2);
+    color: var(--text3);
+    padding: 4px 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .copy-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .copy-btn.copied { border-color: var(--green); color: var(--green); }
+
+  /* VELOCITY BAR */
+  .velocity-bar {
+    display: flex;
+    gap: 3px;
+    margin-bottom: 8px;
+  }
+
+  .vel-pip {
+    width: 14px; height: 4px;
+    background: var(--border2);
+  }
+  .vel-pip.active { background: var(--accent); }
+  .vel-pip.active.high { background: var(--accent3); }
+
+  .bpm-badge {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--accent2);
+    letter-spacing: 1px;
+  }
+
+  /* FILTER BAR */
+  .filter-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+
+  .filter-btn {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text3);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .filter-btn:hover, .filter-btn.active {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* ===== CHAOS DIRECTOR ===== */
+  .chaos-director {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  @media (max-width: 800px) { .chaos-director { grid-template-columns: 1fr; } }
+
+  .cd-panel {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    padding: 16px;
+  }
+
+  .cd-panel-title {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .cd-full { grid-column: 1 / -1; }
+
+  /* IMAGE UPLOAD */
+  .image-drop {
+    border: 1px dashed var(--border2);
+    background: var(--bg3);
+    padding: 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.15s;
+    position: relative;
+  }
+
+  .image-drop:hover, .image-drop.dragover {
+    border-color: var(--accent);
+    background: rgba(255,60,0,0.05);
+  }
+
+  .image-drop input[type=file] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+  }
+
+  .image-drop-text {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text3);
+    letter-spacing: 1px;
+  }
+
+  .image-preview {
+    width: 100%;
+    max-height: 140px;
+    object-fit: cover;
+    display: none;
+  }
+
+  /* CHAOS DIAL */
+  .chaos-dial-wrap {
+    margin-bottom: 16px;
+  }
+
+  .dial-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+
+  .dial-label-text {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text2);
+    letter-spacing: 1px;
+  }
+
+  .dial-value {
+    font-family: var(--display);
+    font-size: 28px;
+    color: var(--accent);
+    line-height: 1;
+  }
+
+  input[type=range] {
+    width: 100%;
+    -webkit-appearance: none;
+    background: transparent;
+    margin: 4px 0;
+  }
+
+  input[type=range]::-webkit-slider-track {
+    height: 4px;
+    background: var(--border2);
+    border-radius: 0;
+  }
+
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    background: var(--accent);
+    border-radius: 0;
+    margin-top: -6px;
+    cursor: pointer;
+  }
+
+  .chaos-levels {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 4px;
+  }
+
+  .chaos-level-pip {
+    width: 8px; height: 8px;
+    background: var(--border);
+    transition: background 0.15s;
+  }
+
+  .chaos-level-pip.lit { background: var(--accent); }
+
+  /* SELECTS & INPUTS */
+  select, input[type=text], input[type=number], textarea {
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 7px 10px;
+    width: 100%;
+    outline: none;
+    transition: border-color 0.15s;
+    border-radius: 0;
+    -webkit-appearance: none;
+  }
+
+  select:focus, input[type=text]:focus, input[type=number]:focus, textarea:focus {
+    border-color: var(--accent);
+  }
+
+  select option { background: var(--bg3); }
+
+  .input-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .input-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--text3);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  /* MODE TOGGLE */
+  .mode-toggle {
+    display: flex;
+    margin-bottom: 12px;
+    border: 1px solid var(--border2);
+  }
+
+  .mode-btn {
+    flex: 1;
+    padding: 7px;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    background: transparent;
+    border: none;
+    color: var(--text3);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .mode-btn.active {
+    background: var(--accent);
+    color: #000;
+    font-weight: 700;
+  }
+
+  /* GENERATE BTN */
+  .generate-btn {
+    width: 100%;
+    padding: 14px;
+    font-family: var(--display);
+    font-size: 20px;
+    letter-spacing: 3px;
+    background: var(--accent);
+    color: #000;
+    border: none;
+    cursor: pointer;
+    transition: all 0.15s;
+    margin-top: 4px;
+  }
+
+  .generate-btn:hover { background: var(--accent2); }
+  .generate-btn:disabled {
+    background: var(--border2);
+    color: var(--text3);
+    cursor: not-allowed;
+  }
+
+  /* OUTPUT */
+  .output-box {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    padding: 14px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text);
+    min-height: 120px;
+    line-height: 1.7;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .output-placeholder {
+    color: var(--text3);
+    font-style: italic;
+  }
+
+  .output-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  .out-btn {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 6px 12px;
+    border: 1px solid var(--border2);
+    background: transparent;
+    color: var(--text2);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .out-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .out-btn.green:hover { border-color: var(--green); color: var(--green); }
+
+  .loading-indicator {
+    display: none;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--accent3);
+    letter-spacing: 2px;
+    animation: blink 0.8s infinite;
+  }
+
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  /* CHAOS INJECTION PREVIEW */
+  .chaos-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 8px;
+  }
+
+  .chaos-tag {
+    font-family: var(--mono);
+    font-size: 9px;
+    padding: 2px 6px;
+    background: rgba(255,60,0,0.1);
+    border: 1px solid rgba(255,60,0,0.3);
+    color: var(--accent);
+    letter-spacing: 1px;
+  }
+
+  .chaos-tag.high {
+    background: rgba(255,204,0,0.1);
+    border-color: rgba(255,204,0,0.4);
+    color: var(--accent3);
+  }
+
+  /* ===== SCENE BUILDER ===== */
+  .scene-builder { }
+
+  .builder-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr auto;
+    gap: 8px;
+    align-items: end;
+    margin-bottom: 8px;
+  }
+
+  .chain-output {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    padding: 14px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text);
+    min-height: 80px;
+    line-height: 1.8;
+    margin-top: 12px;
+    white-space: pre-wrap;
+  }
+
+  .add-btn, .rem-btn {
+    font-family: var(--mono);
+    font-size: 12px;
+    width: 32px; height: 32px;
+    border: 1px solid var(--border2);
+    background: transparent;
+    color: var(--text2);
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .add-btn:hover { border-color: var(--green); color: var(--green); }
+  .rem-btn:hover { border-color: var(--red); color: var(--red); }
+
+  /* ===== PRODUCTION PIPELINE ===== */
+  .pipeline {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--border);
+    margin-bottom: 20px;
+  }
+
+  .pipeline-stage {
+    background: var(--bg2);
+    padding: 16px;
+  }
+
+  .stage-label {
+    font-family: var(--display);
+    font-size: 14px;
+    letter-spacing: 2px;
+    color: var(--text3);
+    margin-bottom: 12px;
+  }
+
+  .stage-num {
+    font-family: var(--display);
+    font-size: 36px;
+    color: var(--border2);
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .pipeline-node {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    padding: 10px;
+    margin-bottom: 6px;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+
+  .pipeline-node:hover { border-color: var(--border2); }
+
+  .node-name {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 3px;
+  }
+
+  .node-desc {
+    font-size: 11px;
+    color: var(--text3);
+    line-height: 1.4;
+  }
+
+  /* ===== KEYWORD LIBRARY ===== */
+  .keyword-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+  }
+
+  .keyword-section {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    padding: 14px;
+  }
+
+  .kw-title {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .kw-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .kw-chip {
+    font-family: var(--mono);
+    font-size: 9px;
+    padding: 2px 6px;
+    cursor: pointer;
+    transition: all 0.1s;
+    letter-spacing: 0.5px;
+  }
+
+  .kw-chip.forbidden {
+    background: rgba(255,34,68,0.1);
+    border: 1px solid rgba(255,34,68,0.3);
+    color: var(--red);
+  }
+
+  .kw-chip.forbidden:hover {
+    background: rgba(255,34,68,0.2);
+  }
+
+  .kw-chip.chaos {
+    background: rgba(255,60,0,0.1);
+    border: 1px solid rgba(255,60,0,0.25);
+    color: var(--accent);
+  }
+
+  .kw-chip.genre {
+    background: rgba(0,170,255,0.08);
+    border: 1px solid rgba(0,170,255,0.2);
+    color: var(--blue);
+  }
+
+  /* DIVIDER */
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 20px 0;
+  }
+
+  /* TOAST */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--bg3);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1px;
+    padding: 8px 16px;
+    z-index: 9000;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: all 0.2s;
+    pointer-events: none;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+
+  /* API KEY */
+  .api-key-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+    align-items: center;
+  }
+
+  .api-status {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1px;
+    padding: 3px 8px;
+    border: 1px solid var(--border);
+    color: var(--text3);
+    white-space: nowrap;
+  }
+
+  .api-status.ok { border-color: var(--green); color: var(--green); }
+  .api-status.err { border-color: var(--red); color: var(--red); }
+
+  /* EFFECT PREVIEW THUMBNAILS */
+  .fx-preview {
+    width: 100%;
+    height: 88px;
+    background: #060606;
+    border: 1px solid var(--border);
+    margin-bottom: 10px;
+    overflow: hidden;
+    position: relative;
+  }
+  .fx-preview svg { width: 100%; height: 100%; display: block; }
+  .card:hover .fx-preview { border-color: var(--border2); }
+
+  /* CHARACTER CARDS */
+  .char-card {
+    background: var(--bg3);
+    border: 1px solid rgba(0,170,255,0.15);
+    padding: 12px;
+    margin-bottom: 8px;
+  }
+  .char-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  .char-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--blue);
+    letter-spacing: 1px;
+  }
+  .char-tells {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 6px;
+  }
+  .tell-chip {
+    font-family: var(--mono);
+    font-size: 9px;
+    padding: 2px 7px;
+    background: rgba(0,170,255,0.07);
+    border: 1px solid rgba(0,170,255,0.2);
+    color: var(--blue);
+    cursor: pointer;
+    transition: all 0.1s;
+  }
+  .tell-chip.active {
+    background: rgba(0,170,255,0.2);
+    border-color: var(--blue);
+  }
+  .tell-chip:hover { border-color: var(--blue); }
+  .budget-bar {
+    height: 3px;
+    background: var(--border);
+    margin-top: 6px;
+  }
+  .budget-fill {
+    height: 100%;
+    background: var(--blue);
+    transition: width 0.3s;
+  }
+  .budget-fill.warn { background: var(--accent3); }
+  .budget-fill.over { background: var(--red); }
+  .mic-wrap { position: relative; }
+  .mic-btn {
+    position: absolute;
+    right: 6px; bottom: 6px;
+    width: 24px; height: 24px;
+    background: var(--bg4);
+    border: 1px solid var(--border2);
+    color: var(--text3);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px;
+    transition: all 0.15s;
+    z-index: 2;
+  }
+  .mic-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .mic-btn.recording { border-color: var(--red); color: var(--red); animation: micpulse 0.6s infinite; }
+  @keyframes micpulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  .mic-wrap textarea, .mic-wrap input[type=text] { padding-right: 34px; }
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border2); }
+
+  /* SMALL UTILS */
+  .mt8 { margin-top: 8px; }
+  .mt12 { margin-top: 12px; }
+  .mb8 { margin-bottom: 8px; }
+  .flex-row { display: flex; gap: 8px; align-items: center; }
+  .flex-grow { flex: 1; }
+
+  .genre-map {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 12px;
+  }
+
+  .genre-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    padding: 14px;
+  }
+
+  .genre-name {
+    font-family: var(--display);
+    font-size: 16px;
+    letter-spacing: 2px;
+    color: var(--accent3);
+    margin-bottom: 6px;
+  }
+
+  .genre-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  /* BPM CALC */
+  .bpm-calc {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    padding: 14px;
+    margin-bottom: 16px;
+  }
+
+  .bpm-result {
+    font-family: var(--display);
+    font-size: 24px;
+    color: var(--accent3);
+    letter-spacing: 2px;
+  }
+
+  .bpm-grid {
+    display: grid;
+    grid-template-columns: repeat(4,1fr);
+    gap: 6px;
+    margin-top: 10px;
+  }
+
+  .bpm-cell {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    padding: 8px;
+    text-align: center;
+  }
+
+  .bpm-cell-label { font-size: 9px; color: var(--text3); font-family: var(--mono); letter-spacing: 1px; }
+  .bpm-cell-val { font-family: var(--mono); font-size: 13px; color: var(--accent2); margin-top: 2px; }
+
+  @media (max-width: 600px) {
+    .pipeline { grid-template-columns: 1fr; }
+    .bpm-grid { grid-template-columns: repeat(2,1fr); }
+    .builder-row { grid-template-columns: 1fr 1fr; }
+  }
+
+  /* RENDER ON WRECKAGE — seedance generation */
+  .cd-mini-label { font-family:var(--mono); font-size:9px; letter-spacing:1px; color:var(--text3); text-transform:uppercase; margin-bottom:4px; }
+  .render-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:10px; margin-top:14px; }
+  .render-card { background:var(--bg3); border:1px solid var(--border2); overflow:hidden; min-height:54px; }
+  .render-card video { width:100%; display:block; background:#000; }
+  .render-status { font-family:var(--mono); font-size:10px; color:var(--text2); padding:12px 10px; display:block; letter-spacing:1px; line-height:1.5; }
+  .render-actions { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 10px; border-top:1px solid var(--border); }
+  .render-actions .render-status { padding:0; }
+
+  /* ========== 2.5 DESIGN LAYER — same DNA, sharper hierarchy ==========
+     fewer boxes, more air; previews as the picking surface; orange = action only */
+  body { font-size: 14px; }
+  .logo { font-size: 40px; }
+  .tab { font-size: 11px; padding: 13px 20px; letter-spacing: 2px; }
+  .tab.active { color: var(--accent); }
+  .content { padding: 28px 24px 80px; max-width: 1280px; margin: 0 auto; }
+  .section-title { font-size: 30px; letter-spacing: 2px; }
+  .cd-panel { border-color: #1e1e1e; padding: 18px; }
+  .cd-panel-title { font-size: 10px; color: var(--text2); }
+  .generate-btn { font-size: 22px; padding: 16px; letter-spacing: 4px; }
+  select, input[type="text"], input[type="password"], input[type="number"], textarea { border-color: #242424; }
+
+  /* visual pickers */
+  .picker-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: 8px; }
+  .picker-cell { cursor: pointer; background: var(--bg2); border: 1px solid transparent; padding: 0 0 8px; transition: border-color .12s, transform .12s; }
+  .picker-cell:hover { border-color: var(--border2); transform: translateY(-1px); }
+  .picker-cell.sel { border-color: var(--accent); background: #150a06; }
+  .picker-cell.sel .picker-label { color: var(--accent); }
+  .picker-preview { height: 62px; overflow: hidden; position: relative; }
+  .picker-preview svg { width: 100%; height: 62px; display: block; }
+  .picker-clip { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #000; }
+  .picker-none { height: 62px; display: flex; align-items: center; justify-content: center; font-size: 26px; color: var(--text3); background: #060606; }
+  .picker-label { font-family: var(--display); font-size: 14px; letter-spacing: 1px; color: var(--text); padding: 7px 8px 0; line-height: 1.05; }
+  .picker-sub { font-family: var(--mono); font-size: 8px; color: var(--text3); letter-spacing: .5px; padding: 3px 8px 0; text-transform: lowercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .picker-readout { font-family: var(--mono); font-size: 11px; line-height: 1.5; color: var(--accent3); background: #0d0d0d; border-left: 2px solid var(--accent); padding: 9px 12px; margin-bottom: 12px; min-height: 38px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <div class="logo">WRECKAGE.SYS</div>
+    <div class="version-tag">2.5</div>
+    <div class="logo-sub">SEEDANCE SHOT MACHINE — PROMPT → RENDER, ONE SCREEN</div>
+  </div>
+  <div class="tabs">
+    <button class="tab tab-special active" data-tab="chaos">⚡ SHOT</button>
+    <button class="tab" data-tab="on-talent">TALENT</button>
+    <button class="tab" data-tab="scene-builder">SEQUENCE</button>
+    <button class="tab" data-tab="keywords">LIBRARY</button>
+  </div>
+</div>
+
+<div class="content">
+
+<!-- ===== CHAOS DIRECTOR ===== -->
+<div class="tab-panel active" id="tab-chaos">
+  <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:20px;">
+    <div class="section-title">SHOT</div>
+    <div class="section-desc">FRAME → CHAOS PROMPT → SEEDANCE RENDER — WITHOUT LEAVING THE TOOL</div>
+  </div>
+
+  <!-- API KEY -->
+  <div class="cd-panel mb8">
+    <div class="cd-panel-title">ANTHROPIC API KEY</div>
+    <div class="api-key-row">
+      <input type="password" id="apiKey" placeholder="sk-ant-..." style="flex:1;" oninput="checkApiKey()">
+      <div class="api-status" id="apiStatus">NO KEY</div>
+    </div>
+    <div style="font-size:10px;color:var(--text3);font-family:var(--mono);">Key stored in memory only. Never sent anywhere except api.anthropic.com</div>
+  </div>
+
+  <div class="chaos-director">
+
+    <!-- LEFT: INPUTS -->
+    <div>
+      <!-- FIRST FRAME -->
+      <div class="cd-panel mb8">
+        <div class="cd-panel-title">FIRST FRAME IMAGE</div>
+        <div class="image-drop" id="imageDrop" ondragover="event.preventDefault();this.classList.add('dragover')" ondragleave="this.classList.remove('dragover')" ondrop="handleDrop(event)">
+          <input type="file" accept="image/*" onchange="handleImageInput(event)">
+          <img class="image-preview" id="imagePreview">
+          <div class="image-drop-text" id="dropText">DROP FIRST FRAME / CLICK TO UPLOAD<br><span style="color:var(--text3);font-size:9px;">Claude vision will auto-analyze scene composition</span></div>
+        </div>
+        <div id="autoAnalysis" class="mt8" style="font-family:var(--mono);font-size:10px;color:var(--text3);display:none;"></div>
+      </div>
+
+      <!-- LAST FRAME -->
+      <div class="cd-panel mb8">
+        <div class="cd-panel-title">LAST FRAME ANCHOR <span style="color:var(--text3)">(OPTIONAL)</span></div>
+        <div class="image-drop" id="lastFrameDrop" style="padding:12px;" ondragover="event.preventDefault();this.classList.add('dragover')" ondragleave="this.classList.remove('dragover')" ondrop="handleLastFrameDrop(event)">
+          <input type="file" accept="image/*" onchange="handleLastFrameInput(event)">
+          <img class="image-preview" id="lastFramePreview" style="max-height:80px;">
+          <div class="image-drop-text" id="lastFrameDropText" style="font-size:9px;">DROP END FRAME TO ANCHOR TRAJECTORY</div>
+        </div>
+      </div>
+
+      <!-- SCENE ACTION -->
+      <div class="cd-panel mb8">
+        <div class="cd-panel-title">SCENE ACTION — WHAT IS HAPPENING</div>
+        <div class="mic-wrap">
+          <textarea id="chaosSceneAction" rows="2" placeholder="e.g. figure walks through collapsing architecture, crowd scatters as shockwave hits, dancer spins as reality tears apart..." style="width:100%;resize:vertical;"></textarea>
+          <button class="mic-btn" onclick="startMic('chaosSceneAction',this)">🎤</button>
+        </div>
+      </div>
+
+      <!-- MODE -->
+      <div class="cd-panel mb8">
+        <div class="cd-panel-title">GENERATION MODE</div>
+        <div class="mode-toggle">
+          <button class="mode-btn active" id="modeShot" onclick="setMode('shot')">CONTINUOUS SHOT</button>
+          <button class="mode-btn" id="modeMontage" onclick="setMode('montage')">BPM MONTAGE</button>
+        </div>
+        <div id="bpmSection" style="display:none;">
+          <div class="input-label">BPM</div>
+          <input type="number" id="bpmInput" value="140" min="60" max="300" oninput="updateBpmCalc()">
+          <div class="mt8 bpm-result" id="bpmResult">—</div>
+          <div class="bpm-grid" id="bpmGrid"></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT: CONTROLS -->
+    <div>
+      <!-- CHAOS DIAL -->
+      <div class="cd-panel mb8">
+        <div class="cd-panel-title">CHAOS DIAL</div>
+        <div class="chaos-dial-wrap">
+          <div class="dial-label">
+            <div class="dial-label-text">MODEL STRESS LEVEL</div>
+            <div class="dial-value" id="dialValue">5</div>
+          </div>
+          <input type="range" id="chaosDial" min="1" max="10" value="5" oninput="updateChaos()">
+          <div class="chaos-levels" id="chaosLevels"></div>
+        </div>
+        <div style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-bottom:8px;" id="chaosDesc"></div>
+        <div class="chaos-tags" id="chaosTags"></div>
+      </div>
+
+      <!-- GENRE -->
+      <div class="cd-panel mb8">
+        <div class="cd-panel-title">MUSIC GENRE</div>
+        <select id="genreSelect" onchange="updateChaos()">
+          <option value="">— NO GENRE —</option>
+          <option value="hard_techno">HARD TECHNO</option>
+          <option value="drum_bass">DRUM &amp; BASS</option>
+          <option value="breakcore">BREAKCORE</option>
+          <option value="hip_hop">HIP HOP</option>
+          <option value="ambient">AMBIENT</option>
+          <option value="electronic">ELECTRONIC</option>
+          <option value="cinematic">CINEMATIC</option>
+        </select>
+      </div>
+
+      <!-- DURATION — full seedance range -->
+      <div class="cd-panel mb8">
+        <div class="cd-panel-title">SHOT DURATION</div>
+        <div style="display:flex;align-items:center;gap:14px;">
+          <input type="range" id="durationSelect" min="4" max="15" value="5" style="flex:1;" oninput="document.getElementById('durVal').textContent=this.value+'s'">
+          <div class="dial-value" id="durVal" style="min-width:48px;text-align:right;">5s</div>
+        </div>
+        <div style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-top:4px;">4–15 SECONDS (Seedance minimum is 4s)</div>
+      </div>
+    </div>
+
+    <!-- CAMERA MOVE — VISUAL PICKER (pick by what you'll see; jargon rides underneath) -->
+    <div class="cd-panel cd-full">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;">
+        <div class="cd-panel-title" style="margin-bottom:0;">CAMERA MOVE — PICK BY EYE</div>
+        <div id="movePickerSel" style="font-family:var(--mono);font-size:10px;color:var(--accent3);letter-spacing:1px;">AI DECIDES FROM FRAME</div>
+      </div>
+      <div class="filter-bar" style="margin:10px 0 12px;">
+        <button class="filter-btn active" onclick="filterPicker('move','',this)">ALL</button>
+        <button class="filter-btn" onclick="filterPicker('move','push',this)">PUSH &amp; PULL</button>
+        <button class="filter-btn" onclick="filterPicker('move','spin',this)">SPIN &amp; ORBIT</button>
+        <button class="filter-btn" onclick="filterPicker('move','time',this)">TIME</button>
+        <button class="filter-btn" onclick="filterPicker('move','break',this)">SPACE-BREAK</button>
+        <button class="filter-btn" onclick="filterPicker('move','speed',this)">SPEED</button>
+      </div>
+      <div class="picker-readout" id="moveReadout">Hover any move — this line tells you what you'll actually see.</div>
+      <div class="picker-grid" id="movePicker"></div>
+    </div>
+
+    <!-- WORLD WARP — VISUAL PICKER -->
+    <div class="cd-panel cd-full">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;">
+        <div class="cd-panel-title" style="margin-bottom:0;">WORLD WARP — WHAT REALITY DOES</div>
+        <div id="warpPickerSel" style="font-family:var(--mono);font-size:10px;color:var(--accent3);letter-spacing:1px;">NO WARP</div>
+      </div>
+      <div class="filter-bar" style="margin:10px 0 12px;">
+        <button class="filter-btn active" onclick="filterPicker('warp','',this)">ALL</button>
+        <button class="filter-btn" onclick="filterPicker('warp','geometric',this)">BEND</button>
+        <button class="filter-btn" onclick="filterPicker('warp','temporal',this)">TIME</button>
+        <button class="filter-btn" onclick="filterPicker('warp','dissolution',this)">DISSOLVE</button>
+        <button class="filter-btn" onclick="filterPicker('warp','portal',this)">PORTAL</button>
+      </div>
+      <div class="picker-readout" id="warpReadout">Hover any warp — this line tells you what reality does.</div>
+      <div class="picker-grid" id="warpPicker"></div>
+    </div>
+
+    <div class="cd-full">
+      <button class="generate-btn" id="generateBtn" onclick="generatePrompt()" style="width:100%;">COMPILE CHAOS</button>
+    </div>
+
+    <!-- OUTPUT -->
+    <div class="cd-panel cd-full">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <div class="cd-panel-title" style="margin-bottom:0;">COMPILED PROMPT</div>
+        <div class="loading-indicator" id="loadingIndicator">ANALYZING FRAME...</div>
+      </div>
+      <div class="output-box" id="outputBox">
+        <span class="output-placeholder">Upload a first frame and hit COMPILE CHAOS to generate your prompt. Claude vision will analyze the frame automatically.</span>
+      </div>
+      <div class="output-actions">
+        <button class="out-btn green" onclick="copyOutput()">COPY PROMPT</button>
+        <button class="out-btn" onclick="regenerate()">REGENERATE</button>
+        <button class="out-btn" onclick="clearOutput()">CLEAR</button>
+      </div>
+    </div>
+
+    <!-- RENDER ON WRECKAGE — seedance video generation (needs /api backend) -->
+    <div class="cd-panel cd-full" id="renderPanel">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <div class="cd-panel-title" style="margin-bottom:0;">RENDER ON WRECKAGE — SEEDANCE</div>
+        <div class="loading-indicator" id="renderLoading">SUBMITTING...</div>
+      </div>
+      <div style="font-size:10px;color:var(--text3);font-family:var(--mono);margin-bottom:12px;">Generate video from the compiled prompt + your first frame — without leaving the tool. Uses the WRECKAGE /api backend (Seedance via ByteDance ModelArk).</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;">
+        <div>
+          <div class="cd-mini-label">Variations</div>
+          <select id="renderCount"><option>1</option><option selected>2</option><option>3</option><option>4</option></select>
+        </div>
+        <div>
+          <div class="cd-mini-label">Aspect</div>
+          <select id="renderAspect"><option value="16:9" selected>16:9</option><option value="9:16">9:16</option><option value="1:1">1:1</option><option value="21:9">21:9</option></select>
+        </div>
+        <div>
+          <div class="cd-mini-label">Resolution</div>
+          <select id="renderRes"><option value="720p">720p</option><option value="1080p" selected>1080p</option></select>
+        </div>
+      </div>
+      <button class="generate-btn" id="renderBtn" onclick="renderVariations()">RENDER VARIATIONS →</button>
+      <div class="render-grid" id="renderGrid"></div>
+      <details style="margin-top:12px;">
+        <summary style="font-family:var(--mono);font-size:10px;color:var(--text3);cursor:pointer;letter-spacing:1px;">ADVANCED — RENDER BACKEND URL</summary>
+        <input type="text" id="renderBackendUrl" placeholder="blank = same origin (when deployed on vercel)" style="width:100%;margin-top:8px;">
+        <div style="font-size:10px;color:var(--text3);font-family:var(--mono);margin-top:4px;">Leave blank when the HTML is served by its own /api (vercel). Set a full URL (e.g. https://wreckage.vercel.app) to call a remote backend from a locally-opened file. The prompt tools above work without any backend.</div>
+      </details>
+    </div>
+
+  </div>
+</div>
+
+<!-- ===== SEQUENCE (scene builder + combo presets) ===== -->
+<div class="tab-panel" id="tab-scene-builder">
+  <div class="section-title">SEQUENCE</div>
+  <div class="section-desc">CHAIN MOVES + WARPS PER BEAT — OR START FROM A GENRE PRESET</div>
+
+  <div class="cd-panel mb8" style="margin-bottom:16px;">
+    <div class="cd-panel-title">PRESETS — PRE-BUILT MULTI-MOVE SEQUENCES</div>
+    <div class="cards-grid" id="combos-grid"></div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+    <div>
+      <div style="background:var(--bg2);border:1px solid var(--border);padding:16px;margin-bottom:12px;">
+        <div class="cd-panel-title">CHAIN CONFIGURATION</div>
+        <div class="input-row">
+          <div>
+            <div class="input-label">TRANSITIONS</div>
+            <select id="transitionType" onchange="compileChain()">
+              <option value="then">SEQUENTIAL (THEN)</option>
+              <option value="triggering">TRIGGERING CHAIN</option>
+              <option value="while">SIMULTANEOUS (WHILE)</option>
+              <option value="into">DISSOLVING INTO</option>
+            </select>
+          </div>
+          <div>
+            <div class="input-label">HOLD BETWEEN</div>
+            <select id="holdDuration" onchange="compileChain()">
+              <option value="">NO HOLD</option>
+              <option value="brief hold">BRIEF HOLD</option>
+              <option value="1 second hold">1S HOLD</option>
+              <option value="2 second hold">2S HOLD</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div style="background:var(--bg2);border:1px solid var(--border);padding:16px;">
+        <div class="cd-panel-title">STEPS — CAMERA + WARP PER BEAT</div>
+        <div id="chainRows"></div>
+        <button class="add-btn mt8" onclick="addChainRow()" style="width:100%;font-size:10px;letter-spacing:1px;font-family:var(--mono);height:auto;padding:8px;">+ ADD STEP</button>
+      </div>
+    </div>
+
+    <div>
+      <div style="background:var(--bg2);border:1px solid var(--border);padding:16px;">
+        <div class="cd-panel-title">COMPILED CHAIN PROMPT</div>
+        <div class="chain-output" id="chainOutput" style="min-height:200px;">Add steps to compile…</div>
+        <div class="output-actions mt8">
+          <button class="out-btn green" onclick="copyChain()">COPY PROMPT</button>
+          <button class="out-btn" onclick="clearChain()">CLEAR</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== ON TALENT ===== -->
+<div class="tab-panel" id="tab-on-talent">
+  <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:4px;">
+    <div class="section-title">ON TALENT</div>
+    <div style="font-family:var(--mono);font-size:9px;color:var(--blue);letter-spacing:2px;padding:2px 8px;border:1px solid var(--blue);background:rgba(0,170,255,0.05);">DIRECTOR INTERVIEW</div>
+  </div>
+  <div class="section-desc">DESCRIBE FREELY → AI ASKS QUESTIONS → ANSWER → PROMPT COMPILED</div>
+
+  <!-- STEP 01: FULL WIDTH DESCRIPTION -->
+  <div class="cd-panel mb8" style="border-color:rgba(0,170,255,0.35);">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+      <div style="font-family:var(--display);font-size:22px;color:var(--blue);line-height:1;">01</div>
+      <div class="cd-panel-title" style="margin-bottom:0;color:var(--blue);font-size:11px;">DESCRIBE THE SCENE — NO LIMITS</div>
+    </div>
+    <div style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-bottom:10px;">Who is there, what is happening, what does each person feel, what are they NOT saying, what happens in their bodies. Everything. Type or speak.</div>
+    <div class="mic-wrap">
+      <textarea id="talentFreeDesc" rows="6" placeholder="e.g. Two soldiers. A just found out his brother died but B doesn't know yet. They're talking about something mundane — rations, tomorrow's route. A is trying not to show it. His hand keeps going to his pocket where the letter is. B senses something is off but doesn't push. The tension is in what neither of them says..." style="width:100%;resize:vertical;line-height:1.7;font-size:12px;"></textarea>
+      <button class="mic-btn" onclick="startMic('talentFreeDesc',this)">🎤</button>
+    </div>
+    <button onclick="runDirectorInterview()" id="interviewBtn"
+      style="width:100%;margin-top:10px;padding:12px;font-family:var(--display);font-size:18px;letter-spacing:3px;background:transparent;border:1px solid var(--blue);color:var(--blue);cursor:pointer;transition:all 0.15s;"
+      onmouseover="this.style.background='rgba(0,170,255,0.1)'" onmouseout="this.style.background='transparent'">
+      → BUILD PROMPT
+    </button>
+  </div>
+
+  <!-- FRAME + CAMERA ROW -->
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px;">
+    <div class="cd-panel">
+      <div class="cd-panel-title">FIRST FRAME</div>
+      <div class="image-drop" id="talentImageDrop" style="padding:16px;min-height:100px;display:flex;align-items:center;justify-content:center;flex-direction:column;"
+        ondragover="event.preventDefault();this.classList.add('dragover')"
+        ondragleave="this.classList.remove('dragover')"
+        ondrop="handleTalentDrop(event)">
+        <input type="file" accept="image/*" onchange="handleTalentImage(event)">
+        <img class="image-preview" id="talentImagePreview" style="max-height:100px;">
+        <div class="image-drop-text" id="talentDropText" style="font-size:9px;text-align:center;">📷 DROP FRAME<br>OR CLICK TO UPLOAD</div>
+      </div>
+    </div>
+    <div class="cd-panel">
+      <div class="cd-panel-title">CAMERA TECHNIQUE</div>
+      <select id="talentTechnique" onchange="updateTalentTechDesc()" style="margin-bottom:8px;">
+        <option value="dirty_oner">DIRTY ONER — continuous handheld, no cuts</option>
+      </select>
+      <div id="talentTechDesc" style="font-family:var(--mono);font-size:9px;color:var(--text3);padding:6px 8px;background:var(--bg3);border-left:2px solid var(--blue);line-height:1.5;"></div>
+    </div>
+    <div class="cd-panel">
+      <div class="input-label">PACING</div>
+      <select id="talentPacing" style="margin-bottom:10px;">
+        <option value="urgent">URGENT</option>
+        <option value="naturalistic" selected>NATURALISTIC</option>
+        <option value="slow burn">SLOW BURN</option>
+        <option value="chaotic">CHAOTIC</option>
+      </select>
+      <div class="input-label">PROXIMITY</div>
+      <select id="talentProximity">
+        <option value="wide">WIDE</option>
+        <option value="medium" selected>MEDIUM</option>
+        <option value="close">CLOSE</option>
+        <option value="extreme close">EXTREME CLOSE</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- OUTPUT -->
+  <div id="interviewQuestionsPanel" style="display:none;">
+    <div class="cd-panel" style="border-color:rgba(0,170,255,0.2);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <div class="cd-panel-title" style="color:var(--blue);margin-bottom:0;">COMPILED PROMPT</div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <div class="loading-indicator" id="talentLoadingIndicator" style="color:var(--blue);">BUILDING...</div>
+          <button id="talentGenerateBtn" onclick="generateTalentPrompt()"
+            style="font-family:var(--mono);font-size:9px;letter-spacing:1px;padding:5px 12px;border:1px solid var(--blue);background:transparent;color:var(--blue);cursor:pointer;">
+            REGENERATE
+          </button>
+        </div>
+      </div>
+      <div class="output-box" id="talentOutputBox" style="min-height:160px;border-color:rgba(0,170,255,0.15);">
+        <span class="output-placeholder">Building…</span>
+      </div>
+      <div style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-top:6px;" id="promptWordCount"></div>
+      <div class="output-actions mt8">
+        <button class="out-btn" onclick="copyTalentOutput()" style="border-color:rgba(0,170,255,0.3);color:var(--blue);">COPY PROMPT</button>
+        <button class="out-btn" onclick="resetInterview()">START OVER</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RENDER ON WRECKAGE — talent prompts render here too, no copy-paste -->
+  <div class="cd-panel" id="renderPanelT" style="margin-top:12px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+      <div class="cd-panel-title" style="margin-bottom:0;">RENDER ON WRECKAGE — SEEDANCE</div>
+      <div class="loading-indicator" id="renderLoadingT">SUBMITTING...</div>
+    </div>
+    <div style="font-size:10px;color:var(--text3);font-family:var(--mono);margin-bottom:12px;">Renders the compiled performance prompt + your frame. Same backend as SHOT.</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;">
+      <div>
+        <div class="cd-mini-label">Variations</div>
+        <select id="renderCountT"><option>1</option><option selected>2</option><option>3</option><option>4</option></select>
+      </div>
+      <div>
+        <div class="cd-mini-label">Aspect</div>
+        <select id="renderAspectT"><option value="16:9" selected>16:9</option><option value="9:16">9:16</option><option value="1:1">1:1</option><option value="21:9">21:9</option></select>
+      </div>
+      <div>
+        <div class="cd-mini-label">Resolution</div>
+        <select id="renderResT"><option value="720p">720p</option><option value="1080p" selected>1080p</option></select>
+      </div>
+      <div style="flex:1;min-width:160px;">
+        <div class="cd-mini-label">Duration — <span id="durValT">5s</span></div>
+        <input type="range" id="durationSelectT" min="4" max="15" value="5" style="width:100%;margin-top:8px;" oninput="document.getElementById('durValT').textContent=this.value+'s'">
+      </div>
+    </div>
+    <button class="generate-btn" id="renderBtnT" onclick="renderVariations('T')">RENDER VARIATIONS →</button>
+    <div class="render-grid" id="renderGridT"></div>
+  </div>
+
+</div>
+
+
+<!-- ===== LIBRARY (keywords + pipeline reference + bpm calc) ===== -->
+<div class="tab-panel" id="tab-keywords">
+  <div class="section-title">LIBRARY</div>
+  <div class="section-desc">KEYWORDS / GENRE MAPS / PIPELINE REFERENCE / BPM CALCULATOR — CLICK ANY CHIP TO COPY</div>
+
+  <hr class="divider">
+  <div style="font-family:var(--mono);font-size:10px;color:var(--text2);letter-spacing:2px;margin-bottom:12px;">PRODUCTION PIPELINE — THREE STAGES</div>
+  <div class="pipeline">
+    <div class="pipeline-stage">
+      <div class="stage-num">01</div>
+      <div class="stage-label">INPUT &amp; PARSING</div>
+      <div id="pipeline-stage-1"></div>
+    </div>
+    <div class="pipeline-stage">
+      <div class="stage-num">02</div>
+      <div class="stage-label">PARAMETER CONTROL</div>
+      <div id="pipeline-stage-2"></div>
+    </div>
+    <div class="pipeline-stage">
+      <div class="stage-num">03</div>
+      <div class="stage-label">OUTPUT &amp; ITERATION</div>
+      <div id="pipeline-stage-3"></div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <div class="section-title" style="font-size:16px;margin-bottom:12px;">BPM → CLIP DURATION CALCULATOR</div>
+  <div class="bpm-calc">
+    <div class="input-row" style="max-width:300px;">
+      <div>
+        <div class="input-label">BPM</div>
+        <input type="number" id="pipeBpm" value="140" min="40" max="400" oninput="calcPipeBpm()">
+      </div>
+      <div>
+        <div class="input-label">BEATS PER CUT</div>
+        <select id="pipeBeats" onchange="calcPipeBpm()">
+          <option value="1">1 BEAT</option>
+          <option value="2" selected>2 BEATS</option>
+          <option value="4">4 BEATS / 1 BAR</option>
+          <option value="8">8 BEATS / 2 BARS</option>
+          <option value="16">16 BEATS / 4 BARS</option>
+        </select>
+      </div>
+    </div>
+    <div class="bpm-result" id="pipeBpmResult">—</div>
+    <div class="bpm-grid" id="pipeBpmGrid"></div>
+  </div>
+
+  <hr class="divider">
+  <div style="font-family:var(--mono);font-size:10px;color:var(--accent);letter-spacing:2px;margin-bottom:12px;">⚠ FORBIDDEN KEYWORDS — QUALITY KILLERS (REPURPOSED AS CHAOS TRIGGERS)</div>
+  <div class="keyword-grid" id="forbidden-grid"></div>
+
+  <hr class="divider">
+  <div style="font-family:var(--mono);font-size:10px;color:var(--accent2);letter-spacing:2px;margin-bottom:12px;">🔥 CHAOS INJECTION LIBRARY — BY DIAL LEVEL</div>
+  <div class="keyword-grid" id="chaos-grid"></div>
+
+  <hr class="divider">
+  <div style="font-family:var(--mono);font-size:10px;color:var(--blue);letter-spacing:2px;margin-bottom:12px;">🎵 GENRE → KEYWORD MAP</div>
+  <div class="genre-map" id="genre-grid"></div>
+</div>
+
+</div><!-- /content -->
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ========== DATA ==========
+
+// ========== EFFECT PREVIEW SVG GENERATOR ==========
+// Parametric animated previews. Each effect maps to an animation TYPE.
+const A = '#ff3c00', A2 = '#ff7a00', A3 = '#ffcc00', BL = '#00aaff', GR = '#00ff88', PU = '#aa44ff';
+
+function fxSVG(type) {
+  const vb = '0 0 200 88';
+  const g = (inner) => `<svg viewBox="${vb}" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice"><rect width="200" height="88" fill="#0a0a0a"/>${inner}</svg>`;
+
+  // ===== every preview films the SAME scene: a figure on a street =====
+  // the frame = the camera. the only thing that changes between previews
+  // is the move — so the difference you see IS the move.
+  const SCENE = `
+    <rect x="-200" y="64" width="600" height="24" fill="#131313"/>
+    <line x1="-200" y1="64" x2="400" y2="64" stroke="#3d3d3d" stroke-width="1"/>
+    <rect x="14" y="20" width="22" height="44" fill="#232323"/>
+    <rect x="46" y="34" width="12" height="30" fill="#2c2c2c"/>
+    <rect x="146" y="12" width="28" height="52" fill="#1e1e1e"/>
+    <rect x="128" y="38" width="12" height="26" fill="#2c2c2c"/>
+    <circle cx="100" cy="26" r="6" fill="${A3}"/>
+    <rect x="94" y="33" width="12" height="28" fill="${A3}"/>`;
+
+  // camera rig: animateTransforms compose on the world group (centered coords)
+  const AT = (t, values, dur, extra = '') =>
+    `<animateTransform attributeName="transform" type="${t}" values="${values}" dur="${dur}" repeatCount="indefinite" additive="sum" ${extra}/>`;
+  const rig = (anims, worldExtra = '', overlay = '') =>
+    g(`<g transform="translate(100,44)"><g>${anims}<g transform="translate(-100,-44)">${SCENE}${worldExtra}</g></g></g>${overlay}`);
+
+  switch (type) {
+
+    // ---------- PUSH & PULL ----------
+    case 'recursive': // infinite push-in: you push in, and the frame repeats inside itself
+      return rig(AT('scale', '1;1.55', '2.4s'), '',
+        `${[0.72, 0.5, 0.32].map((s, i) => `<rect x="${100 - 100 * s}" y="${44 - 44 * s}" width="${200 * s}" height="${88 * s}" fill="none" stroke="${A}" stroke-width="1" opacity="${0.65 - i * 0.15}"/>`).join('')}`);
+
+    case 'crashzoom': // crash zoom: subject slams toward you, no ease
+      return rig(AT('scale', '1;1;2.3;2.3', '1s', 'keyTimes="0;0.5;0.68;1"'), '',
+        `<rect width="200" height="88" fill="#ffffff"><animate attributeName="opacity" values="0;0;0.4;0" keyTimes="0;0.6;0.68;1" dur="1s" repeatCount="indefinite"/></rect>`);
+
+    case 'spiralpull': // impossible spiral pull-back: zoom out while space corkscrews
+      return rig(AT('scale', '1.8;0.8', '3s') + AT('rotate', '0;300', '3s'));
+
+    case 'membrane': // punch through the image: push until the picture tears
+      return rig(AT('scale', '1;1.45;1.45', '2.4s', 'keyTimes="0;0.7;1"'), '',
+        `<polygon points="100,20 100,68" fill="#000" stroke="${A3}" stroke-width="2"><animate attributeName="points" values="99,40 101,40 100,48; 90,14 110,16 100,70; 99,40 101,40 100,48" keyTimes="0;0.85;1" dur="2.4s" repeatCount="indefinite"/></polygon>`);
+
+    case 'entropy': // backwards-detail zoom: the closer you get, the emptier it is
+      return rig(AT('scale', '1;1.8', '2.8s'),
+        `<animate attributeName="opacity" values="1;0.12" dur="2.8s" repeatCount="indefinite"/>`);
+
+    case 'retrograde': // forward + reverse at once: you advance and retreat simultaneously
+      return g(`<g transform="translate(100,44)"><g>${AT('scale', '1;1.5', '2s')}<g transform="translate(-100,-44)">${SCENE}</g></g></g>
+        <g transform="translate(100,44)" opacity="0.35"><g>${AT('scale', '1.5;1', '2s')}<g transform="translate(-100,-44)">${SCENE}</g></g></g>`);
+
+    case 'elastic': // rubber-band zoom: overshoot, bounce back, settle
+      return rig(AT('scale', '1;1.75;1.2;1.42', '1.6s', 'keyTimes="0;0.5;0.75;1"'));
+
+    case 'ripple': // shockwave push: a pressure ring leads, the camera follows it in
+      return rig(AT('scale', '1;1.05;1.35', '1.5s', 'keyTimes="0;0.35;1"'), '',
+        `<circle cx="100" cy="44" r="6" fill="none" stroke="${A3}" stroke-width="2"><animate attributeName="r" values="6;95" dur="1.5s" repeatCount="indefinite"/><animate attributeName="opacity" values="1;0" dur="1.5s" repeatCount="indefinite"/></circle>`);
+
+    case 'thrust': // sprinting handheld: rushing forward, every tremor amplified
+      return rig(AT('scale', '1;1.55', '1.1s') + AT('translate', '0 0;2 -2;-2 2;1 -1;0 0', '0.22s'));
+
+    // ---------- SPIN & ORBIT ----------
+    case 'gravity': // upside-down orbit: halfway around, the world is overhead
+      return rig(AT('rotate', '0;0;180;180;360', '5s', 'keyTimes="0;0.15;0.5;0.65;1"') + AT('translate', '0 0;-14 0;0 0;14 0;0 0', '5s'));
+
+    case 'spin': // barrel-roll: the horizon rotates a full 360
+      return rig(AT('rotate', '0;360', '2.4s'));
+
+    case 'snaporbit': // stepped orbit: position jumps, nothing between
+      return rig(AT('translate', '26 0;26 0;0 0;0 0;-26 0;-26 0;0 0;0 0', '2.4s', 'calcMode="discrete"') + AT('rotate', '6;6;0;0;-6;-6;0;0', '2.4s', 'calcMode="discrete"'));
+
+    case 'mobius': // one-sided orbit: half a lap and you're on the other side of the world
+      return rig(AT('translate', '0 0;-22 0;0 0;22 0;0 0', '4.4s') + AT('scale', '1 1;1 1;1 -1;1 -1;1 1', '4.4s', 'calcMode="discrete" keyTimes="0;0.24;0.5;0.74;1"'));
+
+    case 'insideout': // inside-out zoom: push in until inside and outside trade places
+      return rig(AT('scale', '1;1.8;-1.4;-1;1', '4.4s'));
+
+    case 'arcmove': // drifting arc: speed with a curve, slight over-correction
+      return rig(AT('translate', '-45 6;0 -5;45 6;0 -5;-45 6', '2.6s') + AT('rotate', '-6;0;6;0;-6', '2.6s'));
+
+    // ---------- TIME ----------
+    case 'fragment': // whip pan through time: the blur crosses times of day
+      return rig(AT('translate', '150 0;-150 0', '1.5s'), '',
+        `<rect width="200" height="88"><animate attributeName="fill" values="rgba(255,122,0,0.14);rgba(10,30,120,0.22);rgba(255,122,0,0.14)" dur="1.5s" repeatCount="indefinite"/></rect>`);
+
+    case 'ghosttrail': // ghost-trail follow: where the camera just was stays visible
+      return g(`${[2, 1, 0].map(k => `<g opacity="${1 - k * 0.34}" transform="translate(${100 + k * 16},44)"><g>${AT('translate', '30 0;-30 0;30 0', '3s')}<g transform="translate(-100,-44)">${SCENE}</g></g></g>`).join('')}`);
+
+    case 'smearpan': // pan that never lands: every pan position occupied at once
+      return g(`${[-32, -16, 0, 16, 32].map(dx => `<g opacity="0.26" transform="translate(${100 + dx},44)"><g>${AT('translate', '9 0;-9 0;9 0', '1.3s')}<g transform="translate(-100,-44)">${SCENE}</g></g></g>`).join('')}`);
+
+    case 'stuttertrack': // stutter track: glide — freeze — glide — freeze
+      return rig(AT('translate', '40 0;20 0;20 0;0 0;0 0;-20 0;-20 0;-40 0', '2.4s', 'keyTimes="0;0.14;0.28;0.42;0.56;0.7;0.84;1"'));
+
+    case 'echosmear': // all moments at once: the figure is every step simultaneously (world-side)
+      return rig('', `${[36, 56, 76].map((x, i) => `<g opacity="${0.18 + i * 0.14}" transform="translate(${x - 100},0)"><circle cx="100" cy="26" r="6" fill="${A3}"/><rect x="94" y="33" width="12" height="28" fill="${A3}"/></g>`).join('')}`);
+
+    // ---------- SPACE-BREAK ----------
+    case 'phase': // ghost through walls: a wall comes at you — and passes through the lens
+      return rig(AT('translate', '30 0;-30 0', '2.6s'), '',
+        `<g transform="translate(120,44)"><g><animateTransform attributeName="transform" type="scale" values="0.15;6" dur="2.6s" repeatCount="indefinite"/><rect x="-9" y="-60" width="18" height="120" fill="#4a4a4a"><animate attributeName="opacity" values="0.95;0.9;0.05" keyTimes="0;0.68;1" dur="2.6s" repeatCount="indefinite"/></rect></g></g>`);
+
+    case 'voidedge': // edge-of-the-world pan: pan until the world runs out
+      return rig(AT('translate', '55 0;-95 0;55 0', '5s'),
+        `<rect x="238" y="-12" width="300" height="112" fill="#000"/><line x1="238" y1="-12" x2="238" y2="100" stroke="${A3}" stroke-width="2" stroke-dasharray="5 5"/>`);
+
+    case 'flatslide': // flat-world slide: near and far move together — depth is gone
+      return rig(AT('translate', '70 0;-70 0;70 0', '4s'),
+        `<rect x="62" y="-14" width="9" height="104" fill="#3f3f3f"/><rect x="196" y="-14" width="9" height="104" fill="#3f3f3f"/>`);
+
+    case 'driftless': // directionless drift: motion with no committed axis
+      return rig(AT('translate', '0 0;10 -7;-9 8;7 5;-10 -5;0 0', '5.5s'));
+
+    case 'fold': // world-fold: the city curls up and hangs overhead
+      return g(`<g transform="translate(100,44)"><g>${AT('scale', '1;1.22', '3.2s')}<g transform="translate(-100,-44)">${SCENE}<g transform="translate(0,-26) scale(1,-1)"><animate attributeName="opacity" values="0;0.6;0.6" keyTimes="0;0.5;1" dur="3.2s" repeatCount="indefinite"/>${SCENE}</g></g></g></g>`);
+
+    case 'drop': // trapdoor drop: the world rushes upward past you — freefall
+      return rig(AT('translate', '0 95;0 -95', '1s'), '',
+        `${[30, 100, 170].map((x, i) => `<line x1="${x}" y1="-20" x2="${x}" y2="10" stroke="${A2}" stroke-width="2" opacity="0.5"><animate attributeName="y1" values="-20;88" dur="0.5s" begin="${i * 0.1}s" repeatCount="indefinite"/><animate attributeName="y2" values="10;118" dur="0.5s" begin="${i * 0.1}s" repeatCount="indefinite"/></line>`).join('')}`);
+
+    // ---------- SPEED ----------
+    case 'whip': // hard whip pan: the smear IS the shot
+      return rig(AT('translate', '150 0;150 0;-150 0;-150 0', '1.4s', 'keyTimes="0;0.3;0.55;1"'), '',
+        `${[0, 1, 2].map(i => `<rect x="-60" y="${20 + i * 18}" width="70" height="3" fill="${A}" opacity="${0.6 - i * 0.15}"><animate attributeName="x" values="-70;220" dur="0.7s" begin="${0.42 + i * 0.04}s" repeatCount="indefinite"/></rect>`).join('')}`);
+
+    case 'doublewhip': // double whip: left, land, right — one breath
+      return rig(AT('translate', '0 0;-130 0;-130 0;130 0;130 0;0 0', '2.2s', 'keyTimes="0;0.15;0.4;0.55;0.8;1"'));
+
+    case 'glitch': // glitch-stutter pan: the pan drops frames on purpose
+      return rig(AT('translate', '30 0;10 0;-10 0;-30 0;30 0', '1.6s', 'calcMode="discrete"'), '',
+        `${[0, 1, 2].map(i => `<rect x="0" y="${8 + i * 28}" width="200" height="7" fill="${i % 2 ? '#f00' : '#00f'}" opacity="0"><animate attributeName="opacity" values="0;0.3;0" dur="0.5s" begin="${i * 0.14}s" repeatCount="indefinite"/></rect>`).join('')}`);
+
+    // ---------- WARPS: the camera holds, the WORLD misbehaves ----------
+    case 'tearwarp': // sky tears open: a crack in the air, nothing behind it
+      return rig('', '',
+        `<polygon fill="#000" stroke="${A3}" stroke-width="1.5"><animate attributeName="points" values="97,0 103,0 100,10; 86,0 114,0 100,56; 97,0 103,0 100,10" dur="3s" repeatCount="indefinite"/></polygon>`);
+
+    case 'lens': // black-hole warp: the middle of the picture pulls inward
+      return rig(AT('scale', '1 1;0.74 1.14;1 1', '2.6s'), '',
+        `<circle cx="100" cy="40" r="12" fill="#000" stroke="${A}" stroke-width="1"><animate attributeName="r" values="9;15;9" dur="2.6s" repeatCount="indefinite"/></circle>`);
+
+    case 'chroma': // rgb split shockwave: color separates outward from the impact
+      return rig('', '',
+        `${['#ff2020', '#20ff60', '#2060ff'].map((c, i) => `<circle cx="${100 + (i - 1) * 3}" cy="40" r="10" fill="none" stroke="${c}" stroke-width="2" opacity="0.7"><animate attributeName="r" values="8;70" dur="1.9s" repeatCount="indefinite"/><animate attributeName="cx" values="${100 + (i - 1) * 2};${100 + (i - 1) * 18}" dur="1.9s" repeatCount="indefinite"/><animate attributeName="opacity" values="0.8;0" dur="1.9s" repeatCount="indefinite"/></circle>`).join('')}`);
+
+    case 'dissolve': // world turns to particles: the scene erodes from one side
+      return rig('', '', `<g><animateTransform attributeName="transform" type="translate" values="95 0;-45 0;95 0" dur="4.4s" repeatCount="indefinite"/><rect x="112" y="0" width="200" height="88" fill="#0a0a0a" opacity="0.93"/>${Array.from({ length: 12 }, (_, i) => `<rect x="${104 + (i % 3) * 6}" y="${6 + i * 7}" width="3" height="3" fill="${A2}"><animate attributeName="x" values="${104 + (i % 3) * 6};${150 + (i % 5) * 12}" dur="${0.8 + (i % 4) * 0.3}s" repeatCount="indefinite"/><animate attributeName="opacity" values="1;0" dur="${0.8 + (i % 4) * 0.3}s" repeatCount="indefinite"/></rect>`).join('')}</g>`);
+
+    case 'portal': // portal inside portal: the scene contains itself, again and again
+      return g(`<g transform="translate(100,44)"><g>${AT('scale', '1;1.18', '2.6s')}<g transform="translate(-100,-44)">${SCENE}
+        ${[0.48, 0.22].map(s => `<g transform="translate(${100 - 100 * s},${44 - 44 * s}) scale(${s})"><rect x="0" y="0" width="200" height="88" fill="#0a0a0a" stroke="${PU}" stroke-width="${(2 / s).toFixed(1)}"/>${SCENE}</g>`).join('')}
+      </g></g></g>`);
+
+    case 'ripplewarp': // space ripples like water: the whole scene wobbles as the wave passes
+      return rig(AT('skewX', '0;7;-7;0', '2.4s') + AT('translate', '0 0;0 -3;0 3;0 0', '2.4s'), '',
+        `<circle cx="100" cy="44" r="6" fill="none" stroke="${BL}" stroke-width="1.5"><animate attributeName="r" values="6;90" dur="2.4s" repeatCount="indefinite"/><animate attributeName="opacity" values="0.8;0" dur="2.4s" repeatCount="indefinite"/></circle>`);
+
+    case 'phasewarp': // solids go ghost: the figure walks straight through the building
+      return rig('', '',
+        `<g>${AT('translate', '-65 0;65 0', '3s')}<g><animate attributeName="opacity" values="1;1;0.25;1;1" keyTimes="0;0.5;0.66;0.82;1" dur="3s" repeatCount="indefinite"/><circle cx="100" cy="26" r="6" fill="${GR}"/><rect x="94" y="33" width="12" height="28" fill="${GR}"/></g></g>`);
+
+    case 'voxel': // world de-renders / cube-storm: the scene breaks into blocks and scatters
+      return rig(`<animateTransform attributeName="transform" type="scale" values="1;1" dur="1s" additive="sum" repeatCount="indefinite"/>`,
+        `<animate attributeName="opacity" values="1;1;0.35;0.15;1" keyTimes="0;0.45;0.65;0.9;1" dur="3s" calcMode="discrete" repeatCount="indefinite"/>`,
+        `${Array.from({ length: 14 }, (_, i) => { const a = i / 14 * 6.28; return `<rect x="96" y="40" width="7" height="7" fill="${i % 2 ? A : A3}" opacity="0"><animate attributeName="opacity" values="0;0;1;0" keyTimes="0;0.45;0.6;1" dur="3s" repeatCount="indefinite"/><animate attributeName="x" values="96;96;${(96 + Math.cos(a) * 85).toFixed(0)}" keyTimes="0;0.45;1" dur="3s" repeatCount="indefinite"/><animate attributeName="y" values="40;40;${(40 + Math.sin(a) * 38).toFixed(0)}" keyTimes="0;0.45;1" dur="3s" repeatCount="indefinite"/></rect>`; }).join('')}`);
+
+    case 'depthswap': // near/far swap: the figure recedes as the far building rushes forward
+      return g(`${SCENE.replace('<circle cx="100" cy="26" r="6"', '<circle cx="100" cy="26" r="6" opacity="0"').replace('<rect x="94" y="33" width="12" height="28"', '<rect x="94" y="33" width="12" height="28" opacity="0"')}
+        <g transform="translate(100,47)"><g>${AT('scale', '1;0.35;1', '3.6s')}<g transform="translate(-100,-47)"><circle cx="100" cy="26" r="6" fill="${A3}"/><rect x="94" y="33" width="12" height="28" fill="${A3}"/></g></g></g>
+        <g transform="translate(160,38)"><g>${AT('scale', '1;2.1;1', '3.6s')}<g transform="translate(-160,-38)"><rect x="146" y="12" width="28" height="52" fill="${BL}" opacity="0.75"/></g></g></g>`);
+
+    case 'noise': // static eats the frame: signal loss consumes the scene
+      return rig('', `<animate attributeName="opacity" values="1;0.15;1" dur="3s" repeatCount="indefinite"/>`,
+        `${Array.from({ length: 90 }, (_, i) => { const x = (i * 37) % 200; const y = (i * 23) % 88; return `<rect x="${x}" y="${y}" width="4" height="4" fill="${i % 3 ? A2 : '#888'}"><animate attributeName="opacity" values="0;0;1;0" keyTimes="0;${(0.1 + (x / 200) * 0.5).toFixed(2)};${(0.3 + (x / 200) * 0.5).toFixed(2)};1" dur="3s" repeatCount="indefinite"/></rect>`; }).join('')}`);
+
+    case 'sidegravity': // gravity goes sideways: the world tips 90° — down is now the wall
+      return rig(AT('rotate', '0;0;90;90;0', '4.4s', 'keyTimes="0;0.25;0.5;0.85;1"'));
+
+    case 'dimbleed': // 2d invades 3d: a flat cardboard twin flips in beside the real one
+      return rig('', '',
+        `<g transform="translate(70,47)"><rect y="-17" height="34" fill="${PU}"><animate attributeName="width" values="0;14;14;0" keyTimes="0;0.25;0.75;1" dur="2.6s" repeatCount="indefinite"/><animate attributeName="x" values="0;-7;-7;0" keyTimes="0;0.25;0.75;1" dur="2.6s" repeatCount="indefinite"/></rect></g>`);
+
+    default: // static scene (AI decides / no warp reference look)
+      return rig('');
+  }
+}
+
+// Name → preview type map
+const PREVIEW_MAP = {
+  // AI Native — same scene everywhere; the difference IS the move
+  'RECURSIVE DOLLY IMPLOSION':'recursive','INVERTED GRAVITY ORBIT':'gravity','PHASE-SHIFT TRACKING SHOT':'phase',
+  'EIGENSPACE SPIRAL PULL':'spiralpull','MEMBRANE COLLAPSE ZOOM':'membrane','VOID-EDGE CRAWL':'voidedge',
+  'TIME-FRACTURED WHIP PAN':'fragment','STROBOSCOPIC ORBIT':'snaporbit','ECHO-TRAIL TRACKING':'ghosttrail',
+  'TEMPORAL SMEAR PAN':'smearpan','HYPERBOLIC ZOOM THROUGH SELF':'insideout','MÖBIUS STRIP ORBIT':'mobius',
+  'KLEIN BOTTLE TRAVERSE':'mobius','TOPOLOGICAL FOLD PUSH-IN':'fold','ANTI-PARALLAX SLIDE':'flatslide',
+  'RETROGRADE PUSH':'retrograde','ENTROPY ZOOM':'entropy','NULL VECTOR DRIFT':'driftless',
+  // Fast
+  'AGGRESSIVE WHIP PAN':'whip','SMASH CUT CRASH ZOOM':'crashzoom','KINETIC DRIFT ARC':'arcmove',
+  'HYPERACTIVE HANDHELD THRUST':'thrust','STROBING GLITCH PAN':'glitch','SNAP ORBIT':'snaporbit',
+  'VERTICAL GRAVITY DROP':'drop','DOUBLE WHIP REVERSE':'doublewhip','CENTRIFUGE SPIN':'spin',
+  'SHOCKWAVE PUSH':'ripple','STUTTER TRACK':'stuttertrack','ELASTIC ZOOM SNAP':'elastic',
+  // Warps — camera holds, the world misbehaves
+  'INCEPTION WORLD FOLD':'fold','REALITY MEMBRANE TEARING':'tearwarp','GRAVITATIONAL LENS DISTORTION':'lens',
+  'CHROMATIC ABERRATION SHOCKWAVE':'chroma','PIXEL DISSOLUTION CASCADE':'dissolve','RECURSIVE PORTAL COLLAPSE':'portal',
+  'SPACETIME RIPPLE PROPAGATION':'ripplewarp','MATTER PHASING THROUGH SURFACES':'phasewarp','GEOMETRIC REALITY BREAKDOWN':'voxel',
+  'TEMPORAL ECHO SMEAR':'echosmear','VOXEL FRAGMENTATION STORM':'voxel','INVERSE DEPTH FOLD':'depthswap',
+  'NOISE FIELD CONSUMPTION':'noise','AXIS GRAVITY INVERSION':'sidegravity','DIMENSION BLEED':'dimbleed',
+};
+
+function getPreview(name) {
+  return fxSVG(PREVIEW_MAP[name] || 'default');
+}
+
+// ========== VISUAL PICKERS (2.5) ==========
+// one source of truth: the catalogs. pickers render previews + plain labels;
+// the jargon name rides underneath; the prompt fragment is the payload.
+let selMove = -1;  // index into ALL_MOVES, -1 = AI decides
+let selWarp = -1;  // index into WARPS, -1 = no warp
+let moveFilter = '', warpFilter = '';
+
+function ALL_MOVES_LIST() { return AI_MOVES.concat(FAST_MOVES); }
+
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+
+function renderPickers() {
+  const moves = ALL_MOVES_LIST();
+  const mp = document.getElementById('movePicker');
+  if (mp) {
+    let html = pickerCell('move', -1, null, 'AI DECIDES', 'from frame analysis', selMove === -1, true, 'Claude reads your frame and picks the move that fits it.');
+    moves.forEach((m, i) => {
+      if (moveFilter && m.fam !== moveFilter) return;
+      html += pickerCell('move', i, m.name, m.label, m.name.toLowerCase(), selMove === i, false, m.expect);
+    });
+    mp.innerHTML = html;
+  }
+  const wp = document.getElementById('warpPicker');
+  if (wp) {
+    let html = pickerCell('warp', -1, null, 'NO WARP', 'camera move only', selWarp === -1, true, 'No reality deformation — the camera move runs on an intact world.');
+    WARPS.forEach((w, i) => {
+      if (warpFilter && w.tag !== warpFilter) return;
+      html += pickerCell('warp', i, w.name, w.label, w.name.toLowerCase(), selWarp === i, false, w.expect);
+    });
+    wp.innerHTML = html;
+  }
+  bindPickerHover('movePicker', 'move');
+  bindPickerHover('warpPicker', 'warp');
+  updateReadout('move'); updateReadout('warp');
+}
+
+function pickerCell(kind, i, previewName, label, sub, isSel, isNone, expect) {
+  const preview = isNone
+    ? `<div class="picker-none">∅</div>`
+    : `<div class="picker-preview">${getPreview(previewName)}</div>`;
+  return `<div class="picker-cell${isSel ? ' sel' : ''}" data-kind="${kind}" data-i="${i}" onclick="pick('${kind}',${i})" title="${esc(expect || sub)}">
+    ${preview}
+    <div class="picker-label">${esc(label)}</div>
+    <div class="picker-sub">${esc(sub)}</div>
+  </div>`;
+}
+
+// hover any cell → the readout narrates, in plain English, what you'll see (EXPECT)
+function readoutText(kind, i) {
+  if (kind === 'move') {
+    if (i < 0) return 'AI DECIDES — Claude reads your frame and picks the move that fits.';
+    const m = ALL_MOVES_LIST()[i]; return m ? (m.label + '  ·  ' + m.expect) : '';
+  }
+  if (i < 0) return 'NO WARP — camera move only, reality stays intact.';
+  const w = WARPS[i]; return w ? (w.label + '  ·  ' + w.expect) : '';
+}
+function updateReadout(kind, i) {
+  const el = document.getElementById(kind === 'move' ? 'moveReadout' : 'warpReadout');
+  if (!el) return;
+  const idx = (i === undefined) ? (kind === 'move' ? selMove : selWarp) : i;
+  el.textContent = readoutText(kind, idx);
+}
+function bindPickerHover(gridId, kind) {
+  const grid = document.getElementById(gridId);
+  if (!grid || grid.dataset.bound) return; // container survives innerHTML swaps — bind once
+  grid.dataset.bound = '1';
+  grid.addEventListener('mouseover', e => {
+    const cell = e.target.closest('.picker-cell'); if (!cell) return;
+    const i = parseInt(cell.dataset.i);
+    updateReadout(kind, i);       // plain-English "what you'll see"
+    hoverClip(cell, kind, i);     // real footage, if the clip library exists
+  });
+  grid.addEventListener('mouseleave', () => { updateReadout(kind); clearClip(); });
+}
+
+// ---- hover-to-play: SVG thumbnail is always there; on hover we swap in the ONE
+// pre-rendered reference clip for that effect (see tools/gen-clips.js). if the clip
+// doesn't exist yet (library not rendered), the video errors out and the SVG stays. ----
+function clipSlug(name) { return String(name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''); }
+// clip host: local dev serves the library same-origin (server.js /clips); the deployed
+// app pulls it from jsDelivr (free CDN over the public repo xantrans420/wreckage-clips).
+// missing clip → video 404s → onerror → the SVG schematic shows through (safe either way).
+const CLIP_CDN = 'https://cdn.jsdelivr.net/gh/xantrans420/wreckage-clips@main/clips/';
+function clipBase() {
+  const h = location.hostname;
+  return (h === 'localhost' || h === '127.0.0.1' || h === '') ? (renderBackend() + '/clips/') : CLIP_CDN;
+}
+let _clipVid = null, _clipCell = null;
+function clearClip() { if (_clipVid) { _clipVid.pause(); _clipVid.remove(); } _clipVid = null; _clipCell = null; }
+function hoverClip(cell, kind, i) {
+  if (cell === _clipCell) return;      // same cell, nothing to do
+  clearClip();
+  if (!(i >= 0)) return;               // AI DECIDES / NO WARP cells have no clip
+  const obj = kind === 'move' ? ALL_MOVES_LIST()[i] : WARPS[i];
+  if (!obj) return;
+  const holder = cell.querySelector('.picker-preview'); if (!holder) return;
+  const v = document.createElement('video');
+  v.src = clipBase() + clipSlug(obj.name) + '.mp4'; // local: same-origin · deployed: jsDelivr CDN
+  v.muted = true; v.loop = true; v.playsInline = true; v.autoplay = true;
+  v.className = 'picker-clip';
+  v.onerror = () => { if (v.parentNode) v.remove(); if (_clipVid === v) _clipVid = null; }; // no clip yet → SVG shows through
+  holder.appendChild(v);
+  v.play().catch(() => {});
+  _clipVid = v; _clipCell = cell;
+}
+
+function pick(kind, i) {
+  if (kind === 'move') {
+    selMove = (selMove === i) ? -1 : i; // click again to deselect
+    const m = selMove >= 0 ? ALL_MOVES_LIST()[selMove] : null;
+    const el = document.getElementById('movePickerSel');
+    if (el) el.textContent = m ? (m.label + ' — ' + m.name) : 'AI DECIDES FROM FRAME';
+  } else {
+    selWarp = (selWarp === i) ? -1 : i;
+    const w = selWarp >= 0 ? WARPS[selWarp] : null;
+    const el = document.getElementById('warpPickerSel');
+    if (el) el.textContent = w ? (w.label + ' — ' + w.name) : 'NO WARP';
+  }
+  renderPickers();
+}
+
+function filterPicker(kind, fam, btn) {
+  if (kind === 'move') moveFilter = fam; else warpFilter = fam;
+  btn.parentElement.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderPickers();
+}
+
+const AI_MOVES = [
+  { label: 'INFINITE PUSH-IN', fam: 'push', name: 'RECURSIVE DOLLY IMPLOSION', tag: 'impossible', prompt: 'recursive dolly push-in that folds camera space into itself, geometry collapsing inward recursively, each frame containing the previous frame shrinking at exponential rate', desc: 'Camera recursively eats itself. Model tries to maintain spatial coherence against impossible math.', expect: 'You push in — and inside the frame you see yourself pushing in. And inside that, again. The world telescopes into itself.' },
+  { label: 'UPSIDE-DOWN ORBIT', fam: 'spin', name: 'INVERTED GRAVITY ORBIT', tag: 'impossible', prompt: 'camera orbiting subject while gravity vector rotates 180 degrees mid-move, surfaces becoming ceilings, spatial relationships inverting as orbit completes', desc: 'Up and down swap mid-shot. Forces model to reinterpret surface normals.', expect: 'Orbit begins normal. Halfway through, the floor is the ceiling. The subject is now upside-down but the camera doesn\'t feel it.' },
+  { label: 'GHOST THROUGH WALLS', fam: 'break', name: 'PHASE-SHIFT TRACKING SHOT', tag: 'impossible', prompt: 'tracking shot where camera phases through solid geometry, passing through walls and objects as intangible observer, subject remaining solid while environment becomes permeable', desc: 'Camera becomes a ghost. Clean geometry conflicts with impossible traversal.', expect: 'You track through a wall. The wall doesn\'t stop you — it passes through the lens. You emerge the other side.' },
+  { label: 'IMPOSSIBLE SPIRAL PULL-BACK', fam: 'push', name: 'EIGENSPACE SPIRAL PULL', tag: 'impossible', prompt: 'spiral pullback along undefined axis that curves through higher-dimensional space, subject remaining stationary while surrounding space warps into spiral vortex topology', desc: 'Pulls through a dimension that doesn\'t exist. Peak model stress.', expect: 'The pullback spirals but not in any direction you can name. The subject stays still while space corkscrews around it.' },
+  { label: 'PUNCH THROUGH THE IMAGE', fam: 'push', name: 'MEMBRANE COLLAPSE ZOOM', tag: 'impossible', prompt: 'zoom into surface that behaves as elastic membrane, camera pressure causing visible deformation of reality plane, surface tension visually breaking as camera breaches', desc: 'The world is a skin. Camera punches through it.', expect: 'The scene bows toward you as you zoom. Then it tears. You push through to the other side of the image.' },
+  { label: 'EDGE-OF-THE-WORLD PAN', fam: 'break', name: 'VOID-EDGE CRAWL', tag: 'impossible', prompt: 'slow lateral crawl along the perceived edge of visible space, camera approaching the boundary where rendered geometry ends and void begins, edge artifacts as aesthetic', desc: 'Deliberately finds where the model stops rendering. Edge of the simulation.', expect: 'Pan sideways until the world runs out. The frame edge bleeds into unrendered black. You\'re at the border of what the model imagined.' },
+  { label: 'WHIP PAN THROUGH TIME', fam: 'time', name: 'TIME-FRACTURED WHIP PAN', tag: 'temporal', prompt: 'whip pan where motion blur fragments into discrete temporal slices, each slice showing different moment in time, pan reveals timeline of same space across multiple moments simultaneously', desc: 'Whip pan that smears through time, not space.', expect: 'The blur of a whip pan — but each stripe is a different time of day. Morning to midnight in a single swipe.' },
+  { label: 'STOP-MOTION ORBIT', fam: 'spin', name: 'STROBOSCOPIC ORBIT', tag: 'temporal', prompt: 'orbit shot with stroboscopic temporal sampling, movement advancing in discontinuous jumps of 30 degree intervals, negative space between frames visible as model artifact', desc: 'Orbit as stop-motion. The gaps between frames are the content.', expect: 'Orbit snaps 30° at a time. Between positions: a flicker of nothing. It\'s clockwork, not fluid.' },
+  { label: 'GHOST-TRAIL FOLLOW', fam: 'time', name: 'ECHO-TRAIL TRACKING', tag: 'temporal', prompt: 'tracking shot leaving visible ghost echoes of previous camera positions, each echo frame slightly desaturated and offset, creating infinite temporal trail behind camera movement', desc: 'Camera haunts itself. Trail of prior positions visible in frame.', expect: 'Track forward. Behind you: ghost versions of where the camera just was, fading like footprints.' },
+  { label: 'PAN THAT NEVER LANDS', fam: 'time', name: 'TEMPORAL SMEAR PAN', tag: 'temporal', prompt: 'pan shot where motion smear refuses to resolve, entire frame existing in perpetual blur state suggesting simultaneous occupancy of all pan positions at once, subject ghosted across full pan range', desc: 'The pan that never lands. Superposition of all positions.', expect: 'The pan starts but never arrives anywhere. The subject is smeared across the full width of frame simultaneously.' },
+  { label: 'INSIDE-OUT ZOOM', fam: 'break', name: 'HYPERBOLIC ZOOM THROUGH SELF', tag: 'spatial', prompt: 'zoom that passes through subject and camera simultaneously, hyperbolic geometry allowing inside and outside to exchange positions, interior space becoming exterior without spatial discontinuity', desc: 'Topology horror. Inside becomes outside continuously.', expect: 'You zoom in. Then you\'re somehow on the outside of what you zoomed into. Inside and outside swapped without a cut.' },
+  { label: 'ONE-SIDED ORBIT', fam: 'spin', name: 'MÖBIUS STRIP ORBIT', tag: 'spatial', prompt: 'orbital camera path following Möbius topology, camera traversing single continuous surface that is both inside and outside subject simultaneously, orientation flipping exactly once per revolution', desc: 'One-sided orbit. Halfway through, you\'re on the other side.', expect: 'Orbit the subject. After half a revolution, you\'re inside it. Complete the orbit: back to outside. One surface, two sides.' },
+  { label: 'INSIDE-OUT FLYTHROUGH', fam: 'break', name: 'KLEIN BOTTLE TRAVERSE', tag: 'spatial', prompt: 'camera path following Klein bottle topology through scene, self-intersecting without boundary, four-dimensional surface rendered in three-dimensional space creating visual paradox', desc: 'The most mathematically hostile camera path possible.', expect: 'The camera path loops through itself without crossing. The scene is on both sides of a surface that has no inside.' },
+  { label: 'WORLD-FOLD PUSH-IN', fam: 'push', name: 'TOPOLOGICAL FOLD PUSH-IN', tag: 'spatial', prompt: 'push-in that compresses scene through topological fold operation, distant objects brought adjacent to near objects through space bending, foreground and background occupying same screen space', desc: 'Folds the scene like paper. Distance becomes meaningless.', expect: 'Push in — the background rushes forward to meet you while you advance. Near and far collide in the same plane.' },
+  { label: 'FLAT-WORLD SLIDE', fam: 'break', name: 'ANTI-PARALLAX SLIDE', tag: 'spatial', prompt: 'lateral slide where near and far objects move in identical directions at identical speeds, parallax completely absent, depth cues removed, scene flattened to impossible 2D card', desc: 'Attacks depth perception directly. Everything moves as one plane.', expect: 'Slide left. Near objects, far objects: all move at identical speed. The world is a flat stage backdrop being slid.' },
+  { label: 'FORWARD + REVERSE AT ONCE', fam: 'time', name: 'RETROGRADE PUSH', tag: 'temporal', prompt: 'push-in shot that simultaneously runs in reverse, camera advancing and retreating at identical speed, net motion zero but temporal artifacts accumulating with each contradictory frame', desc: 'Forward and backward at once. The model fights itself.', expect: 'You move forward. You also move backward. Nothing moves but frames are accumulating contradictions.' },
+  { label: 'BACKWARDS-DETAIL ZOOM', fam: 'push', name: 'ENTROPY ZOOM', tag: 'impossible', prompt: 'zoom where image detail increases with distance rather than proximity, zooming out reveals progressively more complex geometry, zooming in approaches featureless void', desc: 'Inverted focal hierarchy. The far is sharper than the near.', expect: 'Zoom in — it gets blurrier, emptier. Zoom out — the world gets sharper, more intricate. Distance is where the detail lives.' },
+  { label: 'DIRECTIONLESS DRIFT', fam: 'break', name: 'NULL VECTOR DRIFT', tag: 'spatial', prompt: 'camera drift with undefined direction vector, movement suggestion without spatial commitment, frame content shifting as if camera moves but no consistent axis or direction maintained', desc: 'Motion without direction. Pure kinetic energy, no destination.', expect: 'The frame feels like it\'s moving but you can\'t say which way. Queasy. Purposeful directionlessness.' },
+];
+
+const FAST_MOVES = [
+  { label: 'HARD WHIP PAN', fam: 'speed', name: 'AGGRESSIVE WHIP PAN', vel: 5, bpmRange: '140-180+', prompt: 'violent whip pan with extreme motion blur, frame whipping left to right in under 3 frames, blur trail dominating majority of shot, aggressive kinetic energy', desc: 'Hard techno staple. Sub-3-frame blur arc.', expect: 'The frame smears sideways so fast the blur IS the shot. Brief landing, back to blur. Pure velocity.' },
+  { label: 'CRASH ZOOM IMPACT', fam: 'speed', name: 'SMASH CUT CRASH ZOOM', vel: 5, bpmRange: '160-200+', prompt: 'crash zoom with smash cut timing, lens compressing space at maximum speed, subject slamming toward camera in single violent compression, no ease', desc: 'Point of impact. Zero ease, all force.', expect: 'Subject slams into you in a single violent compression. No buildup, no settle. Just impact.' },
+  { label: 'DRIFTING ARC', fam: 'speed', name: 'KINETIC DRIFT ARC', vel: 4, bpmRange: '120-160', prompt: 'sweeping arc with drift physics, camera overcorrecting mid-arc creating controlled slide, kinetic energy transferred from pan to vertical axis', desc: 'Speed with curve. Controlled chaos arc.', expect: 'The arc overshoots, compensates, slides. It feels like a car drifting — speed plus controlled loss of control.' },
+  { label: 'SPRINTING HANDHELD', fam: 'speed', name: 'HYPERACTIVE HANDHELD THRUST', vel: 4, bpmRange: '130-170', prompt: 'handheld forward thrust with micro-tremor amplification, aggressive focal plane pushing, unstable frame enhancing raw kinetic energy of forward movement', desc: 'War documentary energy cranked to 11.', expect: 'Shaky cam but weaponized. Every micro-tremor amplified. Feels like someone running with the camera and not trying to stabilize.' },
+  { label: 'GLITCH-STUTTER PAN', fam: 'speed', name: 'STROBING GLITCH PAN', vel: 5, bpmRange: '160+', prompt: 'pan interrupted by stroboscopic glitch frames, movement advancing in jittered increments, each stutter revealing alternate frame composition, temporal displacement every 5-7 frames', desc: 'The pan stutters. Each stutter is a cut.', expect: 'Smooth pan — freeze — different frame — smooth pan — freeze. Stutters feel like dropped frames that are actually intentional.' },
+  { label: 'SNAP ORBIT', fam: 'spin', name: 'SNAP ORBIT', vel: 4, bpmRange: '128-160', prompt: 'rapid orbit snapping to beat-aligned positions, no smooth interpolation, camera jumping 45-90 degree increments per beat, subject constantly recentered', desc: 'Orbit as quantized steps, not continuous motion.', expect: 'Orbit in hard jumps: 45°, 90°, 135°. No motion between positions. Instant teleport around the subject.' },
+  { label: 'TRAPDOOR DROP', fam: 'speed', name: 'VERTICAL GRAVITY DROP', vel: 5, bpmRange: '140+', prompt: 'straight vertical drop accelerating with gravity physics, horizon line dropping out of frame bottom in under 10 frames, sense of freefall', desc: 'Drop shot. Maximum acceleration, zero preparation.', expect: 'The horizon drops out of frame like a trapdoor opened. Pure freefall. Stomach-drop energy.' },
+  { label: 'DOUBLE WHIP', fam: 'speed', name: 'DOUBLE WHIP REVERSE', vel: 5, bpmRange: '150+', prompt: 'whip pan followed immediately by opposite-direction whip pan in same shot, brief clear frame between whips, double blur bookending a single composed beat', desc: 'Two whips, one shot, one beat. Left then right.', expect: 'Blur left — snap to composition — blur right. The clear center frame is the beat. Blurs are the kick and snare.' },
+  { label: 'BARREL-ROLL SPIN', fam: 'spin', name: 'CENTRIFUGE SPIN', vel: 4, bpmRange: '130-170', prompt: 'rotation around z-axis at high speed, horizon spinning past 360 degrees, subject holding center while frame rolls with centrifuge physics', desc: 'Dutch tilt pushed all the way to rotation.', expect: 'The horizon spins. Subject stays centered. It\'s a barrel roll but slower, continuous, deliberate.' },
+  { label: 'SHOCKWAVE PUSH', fam: 'push', name: 'SHOCKWAVE PUSH', vel: 4, bpmRange: '128-150', prompt: 'push-in triggered by invisible shockwave, camera thrust forward by pressure wave, environment compressing ahead of camera, distortion ring propagating outward from point of impact', desc: 'The push has a cause. Shockwave is the protagonist.', expect: 'A ring of distortion leads the push. The camera follows the pressure wave. You see the wave before you feel the movement.' },
+  { label: 'STUTTER TRACK', fam: 'time', name: 'STUTTER TRACK', vel: 3, bpmRange: '110-140', prompt: 'tracking shot with rhythmic stutter pattern, smooth movement interrupted by quarter-frame holds, micro-stutter creating percussive visual rhythm against continuous motion', desc: 'Track beat. Stutter is the snare.', expect: 'Smooth track — micro freeze — smooth — micro freeze. The freezes are rhythmic. Track becomes percussion.' },
+  { label: 'RUBBER-BAND ZOOM', fam: 'speed', name: 'ELASTIC ZOOM SNAP', vel: 3, bpmRange: '100-130', prompt: 'zoom that overshoots target focal point and snaps back with elastic physics, overshoot visible as brief moment of over-compression before settling', desc: 'Zoom with spring physics. The bounce is the hook.', expect: 'Zoom past the target, bounce back, settle. The overshoot is visible. Feels like a rubber band released.' },
+];
+
+const ON_TALENT = [
+  {
+    label: 'DIRTY ONER', fam: 'speed',
+    name: 'DIRTY ONER',
+    tag: 'follow',
+    prompt: 'continuous handheld shot following conversation between multiple characters with no cuts, camera whipping and panning urgently between speakers as they talk and react, loose handheld energy with naturalistic wobble, camera searching for the next speaker a beat before they talk, catching action and reaction in the same unbroken take, reframing mid-movement, slight over-panning then correcting back to subject, breathing with the scene',
+    desc: 'No cuts. One shot. Camera lives between characters.',
+    expect: 'Handheld finds character A, they speak, camera whips to character B reacting, B responds, camera slides to C doing something — all one take. Feels alive, unstaged, like a documentary that stumbled into the scene.',
+    note: 'Works best with 2-4 characters in a defined space. Let the camera be late to reactions — that delay is what makes it feel real.'
+  },
+];
+
+const WARPS = [
+  { label: 'CITY FOLDS OVERHEAD', name: 'INCEPTION WORLD FOLD', tag: 'geometric', prompt: 'world folding along horizon axis like Inception city bend, ground plane rotating upward to become vertical wall then ceiling, buildings and streets curling overhead forming enclosed tunnel of architecture, gravity vector rotating 90 degrees per section of scene, far end of folded world visible above while original ground remains below, impossible enclosed cityscape with buildings pointing inward from all sides', desc: 'The Inception shot. Ground becomes ceiling.', expect: 'Streets curl upward. Buildings on your left become buildings above you. The world closes into a tube.' },
+  { label: 'SKY TEARS OPEN', name: 'REALITY MEMBRANE TEARING', tag: 'portal', prompt: 'visible tear propagating across reality plane, edges of tear revealing void or alternate space, fabric of rendered geometry splitting under tension, tear expanding with each frame', desc: 'The world has seams. This finds them.', expect: 'A crack opens in the air. Behind it: nothing. The tear grows.' },
+  { label: 'BLACK-HOLE WARP', name: 'GRAVITATIONAL LENS DISTORTION', tag: 'geometric', prompt: 'gravitational lensing effect bending light around invisible mass in scene center, background stretching into Einstein ring topology, foreground elements compressed toward lens point', desc: 'Astrophysics as visual effect. Light curves around nothing.', expect: 'Background stretches into a halo ring. Center of frame warps inward like a black hole.' },
+  { label: 'RGB SPLIT SHOCKWAVE', name: 'CHROMATIC ABERRATION SHOCKWAVE', tag: 'geometric', prompt: 'chromatic aberration radiating outward from impact point, RGB channels separating in expanding rings, color fringing increasing with distance from origin, maximum separation at frame edges', desc: 'Color explodes outward from a point. Lens physics as weapon.', expect: 'Red, green, blue channels split apart outward from center. Frame edges turn into rainbow smear.' },
+  { label: 'WORLD TURNS TO PARTICLES', name: 'PIXEL DISSOLUTION CASCADE', tag: 'dissolution', prompt: 'progressive pixel dissolution advancing from one edge of frame, solid geometry converting to particles and scattering, dissolution frontier advancing steadily, undissolved half contrasting with particle chaos', desc: 'Reality erodes from one side. Entropy has a direction.', expect: 'Left half normal. Right half particles. The line between them moves.' },
+  { label: 'PORTAL INSIDE PORTAL', name: 'RECURSIVE PORTAL COLLAPSE', tag: 'portal', prompt: 'circular portal opening to identical scene, portal containing portal containing portal ad infinitum, each nested portal slightly rotated and scaled, recursive depth limited only by model resolution', desc: 'Infinite mirrors through space. Portal eating itself.', expect: 'A circle opens. Inside it: the same frame. Inside that: smaller again. Tunnels forever.' },
+  { label: 'SPACE RIPPLES LIKE WATER', name: 'SPACETIME RIPPLE PROPAGATION', tag: 'temporal', prompt: 'visible spacetime ripple propagating from point source, geometry oscillating like disturbed water surface, ripple passing through solid objects as if they were liquid, wavefront visible and measurable', desc: 'Space has surface tension. Something disturbed it.', expect: 'A wave passes through the scene like a pond ripple. Walls flex. Floor oscillates. Objects wobble as it passes through them.' },
+  { label: 'SOLIDS GO GHOST', name: 'MATTER PHASING THROUGH SURFACES', tag: 'dissolution', prompt: 'solid matter becoming semi-transparent and interpenetrating other objects, phasing effect advancing through multiple layers of geometry, brief full transparency before resolidifying in impossible position', desc: 'Solids stop being solid. Objects occupy same space.', expect: 'Objects ghost through walls. Translucent overlap where two solids share space.' },
+  { label: 'WORLD DE-RENDERS', name: 'GEOMETRIC REALITY BREAKDOWN', tag: 'geometric', prompt: 'organic scene geometry converting to low-poly mesh visible breakdown, vertex count decreasing each second, Platonic solid approximations replacing curves, final frame pure geometry primitive', desc: 'The render budget depletes. Structure survives.', expect: 'Curves become triangles. Faces become flat. By the end: only polygons where a world was.' },
+  { label: 'ALL MOMENTS AT ONCE', name: 'TEMPORAL ECHO SMEAR', tag: 'temporal', prompt: 'object positions smeared across multiple temporal positions simultaneously, motion blur extended to full shot duration, every position occupied at once, present moment indistinguishable from past', desc: 'No single moment. All moments superimposed.', expect: 'Moving objects smear their full trajectory at once. A walking figure is every step simultaneously.' },
+  { label: 'CUBE-STORM EXPLOSION', name: 'VOXEL FRAGMENTATION STORM', tag: 'dissolution', prompt: 'scene converting to cubic voxel structure then voxels detaching and scattering in storm pattern, voxel size progressively decreasing as fragmentation accelerates, empty space where solid geometry was', desc: 'Minecraft then destruction. Order then chaos.', expect: 'World cubes up. Then the cubes explode outward. Empty space where the scene was.' },
+  { label: 'NEAR / FAR SWAP', name: 'INVERSE DEPTH FOLD', tag: 'geometric', prompt: 'depth map inverting mid-shot, near objects becoming far and vice versa without changing position, foreground receding impossibly while background advances, spatial hierarchy reversing completely', desc: 'Close becomes far. Far becomes close. No movement.', expect: 'The wall that was 2 feet away snaps to the horizon. The horizon rushes forward to fill the frame.' },
+  { label: 'STATIC EATS THE FRAME', name: 'NOISE FIELD CONSUMPTION', tag: 'dissolution', prompt: 'Perlin noise field advancing through scene consuming geometric detail, structured information replaced by turbulent noise pattern, noise density increasing until original content unrecognizable', desc: 'The scene dissolves into its own texture.', expect: 'Static eats the image from one corner. Structure disappears into visual noise.' },
+  { label: 'GRAVITY GOES SIDEWAYS', name: 'AXIS GRAVITY INVERSION', tag: 'geometric', prompt: 'gravity axis rotating 90 degrees mid-shot, all physics objects reorienting to new down vector, liquid and particles adjusting to new floor which was previously a wall, scene re-settling under rotated physics', desc: 'Down is now sideways. Physics catches up.', expect: 'Everything that was falling now falls sideways. Water flows along the wall. Debris slides across the ceiling.' },
+  { label: '2D INVADES 3D', name: 'DIMENSION BLEED', tag: 'portal', prompt: 'second spatial dimension bleeding through from behind the scene, flat plane geometry intruding from depth axis, 2D silhouettes of objects appearing as physical objects in 3D space, depth and flatness coexisting simultaneously', desc: '2D intrudes into 3D space.', expect: 'Flat paper versions of objects appear alongside their 3D counterparts. Depth and flatness fight for the same space.' },
+];
+
+const COMBOS = [
+  { name: 'HARD TECHNO IGNITION', tag: 'combo', prompt: 'aggressive whip pan triggering chromatic aberration shockwave, pan blur transitioning directly to strobing glitch pan, reality membrane tearing at velocity peak, temporal smear holding on final beat, recursive portal opening on drop — no smooth transitions, each move triggering next through kinetic chain reaction', desc: 'Full hard techno weapon stack. Whip into shockwave into portal.' },
+  { name: 'D&B FREEFALL', tag: 'combo', prompt: 'vertical gravity drop with voxel fragmentation storm activating at terminal velocity, crash zoom through fragmenting voxels, camera phasing through matter as pixel dissolution cascade begins, stutter track following dissolution frontier to cut point', desc: 'Freefall through a dissolving world.' },
+  { name: 'BREAKCORE PSYCHOSIS', tag: 'combo', prompt: 'möbius strip orbit triggering geometric reality breakdown, eigenspace spiral pull through low-poly collapse, temporal smear pan during mesh fragmentation, recursive dolly implosion into void where scene was, null vector drift in remaining geometry rubble', desc: 'Five impossible moves, no stable moment. Peak breakcore.' },
+  { name: 'AMBIENT COLLAPSE', tag: 'combo', prompt: 'slow null vector drift with spacetime ripple propagating through frame, entropy zoom revealing increasing complexity in distance, temporal echo smear elongating to full frame duration, inverse depth fold completing as final note sustains, void-edge crawl into silence', desc: 'Slow destruction. Ambient nihilism.' },
+  { name: 'HIP HOP ANCHOR', tag: 'combo', prompt: 'snap orbit on beat with centrifuge spin escalating to full rotation, shockwave push on every bar downbeat, elastic zoom snap on hook, handheld thrust into subject face on verse drop, camera returning to original position on each chorus through kinetic loop', desc: 'Rhythmically anchored. Returns home.' },
+  { name: 'CINEMATIC DISSOLUTION', tag: 'combo', prompt: 'topological fold push-in with gravitational lens building slowly, matter phasing through surfaces as camera advances, phase-shift tracking through solid architecture, membrane collapse zoom on key frame, noise field consumption as fade mechanism', desc: 'Slow cinematic collapse. Three minutes of controlled decay.' },
+  { name: 'SYSTEM OVERLOAD', tag: 'combo', prompt: 'all camera moves simultaneously with conflicting direction vectors, recursive dolly implosion inside möbius strip orbit during time-fractured whip pan, eigenspace spiral pull counteracted by retrograde push, model stress maximum across all axes, chromatic aberration shockwave from paradox resolution', desc: 'Everything at once. Point of maximum model stress.' },
+  { name: 'PORTAL SEQUENCE', tag: 'combo', prompt: 'recursive portal collapse opening inside hyperbolic zoom through self, camera traversing klein bottle path through portal interior, void-edge crawl along portal perimeter, phase-shift through portal boundary, second portal opening to original position completing impossible loop', desc: 'Portal to portal to start. Closed impossible loop.' },
+];
+
+const FORBIDDEN_KEYWORDS = {
+  'CAMERA KILLERS': ['smooth', 'stable', 'steady', 'controlled', 'precise', 'gentle', 'natural', 'organic', 'realistic', 'balanced'],
+  'MOTION SUPPRESSORS': ['slow motion', 'gradual', 'ease in', 'ease out', 'decelerate', 'settle', 'rest', 'static hold', 'pause', 'freeze'],
+  'QUALITY DESTROYERS': ['cinematic quality', 'professional', 'clean', 'polished', 'pristine', 'perfect', 'flawless', 'crisp', 'sharp focus', 'studio quality'],
+  'AESTHETIC NEUTRALIZERS': ['minimal', 'subtle', 'understated', 'simple', 'clean lines', 'uncluttered', 'serene', 'peaceful', 'calm', 'tranquil'],
+  'DIMENSION STABILIZERS': ['maintain depth', 'consistent perspective', 'fixed horizon', 'level camera', 'upright', 'straight', 'aligned', 'centered composition'],
+};
+
+const CHAOS_KEYWORDS = {
+  'DIAL 1-3 / MILD': ['handheld shake', 'lens flare', 'motion blur', 'slight distortion', 'chromatic fringe', 'grain texture', 'light leak'],
+  'DIAL 4-6 / MEDIUM': ['reality glitch', 'temporal stutter', 'geometry flicker', 'spatial paradox', 'frame artifact', 'pixel corruption', 'echo trail', 'phase shift'],
+  'DIAL 7-8 / HEAVY': ['recursive collapse', 'void intrusion', 'matter dissolution', 'topology inversion', 'spacetime ripple', 'voxel storm', 'dimensional tear'],
+  'DIAL 9-10 / EXTREME': ['reality membrane failure', 'eigenspace collapse', 'non-euclidean breach', 'möbius topology invasion', 'klein bottle traversal', 'recursive paradox', 'model coherence failure', 'entropy maximum'],
+};
+
+const GENRE_MAP = {
+  'HARD TECHNO': { color: '#ff3c00', keywords: ['strobing', 'percussive impact', 'brutal geometry', 'machine rhythm', 'industrial texture', 'aggressive compression', 'distortion overload', 'four-on-floor pulse'] },
+  'DRUM & BASS': { color: '#ff7a00', keywords: ['freefall velocity', 'amen chop', 'sub-bass warp', 'reese distortion', 'jungle texture', 'breakbeat fragmentation', 'two-step chaos', 'oscillating void'] },
+  'BREAKCORE': { color: '#ffcc00', keywords: ['amen holocaust', 'drill&bass scatter', 'microtonal collapse', 'irregular stutter', 'recursive fragmentation', 'chaos theory application', 'polyrhythmic overload', 'sample destruction'] },
+  'HIP HOP': { color: '#00aaff', keywords: ['boom bap weight', 'trap hi-hat scatter', 'bass drop anchor', 'sample chop', 'syncopated bounce', 'aggressive swagger', 'urban texture', 'lo-fi grain'] },
+  'AMBIENT': { color: '#aa44ff', keywords: ['infinite sustain', 'drone dissolution', 'atmospheric void', 'spectral decay', 'slow entropy', 'textural wash', 'harmonic overtone', 'silence geometry'] },
+  'ELECTRONIC': { color: '#00ff88', keywords: ['synth sweep', 'filter resonance', 'arp cascade', 'sidechain pulse', 'oscillator drift', 'LFO modulation', 'envelope follower', 'frequency domain'] },
+  'CINEMATIC': { color: '#888888', keywords: ['emotional weight', 'narrative tension', 'dramatic arc', 'temporal dilation', 'spatial isolation', 'contrast drama', 'shadow depth', 'scale juxtaposition'] },
+};
+
+const PIPELINE_STAGES = [
+  [
+    { name: 'FIRST FRAME ANALYSIS', desc: 'Claude Vision auto-reads scene composition, lighting, subject position. No manual description needed.' },
+    { name: 'LAST FRAME ANCHOR', desc: 'Optional end state image forces trajectory. Useful for controlled chaos arcs.' },
+    { name: 'GENRE SIGNAL PARSE', desc: 'Musical genre maps to visual chaos keyword strategy. BPM signal parsed for sync.' },
+    { name: 'MODE DETECTION', desc: 'Continuous shot vs BPM montage determines output structure.' },
+  ],
+  [
+    { name: 'CHAOS DIAL INJECTION', desc: 'Dial 1-10 injects progressively conflicting keywords. Higher = more model-stressing language.' },
+    { name: 'CAMERA + WARP FUSION', desc: 'Camera trajectory and world deformation treated as single integrated system, not separate layers.' },
+    { name: 'FORBIDDEN WORD INVERSION', desc: 'Stabilizing keywords inverted. Smooth/stable/steady excluded. Chaos triggers inserted instead.' },
+    { name: 'BPM SYNC CALCULATION', desc: 'Cut points calculated from BPM and beats-per-cut. Clip duration matched to musical timing.' },
+  ],
+  [
+    { name: 'PROMPT COMPILATION', desc: 'All parameters merged into single coherent Seedance 2.0 prompt. No freeform — structured codex output.' },
+    { name: 'VARIATION GENERATION', desc: 'Same chaos params, different keyword combinations. Exploration without dial change.' },
+    { name: 'GEMINI TRANSCRIPTION LOOP', desc: 'Generation results captured via screenshot → Gemini transcription → keyword database update.' },
+    { name: 'LIVING DATABASE UPDATE', desc: 'Field discoveries fed back into forbidden/chaos keyword libraries. System evolves with use.' },
+  ],
+];
+
+// ========== CHAOS DIAL DATA ==========
+const CHAOS_DESCRIPTIONS = [
+  '', // 0 placeholder
+  'MINIMAL STRESS — slight handheld drift, lens artifacts only',
+  'LOW CHAOS — motion blur, chromatic fringe, grain texture',
+  'BUILDING — geometry flicker begins, temporal stutter introduced',
+  'MODERATE — spatial paradox language, echo trails, phase shifts',
+  'MID CHAOS — reality glitch active, recursive language begins',
+  'ELEVATED — void language, dissolution effects, artifact accumulation',
+  'HIGH — topology inversion, spacetime ripple, non-euclidean push',
+  'SEVERE — dimensional tearing, matter dissolution, recursive collapse',
+  'CRITICAL — eigenspace collapse, model coherence under attack',
+  'MAXIMUM — all paradox keywords active, system overload state, coherence failure target',
+];
+
+const CHAOS_BY_LEVEL = {
+  1: ['slight handheld drift', 'natural lens grain'],
+  2: ['motion blur accumulation', 'chromatic fringe', 'film grain'],
+  3: ['geometry flicker', 'temporal stutter', 'lens artifact'],
+  4: ['spatial paradox', 'echo trail', 'phase shift'],
+  5: ['reality glitch', 'recursive framing', 'frame corruption'],
+  6: ['void intrusion', 'pixel dissolution', 'temporal smear'],
+  7: ['topology inversion', 'spacetime ripple', 'matter phasing'],
+  8: ['dimensional tear', 'recursive collapse', 'non-euclidean breach'],
+  9: ['eigenspace collapse', 'möbius topology', 'coherence attack'],
+  10: ['reality membrane failure', 'full paradox injection', 'system overload', 'model breaking point', 'infinite recursion trigger'],
+};
+
+const GENRE_KEYWORDS_MAP = {
+  hard_techno: 'strobing, percussive impact, brutal geometry, machine rhythm, industrial texture, aggressive compression',
+  drum_bass: 'freefall velocity, sub-bass warp, breakbeat fragmentation, reese distortion, two-step chaos',
+  breakcore: 'amen holocaust, microtonal collapse, irregular stutter, recursive fragmentation, chaos theory',
+  hip_hop: 'boom bap weight, trap scatter, bass drop anchor, syncopated bounce, urban texture',
+  ambient: 'infinite sustain, drone dissolution, spectral decay, slow entropy, harmonic overtone',
+  electronic: 'synth sweep, filter resonance, sidechain pulse, oscillator drift, frequency domain',
+  cinematic: 'emotional weight, narrative tension, dramatic arc, temporal dilation, contrast drama',
+};
+
+// ========== STATE ==========
+let firstFrameData = null;
+let lastFrameData = null;
+let generationMode = 'shot';
+let currentOutput = '';
+let chainRows = [];
+
+// ========== INIT ==========
+document.addEventListener('DOMContentLoaded', () => {
+  renderPickers(); // 2.5 — visual move/warp pickers replace the catalog tabs
+  updateTalentTechDesc();
+  renderCharacterCards();
+  renderCards('combos-grid', COMBOS, renderComboCard); // presets inside SEQUENCE
+  renderPipeline();
+  renderKeywords();
+  initChaosLevels();
+  updateChaos();
+  initChainRows();
+  calcPipeBpm();
+});
+
+// ========== TABS ==========
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+  });
+});
+
+// ========== CARDS ==========
+function renderCards(gridId, data, renderFn) {
+  const grid = document.getElementById(gridId);
+  grid.innerHTML = data.map((item, i) => renderFn(item, i)).join('');
+}
+
+function makeCard(nameHtml, tagHtml, descHtml, expectHtml, promptText, extraStyle, dataTag) {
+  const safePrompt = promptText.replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+  return `<div class="card" data-tag="${dataTag||''}" ${extraStyle||''}>
+    <div class="card-header">${nameHtml}${tagHtml}</div>
+    ${descHtml}
+    ${expectHtml}
+    <div class="card-prompt">${promptText}</div>
+    <button class="copy-btn" data-prompt="${safePrompt}" onclick="cardCopy(this)">COPY PROMPT</button>
+  </div>`;
+}
+
+function renderAiMoveCard(item) {
+  const tagClass = item.tag === 'impossible' ? 'tag-impossible' : item.tag === 'temporal' ? 'tag-temporal' : 'tag-spatial';
+  const tagLabel = item.tag === 'impossible' ? 'IMPOSSIBLE' : item.tag === 'temporal' ? 'TEMPORAL' : 'NON-EUCLIDEAN';
+  return makeCard(
+    `<div class="card-name">${item.name}</div>`,
+    `<div class="card-tag ${tagClass}">${tagLabel}</div>`,
+    `<div class="fx-preview">${getPreview(item.name)}</div><div class="card-meta">${item.desc}</div>`,
+    `<div style="font-family:var(--mono);font-size:9px;color:var(--green);letter-spacing:1px;margin-bottom:6px;padding:6px 8px;background:rgba(0,255,136,0.05);border-left:2px solid var(--green);">👁 ${item.expect}</div>`,
+    item.prompt, null, item.tag
+  );
+}
+
+function renderFastMoveCard(item) {
+  const vel = item.vel;
+  const pips = Array.from({length:5}, (_,i) => `<div class="vel-pip ${i < vel ? 'active' : ''} ${i < vel && vel >= 4 ? 'high' : ''}"></div>`).join('');
+  return makeCard(
+    `<div class="card-name">${item.name}</div>`,
+    `<div class="card-tag tag-fast">FAST</div>`,
+    `<div class="fx-preview">${getPreview(item.name)}</div><div class="velocity-bar">${pips}</div><div class="bpm-badge">BPM ${item.bpmRange}</div><div class="card-meta" style="margin-top:6px;">${item.desc}</div>`,
+    `<div style="font-family:var(--mono);font-size:9px;color:var(--green);letter-spacing:1px;margin-bottom:6px;padding:6px 8px;background:rgba(0,255,136,0.05);border-left:2px solid var(--green);">👁 ${item.expect}</div>`,
+    item.prompt, null, `v${item.vel}`
+  );
+}
+
+function renderWarpCard(item) {
+  const isInception = item.name.includes('INCEPTION');
+  return makeCard(
+    `<div class="card-name" style="${isInception?'color:var(--accent3)':''}">${isInception?'★ ':''}${item.name}</div>`,
+    `<div class="card-tag tag-warp">${item.tag.toUpperCase()}</div>`,
+    `<div class="fx-preview">${getPreview(item.name)}</div><div class="card-meta">${item.desc}</div>`,
+    `<div style="font-family:var(--mono);font-size:9px;color:var(--green);letter-spacing:1px;margin-bottom:6px;padding:6px 8px;background:rgba(0,255,136,0.05);border-left:2px solid var(--green);">👁 ${item.expect}</div>`,
+    item.prompt,
+    isInception ? 'style="border-color:var(--accent3);"' : null,
+    item.tag
+  );
+}
+
+function renderComboCard(item) {
+  return makeCard(
+    `<div class="card-name">${item.name}</div>`,
+    `<div class="card-tag tag-combo">COMBO</div>`,
+    `<div class="card-meta">${item.desc}</div>`,
+    '',
+    item.prompt, null, 'combo'
+  );
+}
+
+function renderOnTalentCard(item) {
+  return makeCard(
+    `<div class="card-name" style="color:var(--blue)">${item.name}</div>`,
+    `<div class="card-tag" style="background:rgba(0,170,255,0.08);border:1px solid rgba(0,170,255,0.3);color:var(--blue);">${item.tag.toUpperCase()}</div>`,
+    `<div class="card-meta">${item.desc}</div>`,
+    `<div style="font-family:var(--mono);font-size:9px;color:var(--green);letter-spacing:1px;margin-bottom:6px;padding:6px 8px;background:rgba(0,255,136,0.05);border-left:2px solid var(--green);">👁 ${item.expect}</div>
+     <div style="font-family:var(--mono);font-size:9px;color:var(--blue);letter-spacing:1px;margin-bottom:6px;padding:6px 8px;background:rgba(0,170,255,0.05);border-left:2px solid var(--blue);">💡 ${item.note}</div>`,
+    item.prompt, `style="border-color:rgba(0,170,255,0.2);"`, item.tag
+  );
+}
+
+function cardCopy(btn) {
+  const text = btn.getAttribute('data-prompt');
+  navigator.clipboard.writeText(text).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = 'COPIED ✓';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = orig; btn.classList.remove('copied'); }, 1400);
+  }).catch(() => {
+    // fallback
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    btn.textContent = 'COPIED ✓';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'COPY PROMPT'; btn.classList.remove('copied'); }, 1400);
+  });
+}
+
+function filterCards(gridPrefix, tag, btn) {
+  document.querySelectorAll(`#tab-${gridPrefix} .filter-btn`).forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll(`#${gridPrefix}-grid .card`).forEach(card => {
+    if (!tag || card.dataset.tag === tag || card.dataset.tag.startsWith(tag)) {
+      card.style.display = '';
+    } else {
+      card.style.display = 'none';
+    }
+  });
+}
+
+// ========== PIPELINE ==========
+function renderPipeline() {
+  PIPELINE_STAGES.forEach((stage, i) => {
+    const el = document.getElementById(`pipeline-stage-${i+1}`);
+    el.innerHTML = stage.map(node => `
+      <div class="pipeline-node">
+        <div class="node-name">${node.name}</div>
+        <div class="node-desc">${node.desc}</div>
+      </div>
+    `).join('');
+  });
+}
+
+// ========== KEYWORDS ==========
+function renderKeywords() {
+  const fg = document.getElementById('forbidden-grid');
+  fg.innerHTML = Object.entries(FORBIDDEN_KEYWORDS).map(([cat, words]) => `
+    <div class="keyword-section">
+      <div class="kw-title">${cat}</div>
+      <div class="kw-list">${words.map(w => `<span class="kw-chip forbidden" data-kw="${w}" onclick="chipCopy(this)">${w}</span>`).join('')}</div>
+    </div>
+  `).join('');
+
+  const cg = document.getElementById('chaos-grid');
+  cg.innerHTML = Object.entries(CHAOS_KEYWORDS).map(([cat, words]) => `
+    <div class="keyword-section">
+      <div class="kw-title">${cat}</div>
+      <div class="kw-list">${words.map(w => `<span class="kw-chip chaos" data-kw="${w}" onclick="chipCopy(this)">${w}</span>`).join('')}</div>
+    </div>
+  `).join('');
+
+  const gg = document.getElementById('genre-grid');
+  gg.innerHTML = Object.entries(GENRE_MAP).map(([genre, data]) => `
+    <div class="genre-card">
+      <div class="genre-name" style="color:${data.color}">${genre}</div>
+      <div class="genre-tags">${data.keywords.map(k => `<span class="kw-chip genre" style="color:${data.color};border-color:${data.color}33;background:${data.color}11;" data-kw="${k}" onclick="chipCopy(this)">${k}</span>`).join('')}</div>
+    </div>
+  `).join('');
+}
+
+function chipCopy(el) {
+  const text = el.getAttribute('data-kw');
+  navigator.clipboard.writeText(text).then(() => {
+    const orig = el.textContent;
+    el.textContent = '✓';
+    setTimeout(() => el.textContent = orig, 900);
+  }).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.position='fixed'; ta.style.opacity='0';
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast('COPIED');
+  });
+}
+
+// ========== CHAOS DIRECTOR ==========
+function initChaosLevels() {
+  const el = document.getElementById('chaosLevels');
+  el.innerHTML = Array.from({length:10}, (_,i) =>
+    `<div class="chaos-level-pip" id="pip-${i+1}"></div>`
+  ).join('');
+}
+
+function updateChaos() {
+  const val = parseInt(document.getElementById('chaosDial').value);
+  document.getElementById('dialValue').textContent = val;
+  document.getElementById('dialValue').style.color = val >= 8 ? 'var(--accent3)' : val >= 5 ? 'var(--accent)' : 'var(--accent2)';
+  document.getElementById('chaosDesc').textContent = CHAOS_DESCRIPTIONS[val];
+
+  // Pips
+  for(let i=1;i<=10;i++) {
+    const pip = document.getElementById(`pip-${i}`);
+    if(pip) pip.classList.toggle('lit', i <= val);
+  }
+
+  // Tags
+  const tags = CHAOS_BY_LEVEL[val] || [];
+  document.getElementById('chaosTags').innerHTML = tags.map(t =>
+    `<div class="chaos-tag ${val >= 7 ? 'high' : ''}">${t}</div>`
+  ).join('');
+}
+
+function checkApiKey() {
+  const key = document.getElementById('apiKey').value.trim();
+  const status = document.getElementById('apiStatus');
+  if (key.startsWith('sk-ant-') && key.length > 20) {
+    status.textContent = 'KEY SET';
+    status.className = 'api-status ok';
+  } else if (key.length > 0) {
+    status.textContent = 'INVALID';
+    status.className = 'api-status err';
+  } else {
+    status.textContent = 'NO KEY';
+    status.className = 'api-status';
+  }
+}
+
+function setMode(mode) {
+  generationMode = mode;
+  document.getElementById('modeShot').classList.toggle('active', mode === 'shot');
+  document.getElementById('modeMontage').classList.toggle('active', mode === 'montage');
+  document.getElementById('bpmSection').style.display = mode === 'montage' ? '' : 'none';
+  if(mode === 'montage') updateBpmCalc();
+}
+
+function updateBpmCalc() {
+  const bpm = parseInt(document.getElementById('bpmInput').value) || 140;
+  const beatDuration = 60 / bpm;
+  const cuts = [1,2,4,8];
+  document.getElementById('bpmResult').textContent = `${(beatDuration * 2).toFixed(3)}s PER CUT`;
+  document.getElementById('bpmGrid').innerHTML = cuts.map(b => `
+    <div class="bpm-cell">
+      <div class="bpm-cell-label">${b} BEAT${b>1?'S':''}</div>
+      <div class="bpm-cell-val">${(beatDuration * b).toFixed(3)}s</div>
+    </div>
+  `).join('');
+}
+
+// IMAGE HANDLING
+function handleImageInput(e) {
+  const file = e.target.files[0];
+  if(file) loadImage(file, 'first');
+}
+
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('imageDrop').classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if(file && file.type.startsWith('image/')) loadImage(file, 'first');
+}
+
+function handleLastFrameInput(e) {
+  const file = e.target.files[0];
+  if(file) loadImage(file, 'last');
+}
+
+function handleLastFrameDrop(e) {
+  e.preventDefault();
+  document.getElementById('lastFrameDrop').classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if(file && file.type.startsWith('image/')) loadImage(file, 'last');
+}
+
+function compressImage(dataUrl, callback) {
+  const MAX = 4 * 1024 * 1024; // 4MB safe limit
+  const img = new Image();
+  img.onload = () => {
+    const approx = dataUrl.length * 0.75;
+    if(approx <= MAX) { callback(dataUrl); return; }
+    // Need to compress
+    const scale = Math.min(1, Math.sqrt(MAX / approx));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(img.width * scale);
+    canvas.height = Math.round(img.height * scale);
+    canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+    let q = 0.85;
+    const attempt = () => {
+      const out = canvas.toDataURL('image/jpeg', q);
+      if(out.length * 0.75 <= MAX || q <= 0.3) callback(out);
+      else { q -= 0.1; attempt(); }
+    };
+    attempt();
+  };
+  img.src = dataUrl;
+}
+
+function loadImage(file, type) {
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    compressImage(ev.target.result, (data) => {
+      if(type === 'first') {
+        firstFrameData = data;
+        const img = document.getElementById('imagePreview');
+        img.src = data;
+        img.style.display = 'block';
+        document.getElementById('dropText').style.display = 'none';
+      } else {
+        lastFrameData = data;
+        const img = document.getElementById('lastFramePreview');
+        img.src = data;
+        img.style.display = 'block';
+        document.getElementById('lastFrameDropText').style.display = 'none';
+      }
+    });
+  };
+  reader.readAsDataURL(file);
+}
+
+function loadTalentImage(file) {
+  const reader = new FileReader();
+  reader.onload = ev => {
+    compressImage(ev.target.result, (data) => {
+      talentImageData = data;
+      const img = document.getElementById('talentImagePreview');
+      img.src = data;
+      img.style.display = 'block';
+      document.getElementById('talentDropText').style.display = 'none';
+    });
+  };
+  reader.readAsDataURL(file);
+}
+async function generatePrompt() {
+  const apiKey = document.getElementById('apiKey').value.trim();
+  if(!apiKey) { showToast('ADD API KEY FIRST'); return; }
+  if(!firstFrameData) { showToast('UPLOAD FIRST FRAME IMAGE'); return; }
+
+  const chaosVal = parseInt(document.getElementById('chaosDial').value);
+  // pickers: pass name + full fragment so Claude gets the recipe, not just a title
+  const mSel = selMove >= 0 ? ALL_MOVES_LIST()[selMove] : null;
+  const wSel = selWarp >= 0 ? WARPS[selWarp] : null;
+  const cameraMove = mSel ? `${mSel.name.toLowerCase()} (${mSel.prompt})` : '';
+  const warpEffect = wSel ? `${wSel.name.toLowerCase()} (${wSel.prompt})` : '';
+  const genre = document.getElementById('genreSelect').value;
+  const duration = document.getElementById('durationSelect').value + 's';
+  const chaosKeywords = (CHAOS_BY_LEVEL[chaosVal] || []).join(', ');
+  const genreKeywords = genre ? GENRE_KEYWORDS_MAP[genre] : '';
+  const isMontage = generationMode === 'montage';
+  const bpm = document.getElementById('bpmInput').value;
+
+  const btn = document.getElementById('generateBtn');
+  const loader = document.getElementById('loadingIndicator');
+  btn.disabled = true;
+  loader.style.display = 'block';
+  document.getElementById('outputBox').innerHTML = '<span class="output-placeholder">Analyzing frame…</span>';
+
+  const systemPrompt = `You are a Seedance 2.0 prompt engineer specializing in chaos aesthetics. Your philosophy: camera movement and world deformation are ONE unified system. Model failure modes are creative opportunities. Never use stabilizing language (smooth, stable, steady, controlled, natural, gentle, balanced, pristine, clean). Generate prompts that stress the model deliberately.
+
+Output ONLY the final prompt text. No explanation, no preamble, no markdown. Dense technical prompt language. Under 200 words.`;
+
+  const userContent = [];
+
+  // Add image
+  const base64 = firstFrameData.split(',')[1];
+  const mimeMatch = firstFrameData.match(/data:([^;]+)/);
+  const mime = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+
+  userContent.push({
+    type: 'image',
+    source: { type: 'base64', media_type: mime, data: base64 }
+  });
+
+  const chaosAction = document.getElementById('chaosSceneAction').value.trim();
+  const chaosActionLine = chaosAction ? `- Scene action: ${chaosAction}` : '';
+
+  const promptText = `Analyze this first frame and generate a Seedance 2.0 chaos prompt.
+
+PARAMETERS:
+- Chaos level: ${chaosVal}/10
+- Chaos keywords to inject: ${chaosKeywords}
+- Camera move: ${cameraMove || 'YOUR CHOICE based on frame analysis'}
+- World warp effect: ${warpEffect || 'YOUR CHOICE based on frame analysis'}
+${genreKeywords ? `- Genre keywords: ${genreKeywords}` : ''}
+- Duration: ${duration}
+${chaosActionLine}
+${isMontage ? `- Mode: BPM montage at ${bpm} BPM, design for cut sync` : '- Mode: Continuous single shot'}
+${lastFrameData ? '- Last frame anchor provided: design camera trajectory to reach that end state' : ''}
+
+Camera + world deformation must be described as ONE integrated system. Higher chaos = more conflicting keywords, more model-stressing language. Never use: smooth, stable, steady, controlled, natural, gentle, balanced, clean, professional, cinematic quality.`;
+
+  userContent.push({ type: 'text', text: promptText });
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+      body: JSON.stringify({
+        model: 'claude-opus-4-8',
+        max_tokens: 1000,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userContent }]
+      })
+    });
+
+    const data = await response.json();
+    if(data.error) throw new Error(data.error.message);
+    
+    currentOutput = data.content.map(c => c.text || '').join('').trim();
+    document.getElementById('outputBox').textContent = currentOutput;
+    showToast('PROMPT COMPILED');
+  } catch(err) {
+    document.getElementById('outputBox').innerHTML = `<span style="color:var(--red);">ERROR: ${err.message}</span>`;
+    showToast('API ERROR');
+  } finally {
+    btn.disabled = false;
+    loader.style.display = 'none';
+  }
+}
+
+async function regenerate() {
+  await generatePrompt();
+}
+
+function copyOutput() {
+  if(!currentOutput) { showToast('NOTHING TO COPY'); return; }
+  navigator.clipboard.writeText(currentOutput).then(() => showToast('COPIED TO CLIPBOARD'));
+}
+
+function clearOutput() {
+  currentOutput = '';
+  document.getElementById('outputBox').innerHTML = '<span class="output-placeholder">Upload a first frame and hit COMPILE CHAOS to generate your prompt.</span>';
+}
+
+// ========== ON TALENT — DIRECTOR INTERVIEW SYSTEM ==========
+let talentImageData = null;
+let talentOutput = '';
+let directorQuestions = [];
+
+const TALENT_TECHNIQUES = {
+  dirty_oner: {
+    label: 'DIRTY ONER',
+    desc: 'No cuts. Continuous handheld. Camera lives in the space between characters — urgently panning between speakers, catching reactions, anticipating movement. Naturalistic wobble. Breathing with the scene.',
+    prompt: 'continuous handheld shot with no cuts, camera urgently searching between characters as they speak and react, naturalistic wobble, slight over-pan then correct back, camera anticipates next speaker by a beat, catches both action and reaction in same unbroken take'
+  }
+};
+
+function handleTalentImage(e) {
+  const file = e.target.files[0];
+  if(file) loadTalentImage(file);
+}
+
+function handleTalentDrop(e) {
+  e.preventDefault();
+  document.getElementById('talentImageDrop').classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if(file && file.type.startsWith('image/')) loadTalentImage(file);
+}
+
+function loadTalentImage(file) {
+  const reader = new FileReader();
+  reader.onload = ev => {
+    compressImage(ev.target.result, (data) => {
+      talentImageData = data;
+      const img = document.getElementById('talentImagePreview');
+      img.src = data;
+      img.style.display = 'block';
+      document.getElementById('talentDropText').style.display = 'none';
+    });
+  };
+  reader.readAsDataURL(file);
+}
+
+function updateTalentTechDesc() {
+  const tech = document.getElementById('talentTechnique')?.value;
+  const t = TALENT_TECHNIQUES[tech];
+  const el = document.getElementById('talentTechDesc');
+  if(el && t) el.textContent = t.desc;
+}
+
+async function runDirectorInterview() {
+  // Now goes straight to generating the prompt — no Q&A needed
+  generateTalentPrompt();
+}
+
+async function generateTalentPrompt() {
+  const apiKey = document.getElementById('apiKey').value.trim();
+  if(!apiKey) { showToast('ADD API KEY IN CHAOS DIRECTOR FIRST'); return; }
+
+  const freeDesc = document.getElementById('talentFreeDesc').value.trim();
+  if(!freeDesc && !talentImageData) { showToast('DESCRIBE THE SCENE OR UPLOAD A FRAME FIRST'); return; }
+
+  const tech = document.getElementById('talentTechnique').value;
+  const pacing = document.getElementById('talentPacing').value;
+  const proximity = document.getElementById('talentProximity').value;
+  const technique = TALENT_TECHNIQUES[tech];
+
+  // Show output panel
+  const panel = document.getElementById('interviewQuestionsPanel');
+  panel.style.display = 'block';
+
+  const btn = document.getElementById('talentGenerateBtn');
+  const loader = document.getElementById('talentLoadingIndicator');
+  const interviewBtn = document.getElementById('interviewBtn');
+  btn.disabled = true;
+  interviewBtn.disabled = true;
+  interviewBtn.textContent = '...BUILDING';
+  loader.style.display = 'block';
+  document.getElementById('talentOutputBox').innerHTML = '<span class="output-placeholder">Reading scene, inferring micro-details, building prompt…</span>';
+
+  const systemPrompt = `You are simultaneously a film director, script analyst, and cinematographer writing a Seedance 2.0 AI video prompt.
+
+You will receive a scene description from a director. Your job is to:
+1. Read what they wrote carefully — extract every emotional signal, power dynamic, and physical detail they mentioned
+2. INFER the micro-details they didn't mention but that are implied — micro-expressions, body posture, where eyes go, what hands do, who breathes differently, who holds tension where
+3. Write ONE precise dense camera prompt that captures all of it — dialogue, emotion, physical behavior, inferred micro-details, and camera work as a single unified system
+
+RULES:
+- Output ONLY the final prompt. No labels, no explanation, no preamble.
+- Under 200 words — dense, every word working
+- Include actual dialogue or verbal content from the description — it drives camera timing
+- Camera must REACT to specific moments — snaps when a line lands, lingers on hands when someone is lying, gravitates to dominant figure during silence
+- Infer and include micro-expressions and body language even if not explicitly stated — you are the expert
+- No chaos language, no reality destruction — pure performance capture
+- The camera feels every word`;
+
+  const userParts = [];
+  if(talentImageData) {
+    const base64 = talentImageData.split(',')[1];
+    const mime = (talentImageData.match(/data:([^;]+)/) || [])[1] || 'image/jpeg';
+    userParts.push({ type: 'image', source: { type: 'base64', media_type: mime, data: base64 } });
+  }
+  userParts.push({ type: 'text', text: `DIRECTOR'S SCENE DESCRIPTION:\n"${freeDesc}"\n\nCAMERA: ${technique.label} — ${technique.prompt}\nPacing: ${pacing} | Proximity: ${proximity}\n\nRead the description. Infer all micro-details. Write the Seedance prompt now.` });
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+      body: JSON.stringify({ model: 'claude-opus-4-8', max_tokens: 1000, system: systemPrompt, messages: [{ role: 'user', content: userParts }] })
+    });
+    const data = await res.json();
+    if(data.error) throw new Error(data.error.message);
+    talentOutput = data.content.map(c => c.text || '').join('').trim();
+    document.getElementById('talentOutputBox').textContent = talentOutput;
+    const wc = talentOutput.split(/\s+/).filter(Boolean).length;
+    const wcEl = document.getElementById('promptWordCount');
+    if(wcEl) wcEl.textContent = `${wc} WORDS ${wc > 190 ? '⚠ NEAR LIMIT' : '✓'}`;
+    showToast('PROMPT READY');
+  } catch(err) {
+    document.getElementById('talentOutputBox').innerHTML = `<span style="color:var(--red);">ERROR: ${err.message}</span>`;
+    showToast('API ERROR');
+  } finally {
+    btn.disabled = false;
+    interviewBtn.disabled = false;
+    interviewBtn.textContent = '→ BUILD PROMPT';
+    loader.style.display = 'none';
+  }
+}
+
+function copyTalentOutput() {
+  if(!talentOutput) { showToast('NOTHING TO COPY'); return; }
+  navigator.clipboard.writeText(talentOutput).then(() => showToast('COPIED'));
+}
+
+function clearTalentOutput() {
+  talentOutput = '';
+  const el = document.getElementById('talentOutputBox');
+  if(el) el.innerHTML = '<span class="output-placeholder">Answer the questions then hit BUILD FINAL PROMPT.</span>';
+}
+
+function resetInterview() {
+  directorQuestions = [];
+  talentOutput = '';
+  const panel = document.getElementById('interviewQuestionsPanel');
+  if(panel) panel.style.display = 'none';
+  const desc = document.getElementById('talentFreeDesc');
+  if(desc) desc.value = '';
+  clearTalentOutput();
+  showToast('RESET');
+}
+
+// Stubs — old system removed
+function addCharacterCard() {}
+function renderCharacterCards() {}
+function updateBudgetCounter() {}
+function buildEmotionBlock() { return ''; }
+
+const ALL_CAMERA_MOVES = [
+  // AI Native
+  'recursive dolly implosion', 'inverted gravity orbit', 'phase-shift tracking', 'eigenspace spiral pull',
+  'membrane collapse zoom', 'void-edge crawl', 'time-fractured whip pan', 'stroboscopic orbit',
+  'echo-trail tracking', 'temporal smear pan', 'hyperbolic zoom through self', 'möbius strip orbit',
+  'klein bottle traverse', 'topological fold push-in', 'anti-parallax slide', 'retrograde push',
+  'entropy zoom', 'null vector drift',
+  // Fast
+  'dirty oner',
+  'aggressive whip pan', 'smash cut crash zoom', 'kinetic drift arc', 'hyperactive handheld thrust',
+  'strobing glitch pan', 'snap orbit', 'vertical gravity drop', 'double whip reverse',
+  'centrifuge spin', 'shockwave push', 'stutter track', 'elastic zoom snap',
+];
+
+const ALL_WARP_EFFECTS = [
+  { value: '', label: '— NO WARP —' },
+  { value: 'inception world fold', label: 'INCEPTION WORLD FOLD' },
+  { value: 'reality membrane tearing', label: 'REALITY MEMBRANE TEARING' },
+  { value: 'gravitational lens distortion', label: 'GRAVITATIONAL LENS' },
+  { value: 'chromatic aberration shockwave', label: 'CHROMATIC ABERRATION SHOCKWAVE' },
+  { value: 'pixel dissolution cascade', label: 'PIXEL DISSOLUTION CASCADE' },
+  { value: 'recursive portal collapse', label: 'RECURSIVE PORTAL COLLAPSE' },
+  { value: 'spacetime ripple propagation', label: 'SPACETIME RIPPLE' },
+  { value: 'matter phasing through surfaces', label: 'MATTER PHASING' },
+  { value: 'geometric reality breakdown', label: 'GEOMETRIC REALITY BREAKDOWN' },
+  { value: 'temporal echo smear', label: 'TEMPORAL ECHO SMEAR' },
+  { value: 'voxel fragmentation storm', label: 'VOXEL FRAGMENTATION STORM' },
+  { value: 'inverse depth fold', label: 'INVERSE DEPTH FOLD' },
+  { value: 'noise field consumption', label: 'NOISE FIELD CONSUMPTION' },
+  { value: 'axis gravity inversion', label: 'AXIS GRAVITY INVERSION' },
+  { value: 'dimension bleed', label: 'DIMENSION BLEED' },
+];
+
+// ========== MIC / SPEECH TO TEXT ==========
+let activeRecognition = null;
+
+function startMic(targetId, btn) {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!SpeechRecognition) { showToast('MIC NOT SUPPORTED — USE CHROME'); return; }
+
+  if(activeRecognition) {
+    activeRecognition.stop();
+    activeRecognition = null;
+    document.querySelectorAll('.mic-btn.recording').forEach(b => { b.classList.remove('recording'); b.textContent = '🎤'; });
+    return;
+  }
+
+  const recognition = new SpeechRecognition();
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognition.lang = 'en-US';
+
+  const target = document.getElementById(targetId);
+  if(!target) return;
+  const original = target.value;
+  btn.classList.add('recording');
+  btn.textContent = '⏹';
+  activeRecognition = recognition;
+
+  let finalText = original;
+  recognition.onresult = e => {
+    let interim = '';
+    finalText = original;
+    for(let i = 0; i < e.results.length; i++) {
+      if(e.results[i].isFinal) finalText += (finalText ? ' ' : '') + e.results[i][0].transcript;
+      else interim += e.results[i][0].transcript;
+    }
+    target.value = finalText + (interim ? ' ' + interim : '');
+    target.dispatchEvent(new Event('input'));
+  };
+
+  recognition.onend = () => {
+    btn.classList.remove('recording');
+    btn.textContent = '🎤';
+    activeRecognition = null;
+  };
+
+  recognition.onerror = (e) => {
+    btn.classList.remove('recording');
+    btn.textContent = '🎤';
+    activeRecognition = null;
+    if(e.error === 'not-allowed') showToast('MIC PERMISSION DENIED');
+    else showToast('MIC ERROR: ' + e.error);
+  };
+
+  recognition.start();
+}
+
+// ========== SCENE BUILDER ==========
+function initChainRows() {
+  chainRows = [
+    { camera: 'aggressive whip pan', warp: '', chaos: 5 },
+    { camera: 'smash cut crash zoom', warp: 'chromatic aberration shockwave', chaos: 7 },
+  ];
+  renderChainRows();
+  compileChain();
+}
+
+function addChainRow() {
+  chainRows.push({ camera: 'aggressive whip pan', warp: '', chaos: 5 });
+  renderChainRows();
+  compileChain();
+}
+
+function removeChainRow(i) {
+  chainRows.splice(i, 1);
+  renderChainRows();
+  compileChain();
+}
+
+function renderChainRows() {
+  const warpOptions = ALL_WARP_EFFECTS.map(w => `<option value="${w.value}">${w.label}</option>`).join('');
+  const cameraOptions = ALL_CAMERA_MOVES.map(m => `<option value="${m}">${m.toUpperCase()}</option>`).join('');
+
+  document.getElementById('chainRows').innerHTML = chainRows.map((row, i) => `
+    <div style="background:var(--bg3);border:1px solid var(--border);padding:10px;margin-bottom:8px;position:relative;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <div style="font-family:var(--mono);font-size:9px;color:var(--accent);letter-spacing:2px;">STEP ${i+1}</div>
+        ${chainRows.length > 1 ? `<button class="rem-btn" onclick="removeChainRow(${i})" style="width:20px;height:20px;font-size:10px;">×</button>` : ''}
+      </div>
+      <div class="input-label">CAMERA MOVE</div>
+      <select onchange="chainRows[${i}].camera=this.value;compileChain()" style="margin-bottom:8px;">
+        ${ALL_CAMERA_MOVES.map(m => `<option value="${m}" ${m===row.camera?'selected':''}>${m.toUpperCase()}</option>`).join('')}
+      </select>
+      <div class="input-label">WARP EFFECT</div>
+      <select onchange="chainRows[${i}].warp=this.value;compileChain()" style="margin-bottom:8px;">
+        ${ALL_WARP_EFFECTS.map(w => `<option value="${w.value}" ${w.value===row.warp?'selected':''}>${w.label}</option>`).join('')}
+      </select>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div class="input-label" style="margin-bottom:0;white-space:nowrap;">CHAOS ${row.chaos}</div>
+        <input type="range" min="1" max="10" value="${row.chaos}" style="flex:1;" oninput="chainRows[${i}].chaos=parseInt(this.value);this.previousSibling.textContent='CHAOS '+this.value;compileChain()">
+        <div style="font-family:var(--mono);font-size:10px;color:var(--accent);width:16px;">${row.chaos}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function compileChain() {
+  const transition = document.getElementById('transitionType').value;
+  const hold = document.getElementById('holdDuration').value;
+
+  const connectors = {
+    'then': ', then ',
+    'triggering': ', triggering ',
+    'while': ' while simultaneously ',
+    'into': ', dissolving into ',
+  };
+
+  const connector = connectors[transition] || ', then ';
+
+  const parts = chainRows.map((row, i) => {
+    const chaosWords = (CHAOS_BY_LEVEL[row.chaos] || []).slice(0,2).join(', ');
+    let step = row.camera;
+    if(row.warp) step += ` with ${row.warp}`;
+    if(chaosWords) step += ` [${chaosWords}]`;
+    return step;
+  });
+
+  let output = parts.join(connector);
+  if(hold) output = parts.join(`${connector}${hold}${connector}`);
+
+  // Wrap as full Seedance prompt
+  const forbiddenInverted = 'no smooth transitions, no stability, maximum kinetic conflict between layers';
+  document.getElementById('chainOutput').textContent =
+    output + ` — ${forbiddenInverted} — camera trajectory and world deformation unified as single system`;
+}
+
+function copyChain() {
+  const text = document.getElementById('chainOutput').textContent;
+  navigator.clipboard.writeText(text).then(() => showToast('CHAIN COPIED'));
+}
+
+function clearChain() {
+  chainRows = [{ camera: 'aggressive whip pan', warp: '', chaos: 5 }];
+  renderChainRows();
+  compileChain();
+}
+
+// ========== BPM CALC ==========
+function calcPipeBpm() {
+  const bpm = parseFloat(document.getElementById('pipeBpm').value) || 140;
+  const beats = parseInt(document.getElementById('pipeBeats').value) || 2;
+  const dur = (60/bpm) * beats;
+  document.getElementById('pipeBpmResult').textContent = `${dur.toFixed(3)}s PER CUT`;
+  
+  const divisions = [1,2,4,8,16,32];
+  document.getElementById('pipeBpmGrid').innerHTML = divisions.map(d => `
+    <div class="bpm-cell">
+      <div class="bpm-cell-label">${d >= 4 ? d/4 + ' BAR' + (d>=8?'S':'') : d + ' BEAT' + (d>1?'S':'')}</div>
+      <div class="bpm-cell-val">${((60/bpm)*d).toFixed(3)}s</div>
+    </div>
+  `).join('');
+}
+
+// ========== UTILS ==========
+function copyText(text, btn) {
+  navigator.clipboard.writeText(text).then(() => {
+    showToast('COPIED');
+    if(btn && btn.classList) {
+      btn.classList.add('copied');
+      btn.textContent = 'COPIED';
+      setTimeout(() => { btn.classList.remove('copied'); btn.textContent = btn.dataset.orig || 'COPY PROMPT'; }, 1200);
+    }
+  });
+}
+
+// ========== RENDER ON WRECKAGE — SEEDANCE GENERATION ==========
+// the only part that needs the /api backend: the ModelArk key is server-only
+// and ModelArk has no browser CORS. the prompt tools above stay browser-direct.
+function renderBackend() {
+  const v = (document.getElementById('renderBackendUrl') || {}).value || '';
+  return v.trim().replace(/\/+$/, ''); // '' = same origin
+}
+
+// recompress a frame small enough for the serverless body limit (~4.5MB on
+// vercel). base64 inflates ~1.34x and we may send two frames, so target ~1.3MB
+// each and cap the long edge at 1280px.
+function prepFrameForRender(dataUrl) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      let w = img.width, h = img.height;
+      const scale = Math.min(1, 1280 / Math.max(w, h));
+      w = Math.round(w * scale); h = Math.round(h * scale);
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      c.getContext('2d').drawImage(img, 0, 0, w, h);
+      // budget the actual transmitted size (base64 string length), not decoded
+      // bytes — both frames together must fit Vercel's hard ~4.5MB request cap.
+      const TARGET = 1.5 * 1024 * 1024;
+      let q = 0.82;
+      const tryQ = () => {
+        const out = c.toDataURL('image/jpeg', q);
+        if (out.length <= TARGET || q <= 0.4) resolve(out);
+        else { q -= 0.1; tryQ(); }
+      };
+      tryQ();
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
+
+async function renderVariations(sfx) {
+  sfx = sfx || ''; // '' = SHOT panel, 'T' = TALENT panel
+  const isTalent = sfx === 'T';
+  const prompt = ((isTalent ? talentOutput : currentOutput) || '').trim(); // only a real compiled prompt; never the placeholder
+  if (!prompt || prompt.length < 10) { showToast('COMPILE A PROMPT FIRST'); return; }
+  const srcFrame = isTalent ? talentImageData : firstFrameData;
+  if (!srcFrame) { showToast('UPLOAD A FIRST FRAME'); return; }
+
+  const count = parseInt(document.getElementById('renderCount' + sfx).value) || 1;
+  const aspect = document.getElementById('renderAspect' + sfx).value;
+  const resolution = document.getElementById('renderRes' + sfx).value;
+  const durationSec = parseInt(document.getElementById('durationSelect' + sfx).value) || 5;
+
+  const btn = document.getElementById('renderBtn' + sfx);
+  const loader = document.getElementById('renderLoading' + sfx);
+  btn.disabled = true; loader.style.display = 'block';
+
+  try {
+    // prep frames once; reuse across every variation. first = opening frame,
+    // last-frame anchor (if set, SHOT only) rides along as a reference image.
+    const frames = [await prepFrameForRender(srcFrame)];
+    if (!isTalent && lastFrameData) frames.push(await prepFrameForRender(lastFrameData));
+
+    const base = renderBackend();
+    const grid = document.getElementById('renderGrid' + sfx);
+    grid.innerHTML = ''; // each click = a fresh batch; old cards (and their polls) drop out
+
+    for (let i = 0; i < count; i++) {
+      const card = document.createElement('div');
+      card.className = 'render-card';
+      const st = document.createElement('div');
+      st.className = 'render-status';
+      st.textContent = `VARIATION ${i + 1} — SUBMITTING…`;
+      card.appendChild(st);
+      grid.prepend(card);
+      // different seed per variation so the takes actually differ
+      submitOneRender({ base, prompt, frames, durationSec, aspect, resolution, seed: Math.floor(Math.random() * 1e9), card, n: i + 1 });
+    }
+    showToast(`SUBMITTED ${count} VARIATION${count > 1 ? 'S' : ''}`);
+  } catch (e) {
+    showToast('RENDER SUBMIT FAILED');
+  } finally {
+    btn.disabled = false; loader.style.display = 'none';
+  }
+}
+
+async function submitOneRender(o) {
+  const st = o.card.querySelector('.render-status');
+  try {
+    const res = await fetch(`${o.base}/api/video`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt: o.prompt, frames: o.frames, durationSec: o.durationSec, aspect: o.aspect, resolution: o.resolution, seed: o.seed })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.taskId) throw new Error(data.error || `submit ${res.status}`);
+    st.textContent = `VARIATION ${o.n} — RENDERING…`;
+    pollRender(o.base, data.taskId, o.card, o.n);
+  } catch (e) {
+    st.innerHTML = `<span style="color:var(--red);">VAR ${o.n} FAILED — ${e.message}</span>`;
+  }
+}
+
+function pollRender(base, taskId, card, n) {
+  let tries = 0;
+  const tick = async () => {
+    if (!card.isConnected) return; // card cleared by a newer batch — stop polling
+    tries++;
+    const st = card.querySelector('.render-status');
+    if (tries > 90) { if (st) st.innerHTML = `<span style="color:var(--red);">VAR ${n} TIMED OUT</span>`; return; } // ~6 min ceiling
+    try {
+      const res = await fetch(`${base}/api/video/${taskId}`);
+      const d = await res.json().catch(() => ({}));
+      if (d.status === 'succeeded' && d.videoUrl) {
+        card.innerHTML = '';
+        const vid = document.createElement('video');
+        vid.src = d.videoUrl; vid.controls = true; vid.loop = true; vid.playsInline = true; // unmuted — Seedance 2.0 has native audio
+        const bar = document.createElement('div');
+        bar.className = 'render-actions';
+        const lab = document.createElement('span'); lab.className = 'render-status'; lab.textContent = `VARIATION ${n} ✓`;
+        const dl = document.createElement('button'); dl.className = 'out-btn green'; dl.textContent = 'DOWNLOAD';
+        dl.addEventListener('click', () => downloadVideo(d.videoUrl, `wreckage_var${n}_${taskId.slice(-6)}.mp4`));
+        bar.append(lab, dl);
+        card.append(vid, bar);
+        return;
+      }
+      if (d.status === 'failed') { if (st) st.innerHTML = `<span style="color:var(--red);">VAR ${n} FAILED — ${d.error || 'generation failed'}</span>`; return; }
+      if (st) st.textContent = `VARIATION ${n} — ${(d.status || 'rendering').toUpperCase()}… (${tries})`;
+      setTimeout(tick, 4000);
+    } catch (e) {
+      setTimeout(tick, 5000); // transient network — keep polling
+    }
+  };
+  setTimeout(tick, 3000);
+}
+
+// pull the finished mp4 down as a real file (provider URLs can expire — grab it).
+async function downloadVideo(url, name) {
+  try {
+    showToast('DOWNLOADING…');
+    const res = await fetch(url);
+    const blob = await res.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+  } catch (e) {
+    window.open(url, '_blank');
+  }
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 1800);
+}
+</script>
+</body>
+</html>
