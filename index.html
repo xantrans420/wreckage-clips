@@ -22,8 +22,6 @@
     --accent3: #ffcc00;
     --green: #00ff88;
     --blue: #00aaff;
-    --neon: #39ff14;
-    --neon-soft: rgba(57,255,20,.42);
     --purple: #aa44ff;
     --red: #ff2244;
     --mono: 'Space Mono', monospace;
@@ -966,22 +964,15 @@
   /* visual pickers */
   .picker-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: 8px; }
   .picker-cell { cursor: pointer; background: var(--bg2); border: 1px solid transparent; padding: 0 0 8px; transition: border-color .28s cubic-bezier(.2,.7,.2,1), transform .28s cubic-bezier(.2,.7,.2,1), box-shadow .28s cubic-bezier(.2,.7,.2,1); }
-  .picker-cell:hover { border-color: var(--neon); transform: translateY(-2px); box-shadow: 0 0 0 1px var(--neon), 0 12px 32px -12px var(--neon-soft), inset 0 0 24px -12px var(--neon-soft); }
+  .picker-cell:hover { border-color: var(--border2); transform: translateY(-2px); box-shadow: 0 10px 26px -14px rgba(0,0,0,.7); }
   .picker-cell.sel { border-color: var(--accent); background: #150a06; }
   .picker-cell.sel .picker-label { color: var(--accent); }
   .picker-preview { height: 62px; overflow: hidden; position: relative; background: var(--bg); }
   .picker-preview svg { width: 100%; height: 62px; display: block; transition: filter .4s ease, transform .6s ease; }
-  .picker-cell:hover .picker-preview svg { filter: saturate(1.25) brightness(1.08) drop-shadow(0 0 5px var(--neon-soft)); }
+  .picker-cell:hover .picker-preview svg { filter: brightness(1.06); }
   /* real clip crossfades UP once it's actually rendering frames — no black poster flash, no hard cut */
   .picker-clip { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transform: scale(1.06); transition: opacity .55s ease, transform 1.2s cubic-bezier(.2,.7,.2,1); will-change: opacity, transform; }
   .picker-clip.on { opacity: 1; transform: scale(1); }
-  /* painterly neon-green wash: soft brushed grain + green bloom, screen-blended, eases in on hover */
-  .picker-preview::after { content: ''; position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .5s ease; mix-blend-mode: screen; z-index: 2;
-    background:
-      radial-gradient(135% 105% at 50% 118%, var(--neon-soft), transparent 62%),
-      url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='90'%20height='60'%3E%3Cfilter%20id='p'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.55'%20numOctaves='2'%20seed='7'/%3E%3CfeColorMatrix%20values='0%200%200%200%200.22%20%200%200%200%200%201%20%200%200%200%200%200.08%20%200%200%200%200.6%200'/%3E%3C/filter%3E%3Crect%20width='100%25'%20height='100%25'%20filter='url(%23p)'/%3E%3C/svg%3E");
-    background-size: cover, 90px 60px; }
-  .picker-cell:hover .picker-preview::after { opacity: .55; }
   .picker-none { height: 62px; display: flex; align-items: center; justify-content: center; font-size: 26px; color: var(--text3); background: #060606; }
   .picker-label { font-family: var(--display); font-size: 14px; letter-spacing: 1px; color: var(--text); padding: 7px 8px 0; line-height: 1.05; }
   .picker-sub { font-family: var(--mono); font-size: 8px; color: var(--text3); letter-spacing: .5px; padding: 3px 8px 0; text-transform: lowercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
