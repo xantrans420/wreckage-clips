@@ -971,8 +971,8 @@
   .picker-preview svg { width: 100%; height: 62px; display: block; transition: filter .4s ease, transform .6s ease; }
   .picker-cell:hover .picker-preview svg { filter: brightness(1.06); }
   /* real clip crossfades UP once it's actually rendering frames — no black poster flash, no hard cut */
-  .picker-clip { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transform: scale(1.06); transition: opacity .55s ease, transform 1.2s cubic-bezier(.2,.7,.2,1); will-change: opacity, transform; }
-  .picker-clip.on { opacity: 1; transform: scale(1); }
+  .picker-clip { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .18s ease; }
+  .picker-clip.on { opacity: 1; }
   .picker-none { height: 62px; display: flex; align-items: center; justify-content: center; font-size: 26px; color: var(--text3); background: #060606; }
   .picker-label { font-family: var(--display); font-size: 14px; letter-spacing: 1px; color: var(--text); padding: 7px 8px 0; line-height: 1.05; }
   .picker-sub { font-family: var(--mono); font-size: 8px; color: var(--text3); letter-spacing: .5px; padding: 3px 8px 0; text-transform: lowercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -1690,6 +1690,12 @@ function renderPickers() {
   bindPickerHover('movePicker', 'move');
   bindPickerHover('warpPicker', 'warp');
   updateReadout('move'); updateReadout('warp');
+  pauseAllPreviews(); // perf: 45 schematics × SMIL loops = jank; freeze them, animate only on hover
+}
+// pause every schematic's animation timeline; the hovered cell is un-paused in setHoverAnim,
+// and the real clip carries the motion on hover anyway.
+function pauseAllPreviews() {
+  document.querySelectorAll('.picker-preview svg').forEach(s => { try { s.pauseAnimations(); } catch (e) {} });
 }
 
 function pickerCell(kind, i, previewName, label, sub, isSel, isNone, expect) {
@@ -1728,7 +1734,7 @@ function bindPickerHover(gridId, kind) {
     updateReadout(kind, i);       // plain-English "what you'll see"
     hoverClip(cell, kind, i);     // real footage, if the clip library exists
   });
-  grid.addEventListener('mouseleave', () => { updateReadout(kind); clearClip(); });
+  grid.addEventListener('mouseleave', () => { updateReadout(kind); clearClip(); setHoverAnim(null); });
 }
 
 // ---- hover-to-play: SVG thumbnail is always there; on hover we swap in the ONE
@@ -1743,9 +1749,18 @@ function clipBase() {
   const h = location.hostname;
   return (h === 'localhost' || h === '127.0.0.1' || h === '') ? (renderBackend() + '/clips/') : CLIP_CDN;
 }
-let _clipVid = null, _clipCell = null;
+let _clipVid = null, _clipCell = null, _animSvg = null;
+// only the hovered cell's schematic animates — everything else stays frozen (perf)
+function setHoverAnim(cell) {
+  const svg = cell && cell.querySelector('.picker-preview svg');
+  if (svg === _animSvg) return;
+  if (_animSvg) { try { _animSvg.pauseAnimations(); } catch (e) {} }
+  _animSvg = svg || null;
+  if (svg) { try { svg.unpauseAnimations(); } catch (e) {} }
+}
 function clearClip() { if (_clipVid) { _clipVid.pause(); _clipVid.remove(); } _clipVid = null; _clipCell = null; }
 function hoverClip(cell, kind, i) {
+  setHoverAnim(cell);                  // wake this cell's schematic, freeze the rest
   if (cell === _clipCell) return;      // same cell, nothing to do
   clearClip();
   if (!(i >= 0)) return;               // AI DECIDES / NO WARP cells have no clip
