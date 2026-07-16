@@ -1,0 +1,105 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --green:#38b24a; --pink:#f3a8cd; --pink2:#f7bdda; --blue:#2f4ecc; --blue-d:#233da8;
+    --yellow:#ffd21e; --ink:#141414; --mono:'Space Mono',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--green);font-family:var(--mono);color:var(--ink);padding:24px;overflow-x:hidden}
+  .hard{box-shadow:4px 4px 0 var(--blue)}
+  /* header */
+  .hdr{position:relative;text-align:center;margin-bottom:18px}
+  .wordmark{font-family:'Luckiest Guy',cursive;font-size:96px;line-height:.9;letter-spacing:3px;color:var(--pink);
+    text-shadow:3px 3px 0 var(--blue),6px 6px 0 var(--blue),9px 9px 0 var(--blue-d);transform:rotate(-1.5deg)}
+  .spark{position:absolute;color:#fff;font-size:44px;filter:drop-shadow(2px 2px 0 var(--blue))}
+  .badge{width:120px;height:120px;background:var(--blue);border:5px solid #fff;border-radius:50%;
+    display:grid;place-items:center;margin:-30px auto 6px;box-shadow:4px 4px 0 var(--blue-d)}
+  .badge .sun{width:74px;height:74px;background:var(--yellow);border-radius:50%;display:grid;place-items:center;font-size:34px;color:#fff}
+  /* tabs */
+  .tabs{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:6px}
+  .tab{font-family:var(--mono);font-weight:700;font-size:15px;letter-spacing:1px;padding:9px 18px;border:3px solid var(--blue);
+    border-radius:12px;background:var(--pink);color:var(--ink);cursor:pointer;box-shadow:3px 3px 0 var(--blue)}
+  .tab.on{background:var(--yellow)}
+  /* layout */
+  .wrap{display:flex;gap:20px;max-width:1500px;margin:0 auto}
+  .rail{width:300px;flex:none;display:flex;flex-direction:column;gap:16px}
+  .panel{background:var(--pink);border:4px solid var(--blue);border-radius:16px;padding:14px;box-shadow:5px 5px 0 var(--blue)}
+  .p-title{font-weight:700;font-size:13px;letter-spacing:1px;margin-bottom:10px}
+  .drop{border:2px dashed var(--blue);border-radius:12px;padding:22px;text-align:center;font-size:11px;color:#7a2f57;background:#f8c6de}
+  .drop .ic{font-size:26px;display:block;margin-bottom:6px}
+  .pips{display:flex;gap:5px;margin:8px 0}
+  .pip{width:15px;height:15px;border:2px solid var(--blue);border-radius:4px;background:#f8c6de}
+  .pip.on{background:var(--yellow)}
+  .dnum{font-family:'Luckiest Guy',cursive;font-size:34px;color:var(--blue);float:right;margin-top:-6px}
+  .tag{display:inline-block;font-size:10px;font-weight:700;padding:3px 8px;border:2px solid var(--blue);border-radius:8px;background:var(--yellow);margin:3px 3px 0 0}
+  .sel{background:#f8c6de;border:2px solid var(--blue);border-radius:8px;padding:8px 10px;font-size:12px;margin-top:8px;display:flex;gap:8px}
+  .gen{background:var(--yellow);border:4px solid var(--blue);border-radius:16px;padding:18px;text-align:center;
+    font-family:'Luckiest Guy',cursive;font-size:30px;letter-spacing:2px;color:var(--ink);cursor:pointer;box-shadow:6px 6px 0 var(--blue)}
+  /* effects */
+  .main{flex:1;background:var(--pink);border:4px solid var(--blue);border-radius:18px;padding:16px 18px;box-shadow:6px 6px 0 var(--blue)}
+  .fx-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+  .fx-title{font-family:'Luckiest Guy',cursive;font-size:26px;letter-spacing:1px}
+  .chip{font-size:12px;font-weight:700;padding:6px 12px;border:2px solid var(--blue);border-radius:9px;background:var(--pink2);box-shadow:2px 2px 0 var(--blue)}
+  .chip.on{background:var(--yellow)}
+  .sec{font-weight:700;font-size:13px;letter-spacing:1px;margin:6px 0 10px}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .card{position:relative;border:3px solid var(--blue);border-radius:14px;overflow:hidden;background:#111;aspect-ratio:16/9;box-shadow:4px 4px 0 var(--blue);cursor:pointer}
+  .card.none{background:#111}
+  .card video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .card .ov{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:flex-end;padding:9px 11px;
+    background:linear-gradient(to top,rgba(0,0,0,.82) 6%,transparent 52%)}
+  .nm{font-family:'Luckiest Guy',cursive;font-size:17px;color:#fff;letter-spacing:.5px}
+  .sb{font-size:10px;color:rgba(255,255,255,.8)}
+  .none .nomark{position:absolute;inset:0;display:grid;place-items:center;font-size:40px;color:#fff}
+  .none .nm{color:#fff}
+  .b-move{position:absolute;top:8px;left:8px;font-size:9px;font-weight:700;padding:3px 7px;border:2px solid var(--blue);border-radius:7px;background:#8fe3a0;color:var(--ink)}
+  .b-on{position:absolute;top:8px;right:8px;font-size:9px;font-weight:700;padding:3px 7px;border:2px solid var(--blue);border-radius:7px;background:var(--yellow);color:var(--ink)}
+</style></head>
+<body>
+  <div class="hdr">
+    <span class="spark" style="left:6%;top:6px">✦</span>
+    <span class="spark" style="left:16%;top:70px;font-size:28px">✦</span>
+    <span class="spark" style="right:8%;top:2px">✦</span>
+    <span class="spark" style="right:17%;top:66px;font-size:28px">✦</span>
+    <div class="wordmark">WRECKAGE.SYS</div>
+    <div class="badge"><div class="sun">✦</div></div>
+    <div class="tabs">
+      <div class="tab on">⚡ SHOT</div><div class="tab">👤 TALENT</div><div class="tab">🎬 SEQUENCE</div><div class="tab">📁 LIBRARY</div>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="rail">
+      <div class="panel">
+        <div class="p-title">◆ FIRST FRAME</div>
+        <div class="drop"><span class="ic">☁︎↑</span>DROP FIRST FRAME<br>OR CLICK TO UPLOAD</div>
+      </div>
+      <div class="panel">
+        <div class="p-title">◆ CHAOS DIAL <span class="dnum">5</span></div>
+        <div class="pips"><span class="pip on"></span><span class="pip on"></span><span class="pip on"></span><span class="pip on"></span><span class="pip on"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span></div>
+        <div style="font-size:11px;color:#7a2f57">MID CHAOS — reality glitch active</div>
+        <div style="margin-top:6px"><span class="tag">reality glitch</span><span class="tag">recursive framing</span><span class="tag">frame corruption</span></div>
+      </div>
+      <div class="gen">⚡ GENERATE</div>
+    </div>
+
+    <div class="main">
+      <div class="fx-head">
+        <div class="fx-title">EFFECTS</div>
+        <div class="chip on">ALL</div><div class="chip">PUSH</div><div class="chip">SPIN</div><div class="chip">SPACE</div><div class="chip">SPEED</div><div class="chip">LENS</div>
+      </div>
+      <div class="sec">✧ CAMERA MOVES ✧</div>
+      <div class="grid">
+        <div class="card none"><div class="nomark">∅</div><span class="b-move" style="background:#f8c6de">AUTO</span><span class="b-on">ON</span><div class="ov"><div class="nm">AI DECIDES</div><div class="sb">from frame analysis</div></div></div>
+        <div class="card"><video src="https://cdn.jsdelivr.net/gh/xantrans420/wreckage-clips@main/clips/phase-shift-tracking-shot.mp4" muted loop autoplay playsinline></video><span class="b-move">MOVE</span><div class="ov"><div class="nm">GHOST THROUGH WALLS</div><div class="sb">phase-shift tracking shot</div></div></div>
+        <div class="card"><video src="https://cdn.jsdelivr.net/gh/xantrans420/wreckage-clips@main/clips/void-edge-crawl.mp4" muted loop autoplay playsinline></video><span class="b-move">MOVE</span><div class="ov"><div class="nm">EDGE-OF-THE-WORLD PAN</div><div class="sb">void-edge crawl</div></div></div>
+        <div class="card"><video src="https://cdn.jsdelivr.net/gh/xantrans420/wreckage-clips@main/clips/hyperbolic-zoom-through-self.mp4" muted loop autoplay playsinline></video><span class="b-move">MOVE</span><div class="ov"><div class="nm">INSIDE-OUT ZOOM</div><div class="sb">hyperbolic zoom through self</div></div></div>
+        <div class="card"><video src="https://cdn.jsdelivr.net/gh/xantrans420/wreckage-clips@main/clips/continuous-spatial-traversal.mp4" muted loop autoplay playsinline></video><span class="b-move">MOVE</span><div class="ov"><div class="nm">FLY THROUGH EVERYTHING</div><div class="sb">continuous spatial traversal</div></div></div>
+        <div class="card"><video src="https://cdn.jsdelivr.net/gh/xantrans420/wreckage-clips@main/clips/anti-parallax-slide.mp4" muted loop autoplay playsinline></video><span class="b-move">MOVE</span><div class="ov"><div class="nm">FLAT-WORLD SLIDE</div><div class="sb">anti-parallax slide</div></div></div>
+      </div>
+    </div>
+  </div>
+</body></html>
