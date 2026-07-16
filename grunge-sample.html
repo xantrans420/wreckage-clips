@@ -1,0 +1,142 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --black:#0b0b0b; --red:#c31d1d; --red-b:#e12626; --red-d:#8f1414;
+    --acid:#a4d211; --acid-d:#8bb50c; --ink:#0b0b0b; --mono:'Space Mono',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--black);color:#eee;font-family:var(--mono);padding:0 0 0 26px;position:relative;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/><feColorMatrix type='saturate' values='0'/></filter><rect width='120' height='120' filter='url(%23n)' opacity='0.04'/></svg>")}
+  .disp{font-family:'Anton',sans-serif;letter-spacing:1px;text-transform:uppercase}
+  /* left vertical ticker */
+  .vtick{position:fixed;left:0;top:0;bottom:0;width:24px;background:var(--acid);color:var(--ink);
+    writing-mode:vertical-rl;font-weight:700;font-size:11px;letter-spacing:2px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+  /* header */
+  .hdr{display:flex;align-items:flex-start;gap:22px;padding:22px 26px 0}
+  .wordmark{font-family:'Anton';font-size:78px;line-height:.82;color:var(--red);letter-spacing:1px;text-transform:uppercase;
+    text-shadow:0 0 1px var(--red-d)}
+  .vtag{background:var(--red);color:#000;font-weight:700;font-size:13px;padding:2px 8px;display:inline-block}
+  .sub{color:var(--acid);font-size:12px;line-height:1.5;margin-top:8px}
+  .tabs{display:flex;gap:20px;align-items:center;padding:14px 26px 16px;border-bottom:2px solid #1c1c1c}
+  .tab{font-family:'Oswald';font-weight:700;font-size:16px;letter-spacing:2px;color:#cfcfcf;text-transform:uppercase}
+  .tab.on{color:var(--acid)}
+  .tab .ar{color:#666;margin-left:14px}
+  /* layout */
+  .wrap{display:flex;gap:0;align-items:stretch}
+  .rail{width:430px;flex:none;background:var(--red);padding:22px;position:relative}
+  .rail .panel{margin-bottom:18px}
+  .r-title{font-family:'Anton';font-size:30px;color:#0b0b0b;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px}
+  .r-sub{font-size:11px;color:#3a0808}
+  .box{background:#0b0b0b;border:1px solid #000;color:#ddd;padding:12px;font-size:12px}
+  .drop{border:1px dashed #5e0d0d;background:#0b0b0b;padding:16px;text-align:center;font-size:11px;color:#c9c9c9}
+  .flex{display:flex;gap:14px;align-items:flex-start}
+  .pips{display:flex;gap:6px;margin:6px 0 8px}
+  .pip{width:16px;height:16px;background:#0b0b0b;border:1px solid #0b0b0b}
+  .pip.on{background:var(--acid);border-color:var(--acid)}
+  .dnum{font-family:'Anton';font-size:40px;color:#0b0b0b;float:right;line-height:.8}
+  .tag{display:inline-block;font-size:10px;padding:3px 8px;border:1px solid #0b0b0b;background:transparent;color:#0b0b0b;margin:3px 4px 0 0}
+  .sel{background:#0b0b0b;color:#ddd;padding:8px 10px;font-size:11px;margin-bottom:18px}
+  select,input,textarea{width:100%;background:#0b0b0b;border:1px solid #000;color:#ddd;padding:10px;font-family:var(--mono);font-size:12px}
+  .dur{font-family:'Anton';font-size:34px;color:#0b0b0b}
+  .slider{height:6px;background:#0b0b0b;position:relative;margin-top:6px}
+  .slider::after{content:'';position:absolute;left:38%;top:-4px;width:12px;height:14px;background:var(--acid)}
+  .gen{margin-top:8px;display:flex;align-items:center;justify-content:space-between;border:1px solid #0b0b0b;padding:10px 16px}
+  .gen b{font-family:'Anton';font-size:56px;color:#0b0b0b;letter-spacing:1px}
+  .gen .ar{font-size:40px;color:#0b0b0b}
+  /* effects (acid green, torn) */
+  .main{flex:1;background:var(--acid);color:#0b0b0b;padding:26px 30px 34px;
+    clip-path:polygon(0 10px,4% 2px,9% 14px,15% 3px,22% 12px,30% 1px,40% 11px,52% 2px,63% 13px,74% 3px,85% 12px,94% 2px,100% 9px,100% 100%,0 100%)}
+  .fx-top{display:flex;align-items:center;gap:22px;flex-wrap:wrap;margin-bottom:20px}
+  .fx-title{font-family:'Anton';font-size:64px;line-height:.8;letter-spacing:1px}
+  .chips{display:flex;gap:0;margin-left:auto}
+  .chip{font-family:'Oswald';font-weight:700;font-size:14px;letter-spacing:1px;padding:8px 16px;border:1px solid #0b0b0b;background:transparent;color:#0b0b0b}
+  .chip.on{background:#0b0b0b;color:var(--acid)}
+  .chip.onred{background:var(--red);color:#fff;border-color:var(--red)}
+  .sec{font-family:'Oswald';font-weight:700;font-size:16px;letter-spacing:2px;display:flex;align-items:center;gap:12px;margin:8px 0 12px}
+  .sec::after{content:'';flex:1;border-top:1px dashed #0b0b0b}
+  .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px}
+  .card{position:relative;background:#0b0b0b;border:2px solid #0b0b0b;overflow:hidden;aspect-ratio:16/9;cursor:pointer}
+  .card.sel{border-color:var(--red-b);box-shadow:0 0 0 1px var(--red-b)}
+  .card video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .card .ov{position:absolute;left:0;right:0;bottom:0;padding:8px 10px;background:linear-gradient(to top,rgba(0,0,0,.9),transparent)}
+  .nm{font-family:'Oswald';font-weight:700;font-size:15px;color:#fff;letter-spacing:.5px;text-transform:uppercase}
+  .sb{font-size:9px;color:#9fcf3a}
+  .none .nomark{position:absolute;inset:0;display:grid;place-items:center;font-size:34px;color:#eee}
+  .b-move{position:absolute;top:7px;left:7px;font-size:8px;font-weight:700;padding:3px 6px;background:var(--acid);color:#0b0b0b;letter-spacing:1px}
+  .b-none{position:absolute;top:7px;left:7px;font-size:8px;font-weight:700;padding:3px 6px;background:#c31d1d;color:#fff;letter-spacing:1px}
+  .b-on{position:absolute;top:7px;right:7px;font-size:8px;font-weight:700;padding:3px 6px;background:var(--red);color:#fff;letter-spacing:1px}
+  /* bottom ticker */
+  .btick{background:var(--acid);color:#0b0b0b;font-weight:700;font-size:12px;letter-spacing:1px;padding:8px 16px;white-space:nowrap;overflow:hidden;margin-top:2px}
+  .btick b{color:var(--red-d)}
+</style></head>
+<body>
+  <div class="vtick">DURATION: 06:00 → CHAOS: 5 → GENRE: NONE → DURATION: 06:00 → CHAOS: 5 → GENRE: NONE →</div>
+
+  <div class="hdr">
+    <div class="wordmark">WRECKAGE.SYS</div>
+    <div><div class="vtag">2.5</div><div class="sub">AI VIDEO SHOT MACHINE<br>PROMPT → RENDER, ONE SCREEN</div></div>
+  </div>
+  <div class="tabs">
+    <div class="tab on">⚡ SHOT</div><div class="tab">TALENT <span class="ar">→</span></div><div class="tab">SEQUENCE <span class="ar">→</span></div><div class="tab">LIBRARY <span class="ar">→</span></div>
+  </div>
+
+  <div class="wrap">
+    <div class="rail">
+      <div class="panel">
+        <div class="r-title">First Frame</div>
+        <div class="drop">DROP FIRST FRAME / CLICK TO UPLOAD<br><span style="color:#7a1414">used as the first frame Wreckage builds the shot from</span></div>
+      </div>
+      <div class="panel">
+        <div class="r-title">Scene Action</div>
+        <div class="box">collapsing architecture, crowd scatters as shockwave hits, dancer spins as reality tears apart...</div>
+      </div>
+      <div class="panel">
+        <div class="r-title">Chaos Dial <span class="dnum">5</span></div>
+        <div class="pips"><span class="pip on"></span><span class="pip on"></span><span class="pip on"></span><span class="pip on"></span><span class="pip on"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span></div>
+        <div class="r-sub">MID CHAOS — reality glitch active, recursive language begins</div>
+        <div style="margin-top:6px"><span class="tag">reality glitch</span><span class="tag">recursive framing</span><span class="tag">frame corruption</span></div>
+      </div>
+      <div class="panel">
+        <div class="r-title" style="font-size:22px">Music Genre</div>
+        <select><option>— NO GENRE —</option></select>
+      </div>
+      <div class="panel">
+        <div class="r-title" style="font-size:22px">Shot Duration</div>
+        <div class="dur">06:00</div><div class="slider"></div>
+      </div>
+      <div class="gen"><b>GENERATE</b><span class="ar">→</span></div>
+    </div>
+
+    <div class="main">
+      <div class="fx-top">
+        <div class="fx-title">EFFECTS</div>
+        <div class="chips"><span class="chip on">ALL</span><span class="chip">PUSH</span><span class="chip">SPIN</span><span class="chip">TIME</span></div>
+        <div class="chips" style="margin-left:16px"><span class="chip onred">SPACE</span><span class="chip">SPEED</span><span class="chip">LENS</span><span class="chip">BODY</span></div>
+      </div>
+
+      <div class="sec">CAMERA MOVES</div>
+      <div class="grid">
+        <div class="card none"><div class="nomark">∅</div><span class="b-none">AUTO</span><span class="b-on">ON</span><div class="ov"><div class="nm">AI DECIDES</div><div class="sb">from frame analysis</div></div></div>
+        <div class="card"><video src="https://cdn.jsdelivr.net/gh/xantrans420/wreckage-clips@main/clips/phase-shift-tracking-shot.mp4" muted loop autoplay playsinline></video><span class="b-move">MOVE</span><div class="ov"><div class="nm">GHOST THROUGH WALLS</div><div class="sb">phase-shift tracking shot</div></div></div>
+        <div class="card sel"><video src="https://cdn.jsdelivr.net/gh/xantrans420/wreckage-clips@main/clips/void-edge-crawl.mp4" muted loop autoplay playsinline></video><span class="b-move">MOVE</span><div class="ov"><div class="nm">EDGE OF THE WORLD PAN</div><div class="sb">void-edge crawl</div></div></div>
+        <div class="card"><video src="https://cdn.jsdelivr.net/gh/xantrans420/wreckage-clips@main/clips/hyperbolic-zoom-through-self.mp4" muted loop autoplay playsinline></video><span class="b-move">MOVE</span><div class="ov"><div class="nm">INSIDE-OUT ZOOM</div><div class="sb">hyperbolic zoom through self</div></div></div>
+        <div class="card"><video src="https://cdn.jsdelivr.net/gh/xantrans420/wreckage-clips@main/clips/klein-bottle-traverse.mp4" muted loop autoplay playsinline></video><span class="b-move">MOVE</span><div class="ov"><div class="nm">INSIDE-OUT FLYTHROUGH</div><div class="sb">klein bottle traverse</div></div></div>
+        <div class="card"><video src="https://cdn.jsdelivr.net/gh/xantrans420/wreckage-clips@main/clips/anti-parallax-slide.mp4" muted loop autoplay playsinline></video><span class="b-move">MOVE</span><div class="ov"><div class="nm">FLAT-WORLD SLIDE</div><div class="sb">anti-parallax slide</div></div></div>
+        <div class="card"><video src="https://cdn.jsdelivr.net/gh/xantrans420/wreckage-clips@main/clips/null-vector-drift.mp4" muted loop autoplay playsinline></video><span class="b-move">MOVE</span><div class="ov"><div class="nm">DIRECTIONLESS DRIFT</div><div class="sb">null vector drift</div></div></div>
+        <div class="card"><video src="https://cdn.jsdelivr.net/gh/xantrans420/wreckage-clips@main/clips/continuous-spatial-traversal.mp4" muted loop autoplay playsinline></video><span class="b-move">MOVE</span><div class="ov"><div class="nm">FLY THROUGH EVERYTHING</div><div class="sb">continuous spatial traversal</div></div></div>
+      </div>
+
+      <div class="sec">WORLD WARPS</div>
+      <div class="grid">
+        <div class="card none"><div class="nomark">∅</div><span class="b-none">NONE</span><span class="b-on">ON</span><div class="ov"><div class="nm">NO WARP</div><div class="sb">clean reality baseline</div></div></div>
+        <div class="card"><video src="https://cdn.jsdelivr.net/gh/xantrans420/wreckage-clips@main/clips/temporal-echo-smear.mp4" muted loop autoplay playsinline></video><span class="b-move" style="background:var(--red);color:#fff">WARP</span><div class="ov"><div class="nm">TIME SMEAR</div><div class="sb">temporal echo smear</div></div></div>
+        <div class="card"><video src="https://cdn.jsdelivr.net/gh/xantrans420/wreckage-clips@main/clips/spacetime-ripple-propagation.mp4" muted loop autoplay playsinline></video><span class="b-move" style="background:var(--red);color:#fff">WARP</span><div class="ov"><div class="nm">REALITY RIPPLE</div><div class="sb">spatial frequency wave</div></div></div>
+        <div class="card"><video src="https://cdn.jsdelivr.net/gh/xantrans420/wreckage-clips@main/clips/inception-world-fold.mp4" muted loop autoplay playsinline></video><span class="b-move" style="background:var(--red);color:#fff">WARP</span><div class="ov"><div class="nm">GRAVITY FOLD</div><div class="sb">impossible architecture</div></div></div>
+      </div>
+    </div>
+  </div>
+  <div class="btick">ACTIVE PRESET: <b>EDGE OF THE WORLD PAN</b> → CHAOS: 5 → DURATION: 06:00 → GENRE: NONE → CHAOS: 5 → DURATION: 06:00 → GENRE: NONE → CHAOS: 5 → DURATION: 06:00 → GENRE: NONE →</div>
+</body></html>
