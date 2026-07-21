@@ -44,8 +44,10 @@ Claude's vision estimates the food's name, calories, and **protein grams** — i
 prefills the log form so you review and tap **Log it**. The photo is sent to the
 API for the estimate only, never stored. Needs the API key (below).
 
-The web build uses a **bright** theme (white ground, near-black text, the same
-orange accent, monospace, hairline cards) — a light take on the LEAN.SYS look.
+The web build uses a **soft "aura" theme**: warm cream ground, blurred blue/cyan
+gradient glows, rounded cards with gentle shadows, airy sans type, a floating
+rounded nav, and one coral-orange highlight accent. Calm and premium rather than
+brutalist.
 
 It also adds a **COACH** tab wired to an LLM: the coach knows your protocol,
 targets, and today's log, and answers in the app's plain terminal voice. It calls the
