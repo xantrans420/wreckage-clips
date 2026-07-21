@@ -31,42 +31,56 @@ sleep`. Abs are built in training, revealed in the kitchen.
 - **HealthKit / Health Connect** — read-only, behind one `HealthProvider`
   interface (Phase 3). Optional — the app is fully usable on manual entry.
 
-## Web build (open in a browser now — with an AI coach)
+## Web build (open in a browser now — one talking bubble)
 
 `lean-sys/web/index.html` is a **single self-contained web app** — no toolchain, no
-phone. Double-click it (or host it anywhere static) and it runs: FUEL / TRAIN /
-BODY / HOME / SYS, the two-operator switcher, weight trend, and progress photos,
-all persisted in the browser (localStorage; photos in IndexedDB — nothing is
+phone. Double-click it (or host it anywhere static) and it runs, everything
+persisted in the browser (localStorage; photos in IndexedDB — nothing is
 uploaded).
 
-**Snap-to-log (FUEL):** tap "Estimate from a photo", point at your plate, and
-Claude's vision estimates the food's name, calories, and **protein grams** — it
-prefills the log form so you review and tap **Log it**. The photo is sent to the
-API for the estimate only, never stored. Needs the API key (below).
+It's **not a set of tabs.** The whole app is **one living gradient bubble that
+talks to you** and walks you through the day, and you answer with **at most three
+buttons** at a time. Open it and it greets you — *"Evening, Toms. Ready to get 1%
+better today?"* — then leads you, one calm question per screen:
 
-The web build uses a **soft "aura" theme**: warm cream ground, blurred blue/cyan
-gradient glows, rounded cards with gentle shadows, airy sans type, a floating
-rounded nav, and one coral-orange highlight accent. Calm and premium rather than
-brutalist. HOME leads with a full **gradient-aura hero** — the blue/cyan glow is
-the dominant visual, with one big thin protein number floating in it and a lot of
-whitespace; the aura turns green the day protein is hit.
+- **Fuel** — *"You've got 143g of protein left today. What have you eaten?"* →
+  **📷 Photo my plate** · **Quick add** · **Nothing yet**. It loops (*"Logged. 98g
+  to go."*) until you're done, and the bubble turns **green** the moment protein
+  is hit.
+- **Train** — on a gym day: *"Training day — session B is up. Did you train?"* →
+  **Log my sets** · **Just mark it done** · **Resting today**. On a rest day it
+  just says so.
+- **Weekly photo** — when you're due: *"Same angle — I'll ghost your last shot."*
+  → **Take it** · **Later**.
+- **Weigh-in** — on your photo day: *"Step on the scale? Morning, empty."*
+- **Done** — *"That's 1% better, Toms,"* with your **why** underneath →
+  **See my progress** · **Ask the coach** · **Done**.
 
-It also adds a **COACH** tab wired to an LLM: the coach knows your protocol,
-targets, and today's log, and answers in the app's plain terminal voice. It calls the
+Everything else is one tap away and out of the way: a tiny **⇄** by your name
+swaps operators (you / your wife), and the **⚙** opens settings (targets,
+operator edit, API key, reminders, backup, reset). No tab bar, no dense forms on
+the main screen — just the bubble, one line of readable text, and up to three
+buttons.
+
+**Snap-to-log:** on the Fuel question, **📷 Photo my plate** points Claude's
+vision at your plate; it estimates the food's name, calories, and **protein
+grams** and the bubble asks *"Looks like grilled chicken — about 45g protein.
+Log it?"* → **Log it** · **Retake** · **Not that**. The photo is sent to the API
+for the estimate only, never stored. Needs the API key (settings).
+
+**Ask the coach** (end of the flow) opens a chat wired to an LLM that knows your
+protocol, targets, and today's log, in the app's plain voice. It calls the
 Anthropic API directly from the browser using **your own API key** (from
 console.anthropic.com), stored only on your device and sent only to
-`api.anthropic.com` — set it in **SYS**. Model defaults to Claude Opus 4.8; switch
-to Sonnet or Haiku there to cut cost. **SYS → Export** writes a JSON backup
-(clearing browser data wipes everything, so back up first).
+`api.anthropic.com` — set it in **settings**. Model defaults to Claude Opus 4.8;
+switch to Sonnet or Haiku there to cut cost. Settings → **Export** writes a JSON
+backup (clearing browser data wipes everything, so back up first).
 
-**Daily flow (the simple front door):** opening the app once a day plays a
-**particle intro** — dots swarm into "1% BETTER" over *"How are you feeling
-today? Ready to get 1% better?"*. HOME then shows the **gradient hero** — protein
-left today as one big thin number in the aura — over three **hairline rows**
-(Fuel, Train, Weekly photo), each jumping straight to the thing. The detailed
-logging still lives in the tabs, but you don't have to touch it daily.
+The look is a **soft "aura" theme**: warm cream ground, one big blurred blue/cyan
+gradient bubble that gently breathes, airy thin type, and a single coral-orange
+accent on the primary button. Calm and premium, not busy.
 
-**The journey (BODY):** one **progress photo**, same angle each week. The camera
+**The journey (See my progress):** one **progress photo**, same angle each week. The camera
 opens with your **last shot ghosted at 40%** so you line up the same angle and
 distance every time (first shot sets your template); it falls back to your
 device camera where the in-app camera isn't available. From those the app builds
@@ -76,14 +90,15 @@ START → weekly → NOW, captioned with the week, date and weight. It's the
 **Export shareable video** renders the reel to a real file on your device
 (`.mp4` where the browser supports it, else `.webm`) with title/end cards and
 per-frame captions — no server, no library. **Weekly reminder:** pick a photo
-day in SYS and **add it to your phone calendar (.ics)** — a repeating weekly
+day in settings and **add it to your phone calendar (.ics)** — a repeating weekly
 event with an alarm that fires even when the app is closed (the reliable path);
-an in-app "photo day" banner also appears when you're due.
+the bubble also brings the photo up itself when you're due.
 
-BODY also carries the motivation layer: your editable **mission** ("why" —
-defaults to being able to run and play with your kids in 10 years), a **protein
-streak**, **weeks-in / sessions** counts, unlockable **milestone** badges, and a
-rotating deck of health-span facts. The mission also shows on HOME.
+The progress view also carries the motivation layer: your editable **mission**
+("why" — defaults to being able to run and play with your kids in 10 years), a
+**protein streak**, **weeks-in / sessions** counts, unlockable **milestone**
+badges, and a rotating deck of health-span facts. The mission also closes out
+every daily flow.
 
 > The native Expo app below is the fuller build (health/watch sync, notifications).
 > The web build is the "use it today, with a coach" path. They don't share storage.

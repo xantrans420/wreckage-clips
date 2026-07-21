@@ -170,17 +170,50 @@
   .min-row .r.hot{color:var(--accent)}
   .min-row .r.ok{color:var(--good)}
   .home-mission{text-align:center;color:var(--dim);font-size:13px;line-height:1.55;margin-top:34px;padding:0 8px}
+
+  /* ============ talking-bubble flow ============ */
+  #app{flex:1 1 auto;display:flex;flex-direction:column;min-height:100dvh}
+  .topbar{position:fixed;top:0;left:0;right:0;z-index:4;display:flex;align-items:center;justify-content:space-between;
+    padding:16px 20px;font-size:13px;color:var(--faint)}
+  .topbar .who{cursor:pointer;font-weight:600;color:var(--dim);letter-spacing:.2px}
+  .topbar .date{color:var(--faint)}
+  .topbar .gear{cursor:pointer;font-size:17px;opacity:.55;line-height:1}
+  .stage{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    text-align:center;padding:80px 22px 40px;width:100%;max-width:520px;margin:0 auto}
+  .orb2{width:min(58vw,240px);aspect-ratio:1;border-radius:50%;flex:0 0 auto;
+    background:radial-gradient(closest-side at 44% 40%,rgba(150,205,255,.95),rgba(120,225,235,.5) 44%,rgba(255,190,150,.24) 66%,transparent 78%);
+    filter:blur(11px);animation:breathe 7s ease-in-out infinite;will-change:transform,opacity}
+  .orb2.good{background:radial-gradient(closest-side at 48% 40%,rgba(150,235,180,.9),rgba(150,220,235,.42) 46%,transparent 78%)}
+  .orb2.rough{background:radial-gradient(closest-side at 44% 40%,rgba(255,180,140,.9),rgba(255,150,150,.4) 46%,rgba(190,200,255,.25) 68%,transparent 80%)}
+  @keyframes breathe{0%,100%{transform:scale(1) translateY(0);opacity:.9}50%{transform:scale(1.06) translateY(-1.5%);opacity:1}}
+  .say{font-size:clamp(21px,5.6vw,27px);font-weight:300;line-height:1.42;color:var(--text);
+    max-width:15ch;margin:6vh auto 0;min-height:2.6em;opacity:0}
+  .say.say-in{animation:sayin .55s ease forwards}
+  .say b{font-weight:600} .say .em{color:var(--accent);font-weight:500}
+  @keyframes sayin{from{opacity:0;transform:translateY(10px);filter:blur(5px)}to{opacity:1;transform:none;filter:none}}
+  .say-sub{font-size:14px;color:var(--dim);margin:16px auto 0;max-width:26ch;line-height:1.55;opacity:0;animation:sayin .55s .12s ease forwards}
+  .choices{display:flex;flex-direction:column;gap:11px;width:min(90vw,340px);margin:7vh auto 0;transition:opacity .45s ease}
+  .choice{padding:16px 18px;border-radius:16px;border:1px solid var(--line);background:rgba(255,255,255,.72);
+    font-size:16px;font-weight:500;color:var(--text);cursor:pointer;box-shadow:var(--shadow);backdrop-filter:blur(8px);transition:.14s}
+  .choice:active{transform:translateY(1px)}
+  .choice.primary{background:var(--accent);color:#fff;border-color:transparent;box-shadow:0 10px 26px rgba(255,90,0,.3)}
+
+  /* overlay sheet (settings / coach / progress / picker) */
+  .sheet{position:fixed;inset:0;z-index:60;background:rgba(243,239,230,.78);backdrop-filter:blur(14px);overflow-y:auto}
+  .sheet-inner{max-width:560px;width:100%;margin:0 auto;padding:22px 16px 48px}
+  .sheet-h{display:flex;justify-content:space-between;align-items:center;font-size:19px;font-weight:600;margin-bottom:16px}
+  .sheet-h .x{cursor:pointer;color:var(--dim);font-size:17px;padding:4px 8px}
+  .pick{display:block;width:100%;text-align:left;border:1px solid var(--line);background:rgba(255,255,255,.75);
+    padding:15px 16px;border-radius:15px;margin-bottom:10px;cursor:pointer;box-shadow:var(--shadow)}
+  .pick b{font-size:16px;font-weight:500} .pick span{display:block;color:var(--dim);font-size:12px;margin-top:3px}
 </style>
 </head>
 <body>
   <div class="aura"><b class="b1"></b><b class="b2"></b><b class="b3"></b></div>
   <div class="grain"></div>
-  <header class="app">
-    <div class="title" id="scr-title">LEAN.SYS</div>
-    <div class="pills" id="pills"></div>
-  </header>
-  <main class="screen" id="screen" tabindex="-1"></main>
-  <nav class="tabbar" id="tabbar"></nav>
+  <div id="app"></div>
+  <input type="file" id="photo-input" accept="image/*" capture="user" style="display:none"/>
+  <input type="file" id="food-photo-input" accept="image/*" capture="environment" style="display:none"/>
 
 <script>
 "use strict";
@@ -547,96 +580,146 @@ async function shootCamera(){
   const latest=d().weight[d().weight.length-1];
   await photoPut({id:S.activeId+'-'+today()+'-front-'+Date.now(),opId:S.activeId,date:today(),angle:'front',dataUrl,kg:latest?latest.kg:null});
   d().lastPhotoDate=today(); save(); closeCamera();
-  if(view.tab==='body'){ buildJourney(); renderPhotoHist(); } else { view.tab='body'; render(); }
+  if(document.getElementById('ov')){ buildJourney(); renderPhotoHist(); } else { renderStage(); }
 }
 
-// ---- today's plan (the daily flow) ----
-function todayCard(){
+// ============================ THE TALKING BUBBLE (guided daily flow) ============================
+// One screen. A living bubble that talks, asks, and takes answers — never more than 3 buttons.
+const FLOW=['greet','fuel','train','photo','weigh','done'];
+let flow={i:0, ate:false, mood:''};
+let CUR=null;
+function firstName(){ const n=op().name.trim(); const w=n.split(/\s+/)[0]; return esc(/^operator$/i.test(w)?n:w); }
+function timeGreet(){ const h=new Date().getHours(); return h<5?'Late one':h<11?'Morning':h<17?'Afternoon':h<22?'Evening':'Late one'; }
+
+function beat(){
   const o=op(), t=targets(o), tot=dayTotals(today());
-  const proteinOk=tot.protein>=t.protein && t.protein>0;
+  const remain=Math.max(0,Math.round(t.protein-tot.protein)), pdone=remain<=0 && t.protein>0;
   const gymToday=o.gymDays.includes(weekdayOf(today())), sd=sessionDone(today()), due=photoDue();
-  const item=(goto,label,val,ok,tone)=>`<div class="rowline" data-goto="${goto}" style="cursor:pointer">
-    <span class="check ${ok?'on':''}" style="margin-right:10px"></span><span style="flex:1">${label}</span>
-    <span style="font-size:12px;color:${tone||'var(--dim)'}">${val} ›</span></div>`;
-  return `<div class="card"><div class="label">Today's plan</div><div style="height:6px"></div>
-    ${item('fuel','Protein', proteinOk?'hit':(Math.round(t.protein-tot.protein)+'g to go'), proteinOk, proteinOk?'var(--good)':'var(--accent)')}
-    ${item('train','Train', sd?'done':(gymToday?('Session '+nextDay()):'rest day'), sd||!gymToday, (gymToday&&!sd)?'var(--accent)':'var(--good)')}
-    ${item('camera','Weekly photo', due?'take it':'done', !due, due?'var(--accent)':'var(--good)')}
-  </div>`;
+  const phase=FLOW[flow.i];
+
+  if(phase==='greet') return { mood:flow.mood,
+    say:`${timeGreet()}, <b>${firstName()}</b>. Ready to get <span class="em">1% better</span> today?`,
+    choices:[{t:"Let's go",primary:true,go:adv},{t:'Feeling rough',go:()=>{flow.mood='rough';adv();}}] };
+
+  if(phase==='fuel'){
+    if(pdone) return { mood:'good',
+      say:`Protein's <span class="em">done</span> — ${Math.round(tot.protein)}g in. That's the hard part won.`,
+      choices:[{t:'Next',primary:true,go:adv}] };
+    return {
+      say: flow.ate ? `Logged. <b>${remain}g</b> of protein still to go.`
+                    : `You've got <b>${remain}g</b> of protein left today. What have you eaten?`,
+      choices:[
+        {t:'📷 Photo my plate',primary:true,go:foodPhoto},
+        {t:'Quick add',go:foodPicker},
+        flow.ate?{t:'Done eating',go:adv}:{t:'Nothing yet',go:adv}
+      ] };
+  }
+
+  if(phase==='train'){
+    if(sd) return { say:`Session logged. Rotation moves to <b>${nextDay()}</b>. Now recover.`, choices:[{t:'Next',primary:true,go:adv}] };
+    if(gymToday) return { say:`Training day — <b>session ${nextDay()}</b> is up. Did you train?`,
+      choices:[{t:'Log my sets',primary:true,go:trainSheet},{t:'Just mark it done',go:markSessionQuick},{t:'Resting today',go:adv}] };
+    return { say:`No session scheduled today. Walk, hit protein, sleep well.`, choices:[{t:'Next',primary:true,go:adv}] };
+  }
+
+  if(phase==='photo'){
+    if(due) return { say:`Weekly <span class="em">photo</span> time. Same angle — I'll ghost your last shot so you line it up.`,
+      choices:[{t:'Take it',primary:true,go:takePhoto},{t:'Later',go:adv}] };
+    return null;
+  }
+
+  if(phase==='weigh'){
+    const isDay=weekdayOf(today())===(o.photoDay||'Sun'), wToday=d().weight.some(w=>w.date===today());
+    if(isDay && !wToday) return { say:`Step on the scale? Morning, empty — the most honest number.`,
+      choices:[{t:'Log weight',primary:true,go:weighIn},{t:'Skip',go:adv}] };
+    return null;
+  }
+
+  // done
+  return { mood:'good',
+    say:`That's <span class="em">1% better</span>, ${firstName()}.`,
+    sub:esc(o.mission),
+    choices:[{t:'See my progress',primary:true,go:showProgress},{t:'Ask the coach',go:showCoach},{t:'Done',go:finish}] };
 }
 
-// ============================ SCREENS ============================
-function homeScreen(){
-  const o=op(), t=targets(o), tot=dayTotals(today());
-  const remain=Math.max(0,Math.round(t.protein-tot.protein)), done=remain<=0;
-  const kcalTarget=o.def>0?t.cut:t.maint, kcalRemain=Math.round(kcalTarget-tot.kcal);
-  const gymToday=o.gymDays.includes(weekdayOf(today())), sd=sessionDone(today()), due=photoDue();
-  return `
-    <div class="home">
-      <div class="orb ${done?'hit':''}"></div>
-      <div class="home-head"><b>${esc(o.name)}</b><span>${shortDate(today())}</span></div>
-      <div class="hero-lead">
-        <div class="lead-label">${done?'Protein · done':'Protein left today'}</div>
-        <div class="lead-num ${done?'done':''}"><em>${remain}</em><span>g</span></div>
-        <div class="lead-sub">${Math.round(tot.protein)} / ${t.protein} g · ${kcalRemain>=0?kcalRemain+' kcal left':Math.abs(kcalRemain)+' kcal over'}</div>
-      </div>
-      <div class="min-row" data-goto="fuel"><span>Fuel</span><span class="r ${done?'ok':'hot'}">${done?'protein hit':remain+'g to go'}</span></div>
-      <div class="min-row" data-goto="train"><span>Train</span><span class="r ${sd?'ok':(gymToday?'hot':'')}">${sd?'done':(gymToday?('session '+nextDay()):'rest day')}</span></div>
-      <div class="min-row" data-goto="camera"><span>Weekly photo</span><span class="r ${due?'hot':'ok'}">${due?'take it':'done'}</span></div>
-      <div class="home-mission">${esc(o.mission)}</div>
-    </div>`;
+function adv(){ flow.i=Math.min(flow.i+1,FLOW.length-1); renderStage(); }
+
+function renderStage(){
+  let b=beat(), guard=0;
+  while(b===null && flow.i<FLOW.length-1 && guard++<12){ flow.i++; b=beat(); }
+  renderBeat(b);
+}
+function renderBeat(b){
+  CUR=b;
+  const stage=document.getElementById('stage'); if(!stage) return;
+  stage.innerHTML=`
+    <div class="orb2 ${b.mood||''}"></div>
+    <div class="say" id="say"></div>
+    ${b.sub?`<div class="say-sub">${b.sub}</div>`:''}
+    <div class="choices" id="choices" style="opacity:0"></div>`;
+  const say=document.getElementById('say');
+  say.innerHTML=b.say; requestAnimationFrame(()=>say.classList.add('say-in'));
+  setTimeout(()=>{
+    const cbox=document.getElementById('choices'); if(!cbox) return;
+    cbox.innerHTML=(b.choices||[]).filter(Boolean).map((c,i)=>`<button class="choice ${c.primary?'primary':''}" data-choice="${i}">${c.t}</button>`).join('');
+    requestAnimationFrame(()=>{ cbox.style.opacity='1'; });
+  }, b.choices&&b.choices.length?470:0);
 }
 
-function fuelScreen(){
-  const o=op(), t=targets(o), tot=dayTotals(today());
-  const remain=Math.max(0,t.protein-tot.protein), kcalTarget=o.def>0?t.cut:t.maint;
-  const log=(d().food[today()]||[]);
-  return `
-    <div class="sub">${esc(o.name)} · protein is the hero metric</div>
-    <div class="card accent">
-      <div class="label">Protein</div>
-      <div class="stats" style="margin-top:6px">
-        <div class="stat"><div class="k">Logged</div><div class="v accent">${Math.round(tot.protein)}<small> g</small></div></div>
-        <div class="stat"><div class="k">Remaining</div><div class="v">${Math.round(remain)}<small> g</small></div></div>
-        <div class="stat"><div class="k">Target</div><div class="v">${t.protein}<small> g</small></div></div>
-      </div>
-      <div class="bar"><i style="width:${pct(tot.protein,t.protein)}%"></i></div>
-    </div>
-    <div class="card">
-      <div class="stats"><div class="stat"><div class="k">Calories</div><div class="v ${tot.kcal>kcalTarget?'bad':''}">${Math.round(tot.kcal)}<small> / ${kcalTarget}</small></div></div></div>
-      <div class="bar ${tot.kcal>kcalTarget?'over':'muted'}"><i style="width:${pct(tot.kcal,kcalTarget)}%"></i></div>
-    </div>
-    <div class="label">My foods — tap to log</div>
-    <div class="chips" id="chips">
-      ${d().savedFoods.map((f,i)=>`<button class="chip" data-quick="${i}"><b>${esc(f.name)}</b><span>${f.kcal} · ${f.protein}p · hold=del</span></button>`).join('')}
-    </div>
-    <div class="divider"></div>
-    <div class="label">Snap food — estimate protein from a photo</div>
-    <div class="faint" style="margin:4px 0 8px">Point at your plate. The photo is sent to the API for an estimate, not stored. Always review before logging — vision estimates are rough.</div>
-    <button class="btn" id="snap-food">📷 Estimate from a photo</button>
-    <div id="snap-status" class="faint" style="margin-top:8px"></div>
-    <input type="file" id="food-photo-input" accept="image/*" capture="environment" style="display:none"/>
-    <div class="divider"></div>
-    <div class="label">Log food (protein mandatory)</div>
-    <div style="height:8px"></div>
-    <input id="f-name" placeholder="food name" />
-    <div style="height:8px"></div>
-    <div class="row">
-      <div class="field"><span class="label">kcal</span><input id="f-kcal" inputmode="numeric" placeholder="0"/></div>
-      <div class="field"><span class="label">protein g</span><input id="f-prot" inputmode="numeric" placeholder="0"/></div>
-    </div>
-    <div style="height:8px"></div>
-    <label style="display:flex;gap:8px;align-items:center;margin:6px 0;cursor:pointer" class="dim">
-      <span class="check" id="f-savechk"></span> <span style="font-size:12px">also save to My Foods</span></label>
-    <button class="btn accent" id="f-add">Log it</button>
-    ${log.length?`<div class="divider"></div><div class="label">Today — ${log.length} entries</div><div style="height:6px"></div>
-      ${log.map((e,i)=>`<div class="rowline"><span style="flex:1">${esc(e.name)}</span><span class="dim">${Math.round(e.kcal)} kcal</span><span class="p">${Math.round(e.protein)}p</span><button class="del" data-delfood="${i}">DEL</button></div>`).join('')}`:''}
-    <div class="divider"></div>
-    <div class="label">Plate formula</div>
-    <div class="card" style="margin-top:8px">${PLATE.map(x=>`<div class="dim" style="font-size:12px;margin-bottom:3px">· ${x}</div>`).join('')}</div>
-    <div class="faint">Batch-prep: cook protein + carbs in bulk for 3 days, assemble a plate in 90s.</div>
-    <div style="height:24px"></div>`;
+// ---- overlay sheet helper (settings / coach / progress / quick-add) ----
+let overlayState=null;
+function showOverlay(build,onmount){ overlayState={build,onmount}; paintOverlay(); }
+function closeOverlay(){ overlayState=null; const o=document.getElementById('ov'); if(o) o.remove(); }
+function paintOverlay(){
+  let o=document.getElementById('ov');
+  if(!overlayState){ if(o) o.remove(); return; }
+  if(!o){ o=el('<div id="ov" class="sheet"></div>'); document.body.appendChild(o); }
+  o.innerHTML=`<div class="sheet-inner">${overlayState.build()}</div>`;
+  if(overlayState.onmount) overlayState.onmount();
 }
+
+// ---- flow actions ----
+function foodPhoto(){
+  if(!S.apiKey){ renderBeat({ say:`The plate-reader uses the Anthropic API. Add your key in settings first.`,
+    choices:[{t:'Open settings',primary:true,go:showSettings},{t:'Quick add instead',go:foodPicker},{t:'Back',go:renderStage}] }); return; }
+  document.getElementById('food-photo-input').click();
+}
+function foodPicker(){
+  showOverlay(()=>`
+    <div class="sheet-h"><span>Quick add</span><span class="x" data-close>✕</span></div>
+    ${d().savedFoods.map((f,i)=>`<button class="pick" data-pick="${i}"><b>${esc(f.name)}</b><span>${f.protein}g protein · ${f.kcal} kcal · hold to delete</span></button>`).join('')||'<div class="faint">No saved foods.</div>'}
+    <div class="faint" style="margin-top:8px">Tap one to log it.</div>`);
+}
+function trainSheet(){ view.trainDay=nextDay(); showOverlay(()=>`<div class="sheet-h"><span>Log your session</span><span class="x" data-close>✕</span></div>${trainScreen()}`); }
+function markSessionQuick(){ const day=nextDay(); if(!sessionDone(today())) d().sessions.push({date:today(),day}); save(); renderStage(); }
+function takePhoto(){ openCamera(); }
+function weighIn(){
+  showOverlay(()=>`
+    <div class="sheet-h"><span>Weigh-in</span><span class="x" data-close>✕</span></div>
+    <div class="faint" style="margin-bottom:12px;line-height:1.5">Morning, empty. It's the weekly trend that matters, not the daily number.</div>
+    <input id="w-kg" inputmode="decimal" placeholder="0.0" style="font-size:20px"/>
+    <div style="height:12px"></div>
+    <button class="btn accent" id="w-save2">Save weight</button>`);
+}
+function showProgress(){
+  showOverlay(()=>`
+    <div class="sheet-h"><span>Your progress</span><span class="x" data-close>✕</span></div>
+    <div id="journey"></div>
+    <div style="height:6px"></div>
+    <button class="btn accent" id="open-camera">Take this week's photo</button>
+    <div id="photo-hist"></div>
+    <div style="height:8px"></div>
+    <a id="compare-link" class="dim" style="font-size:12px;cursor:pointer">COMPARE TWO DATES →</a>`,
+    ()=>{ buildJourney(); renderPhotoHist(); });
+}
+function showCoach(){
+  showOverlay(()=>`<div class="sheet-h"><span>Coach</span><span class="x" data-close>✕</span></div>${coachScreen()}`,
+    ()=>{ const c=document.getElementById('chat'); if(c) c.scrollTop=c.scrollHeight; });
+}
+function showSettings(){ showOverlay(()=>`<div class="sheet-h"><span>Settings</span><span class="x" data-close>✕</span></div>${sysScreen()}`); }
+function finish(){ renderBeat({ mood:'good',
+  say:`Good work, ${firstName()}. See you tomorrow — <span class="em">1% better</span>.`,
+  choices:[{t:'Start over',go:()=>{flow={i:0,ate:false,mood:''};renderStage();}}] }); }
 
 function trainScreen(){
   const o=op(); const day=view.trainDay||nextDay(); const rows=splitFor(o)[day];
@@ -810,20 +893,20 @@ function sysScreen(){
     <div style="height:24px"></div>`;
 }
 
-const SCREENS={home:homeScreen,fuel:fuelScreen,train:trainScreen,body:bodyScreen,coach:coachScreen,sys:sysScreen};
-
 // ============================ RENDER ============================
 function render(){
   reelPause();
-  document.getElementById('scr-title').textContent = view.tab==='home'?'LEAN.SYS':(TABS.find(t=>t[0]===view.tab)[2]);
-  document.getElementById('pills').innerHTML = Object.values(S.operators)
-    .map(q=>`<button class="pill" data-profile="${q.id}" aria-pressed="${q.id===S.activeId}">${esc(q.name).toUpperCase().slice(0,10)}</button>`).join('');
-  const scr=document.getElementById('screen');
-  scr.innerHTML=SCREENS[view.tab]();
-  scr.scrollTop=0;
-  document.getElementById('tabbar').innerHTML=TABS.map(([id,g,label])=>`<button data-tab="${id}" aria-pressed="${id===view.tab}"><span class="g">${g}</span><span class="t">${label}</span></button>`).join('');
-  if(view.tab==='body'){ buildJourney(); renderPhotoHist(); }
-  if(view.tab==='coach'){ const c=document.getElementById('chat'); if(c) c.scrollTop=c.scrollHeight; }
+  const app=document.getElementById('app'); if(!app) return;
+  const many=Object.keys(S.operators).length>1;
+  app.innerHTML=`
+    <div class="topbar">
+      <span class="who" data-switchop>${esc(op().name)}${many?' ⇄':''}</span>
+      <span class="date">${shortDate(today())}</span>
+      <span class="gear" data-settings>⚙</span>
+    </div>
+    <div class="stage" id="stage"></div>`;
+  renderStage();
+  paintOverlay();
 }
 
 async function renderPhotoHist(){
@@ -929,11 +1012,23 @@ document.body.addEventListener('click', async (e)=>{
   const T=e.target;
   const closest=(a)=>T.closest(a);
 
-  // nav
-  const pill=closest('[data-profile]'); if(pill){ S.activeId=pill.dataset.profile; save(); view.trainDay=null; render(); return; }
-  const opRow=closest('[data-op]'); if(opRow){ S.activeId=opRow.dataset.op; save(); view.trainDay=null; render(); return; }
-  const tab=closest('[data-tab]'); if(tab){ view.tab=tab.dataset.tab; if(view.tab!=='train') view.trainDay=null; render(); return; }
-  if(T.id==='go-sys'){ view.tab='sys'; render(); return; }
+  // bubble choices (the ≤3 flow buttons)
+  const ch=closest('[data-choice]'); if(ch){ const c=CUR&&CUR.choices&&CUR.choices.filter(Boolean)[+ch.dataset.choice]; if(c&&c.go) c.go(); return; }
+  // overlay close
+  if(closest('[data-close]')){ closeOverlay(); return; }
+  // quick-add pick
+  const pk=closest('[data-pick]'); if(pk){ const f=d().savedFoods[+pk.dataset.pick];
+    (d().food[today()]=d().food[today()]||[]).push({name:f.name,kcal:f.kcal,protein:f.protein}); flow.ate=true; save(); closeOverlay(); renderStage(); return; }
+
+  // top bar
+  if(closest('[data-switchop]')){ const ids=Object.keys(S.operators); if(ids.length>1){ const i=ids.indexOf(S.activeId);
+    S.activeId=ids[(i+1)%ids.length]; save(); flow={i:0,ate:false,mood:''}; view.trainDay=null; render(); } return; }
+  if(closest('[data-settings]')){ showSettings(); return; }
+
+  // operator rows (inside settings)
+  const pill=closest('[data-profile]'); if(pill){ S.activeId=pill.dataset.profile; save(); flow={i:0,ate:false,mood:''}; view.trainDay=null; render(); return; }
+  const opRow=closest('[data-op]'); if(opRow){ S.activeId=opRow.dataset.op; save(); flow={i:0,ate:false,mood:''}; view.trainDay=null; render(); return; }
+  if(T.id==='go-sys'){ showSettings(); return; }
 
   // fuel
   const quick=closest('[data-quick]'); if(quick){ const f=d().savedFoods[+quick.dataset.quick];
@@ -959,9 +1054,12 @@ document.body.addEventListener('click', async (e)=>{
     const sets=[]; for(let k=0;k<ws.length;k++){ const w=ws[k].value.trim(),r=rs[k].value.trim(); if(w!==''||r!=='') sets.push({w:num(w),reps:num(r)}); }
     (d().lifts[today()]=d().lifts[today()]||{})[exId]=sets; save(); render(); return;
   }
-  if(T.id==='mark-done'){ const day=view.trainDay||nextDay(); if(!sessionDone(today())) d().sessions.push({date:today(),day}); save(); render(); return; }
+  if(T.id==='mark-done'){ const day=view.trainDay||nextDay(); if(!sessionDone(today())) d().sessions.push({date:today(),day}); save(); closeOverlay(); renderStage(); return; }
 
   // body
+  if(T.id==='w-save2'){ const kg=num(document.getElementById('w-kg').value); if(kg<=0){alert('Enter a weight.');return;}
+    const t=today(); const ex=d().weight.find(w=>w.date===t); if(ex) ex.kg=kg; else d().weight.push({date:t,kg});
+    op().w=kg; save(); closeOverlay(); renderStage(); return; }
   if(T.id==='w-save'){ const kg=num(document.getElementById('w-kg').value); if(kg<=0){alert('Enter a weight.');return;}
     const t=today(); const ex=d().weight.find(w=>w.date===t); if(ex) ex.kg=kg; else d().weight.push({date:t,kg});
     op().w=kg; save(); render(); return; }
@@ -1009,9 +1107,9 @@ document.body.addEventListener('click', async (e)=>{
 // long-press to delete photo / saved food
 let _lp=null;
 document.body.addEventListener('pointerdown',(e)=>{
-  const p=e.target.closest('[data-delphoto]'); const q=e.target.closest('[data-quick]');
+  const p=e.target.closest('[data-delphoto]'); const q=e.target.closest('[data-pick]');
   if(p){ _lp=setTimeout(async()=>{ if(confirm('Delete this photo?')){ await photoDel(p.dataset.delphoto); renderPhotoHist(); } },550); }
-  else if(q){ _lp=setTimeout(()=>{ if(confirm('Delete this saved food?')){ d().savedFoods.splice(+q.dataset.quick,1); save(); render(); } },550); }
+  else if(q){ _lp=setTimeout(()=>{ if(confirm('Delete this saved food?')){ d().savedFoods.splice(+q.dataset.pick,1); save(); paintOverlay(); } },550); }
 });
 document.body.addEventListener('pointerup',()=>{ if(_lp){ clearTimeout(_lp); _lp=null; } });
 document.body.addEventListener('pointerleave',()=>{ if(_lp){ clearTimeout(_lp); _lp=null; } });
@@ -1027,7 +1125,7 @@ document.body.addEventListener('keydown',(e)=>{
 // photo file inputs
 document.body.addEventListener('change', async (e)=>{
   if(e.target.id==='photo-day'){ op().photoDay=e.target.value; save(); return; }
-  // BODY: progress photo → store in IndexedDB
+  // progress photo (fallback path / gallery) → store in IndexedDB
   if(e.target.id==='photo-input'){
     const file=e.target.files[0]; e.target.value=''; if(!file) return;
     const angle=window._shootAngle||'front';
@@ -1036,23 +1134,28 @@ document.body.addEventListener('change', async (e)=>{
       const latest=d().weight[d().weight.length-1];
       await photoPut({id:S.activeId+'-'+today()+'-'+angle+'-'+Date.now(),opId:S.activeId,date:today(),angle,dataUrl,kg:latest?latest.kg:null});
       d().lastPhotoDate=today(); save();
-      buildJourney(); renderPhotoHist();
+      if(document.getElementById('ov')){ buildJourney(); renderPhotoHist(); } else { renderStage(); }
     }catch(err){ alert('Photo failed: '+err.message); }
     return;
   }
-  // FUEL: food photo → estimate protein via the API, prefill the log form
+  // food photo → estimate protein via the API, confirm in the bubble
   if(e.target.id==='food-photo-input'){
     const file=e.target.files[0]; e.target.value=''; if(!file) return;
-    const status=document.getElementById('snap-status');
-    if(status){ status.style.color='var(--dim)'; status.textContent='analysing photo…'; }
+    renderBeat({say:`Reading your plate…`, choices:[]});
     try{
       const dataUrl=await fileToJpeg(file,900,0.8);
       const est=await estimateFoodFromPhoto(dataUrl);
-      const nameEl=document.getElementById('f-name'), kcalEl=document.getElementById('f-kcal'), protEl=document.getElementById('f-prot');
-      if(nameEl) nameEl.value=est.name; if(kcalEl) kcalEl.value=est.kcal; if(protEl) protEl.value=est.protein;
-      if(status){ status.style.color='var(--accent)'; status.textContent=`≈ ${est.protein} g protein · ${est.kcal} kcal — ${est.note} · review below, then Log it`; }
+      renderBeat({
+        say:`Looks like <b>${esc(est.name)}</b> — about <span class="em">${est.protein}g protein</span>, ${est.kcal} kcal.${est.note?` <span style="color:var(--faint);font-size:.8em">(${esc(est.note)})</span>`:''}`,
+        sub:'Log it?',
+        choices:[
+          {t:'Log it',primary:true,go:()=>{ (d().food[today()]=d().food[today()]||[]).push({name:est.name,kcal:est.kcal,protein:est.protein}); flow.ate=true; save(); renderStage(); }},
+          {t:'Retake',go:foodPhoto},
+          {t:'Not that',go:renderStage}
+        ]});
     }catch(err){
-      if(status){ status.style.color='var(--bad)'; status.textContent='estimate failed: '+err.message+' (check API key/model in SYS)'; }
+      renderBeat({ say:`Couldn't read that one — ${esc(err.message)}.`,
+        choices:[{t:'Try again',primary:true,go:foodPhoto},{t:'Skip',go:renderStage}] });
     }
     return;
   }
