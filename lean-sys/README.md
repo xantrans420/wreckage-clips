@@ -44,6 +44,9 @@ Claude's vision estimates the food's name, calories, and **protein grams** — i
 prefills the log form so you review and tap **Log it**. The photo is sent to the
 API for the estimate only, never stored. Needs the API key (below).
 
+The web build uses a **bright** theme (white ground, near-black text, the same
+orange accent, monospace, hairline cards) — a light take on the LEAN.SYS look.
+
 It also adds a **COACH** tab wired to an LLM: the coach knows your protocol,
 targets, and today's log, and answers in the app's plain terminal voice. It calls the
 Anthropic API directly from the browser using **your own API key** (from

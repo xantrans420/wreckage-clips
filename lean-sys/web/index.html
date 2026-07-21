@@ -4,12 +4,12 @@
 <meta charset="utf-8" />
 <title>LEAN.SYS</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<meta name="theme-color" content="#050505" />
+<meta name="theme-color" content="#ffffff" />
 <style>
   :root{
-    --bg:#050505; --surface:#0c0c0c; --surface2:#111; --line:#242424; --line2:#3a3a3a;
-    --text:#e8e8e8; --dim:#8a8a8a; --faint:#555; --accent:#ff5a00;
-    --good:#4bd66b; --warn:#e0b020; --bad:#e0432a;
+    --bg:#ffffff; --surface:#f6f6f4; --surface2:#eeeeeb; --line:#e2e2dd; --line2:#c9c9c2;
+    --text:#15150f; --dim:#6b6b63; --faint:#9a9a90; --accent:#ff5a00;
+    --good:#1f9d4d; --warn:#b5820c; --bad:#d2361c;
     --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,"DejaVu Sans Mono","Roboto Mono",monospace;
   }
   *{box-sizing:border-box;margin:0;padding:0}
@@ -92,7 +92,7 @@
   .setgrid .idx{color:var(--dim);font-size:12px}
 
   .photos{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
-  .frame{aspect-ratio:3/4;border:1px solid var(--line2);background:repeating-linear-gradient(135deg,#0a0a0a 0 8px,#0d0d0d 8px 16px);
+  .frame{aspect-ratio:3/4;border:1px solid var(--line2);background:repeating-linear-gradient(135deg,#eeeeeb 0 8px,#f3f3f0 8px 16px);
     display:flex;align-items:flex-end;overflow:hidden;position:relative;cursor:pointer}
   .frame img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
   .frame span{font-size:9px;color:var(--dim);letter-spacing:1px;padding:6px;z-index:1;position:relative}
@@ -322,7 +322,7 @@ function journeyHtml(){
     ? `<div class="faint" style="padding:16px;border:1px solid var(--line);background:var(--surface2);text-align:center;line-height:1.6">
          Shoot the same angle each week and the reel builds itself — start → weekly → where you land.<br>
          ${reel.frames.length===1?'1 photo so far. One more next week and it plays.':'Take your START photo below.'}</div>`
-    : `<div style="border:1px solid var(--line2);background:#000;position:relative;aspect-ratio:3/4;overflow:hidden">
+    : `<div style="border:1px solid var(--line2);background:#efefec;position:relative;aspect-ratio:3/4;overflow:hidden">
          <img id="reel-img" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover"/>
          <div id="reel-cap" style="position:absolute;left:0;right:0;bottom:0;background:linear-gradient(transparent,rgba(0,0,0,.75));
            color:#fff;font-size:11px;letter-spacing:1px;padding:8px 10px"></div>
@@ -368,10 +368,10 @@ function journeyHtml(){
 function photoDue(){ const lp=d().lastPhotoDate; return !lp || daysBetween(lp,today())>=7; }
 function dueBanner(){ if(!photoDue()) return '';
   const isDay=weekdayOf(today())===(op().photoDay||'Sun');
-  return `<div class="card" style="border-color:var(--accent);background:#170c04">
+  return `<div class="card" style="border-color:var(--accent);background:#fff3ec">
     <div class="label" style="color:var(--accent)">${isDay?'PHOTO DAY':'PHOTO DUE'}</div>
-    <div style="font-size:13px;margin-top:6px;line-height:1.5">Shoot your weekly 3 angles — front / side / relaxed. Same spot, same light. It feeds the time-lapse.</div>
-    <div style="height:8px"></div><button class="btn accent" id="go-body-shoot">Take photos →</button></div>`; }
+    <div style="font-size:13px;margin-top:6px;line-height:1.5">Take your weekly progress photo — one shot, same angle. The 40% ghost lines it up. It feeds the time-lapse.</div>
+    <div style="height:8px"></div><button class="btn accent" id="go-body-shoot">Take photo →</button></div>`; }
 function nextWeekday(code){ const map={Sun:0,Mon:1,Tue:2,Wed:3,Thu:4,Fri:5,Sat:6}; const target=map[code]!=null?map[code]:0;
   const dt=new Date(today()+'T00:00:00'); const add=(target-dt.getDay()+7)%7; dt.setDate(dt.getDate()+add); return dt; }
 function buildICS(o){ const WD={Sun:'SU',Mon:'MO',Tue:'TU',Wed:'WE',Thu:'TH',Fri:'FR',Sat:'SA'}; const day=o.photoDay||'Sun';
@@ -445,7 +445,7 @@ function sampleText(text,W,H){
 }
 let introRAF=null;
 function runIntro(){
-  const ov=el(`<div id="intro" style="position:fixed;inset:0;background:#050505;z-index:100;overflow:hidden"></div>`);
+  const ov=el(`<div id="intro" style="position:fixed;inset:0;background:#ffffff;z-index:100;overflow:hidden"></div>`);
   const canvas=el(`<canvas style="position:absolute;inset:0;width:100%;height:100%"></canvas>`);
   ov.appendChild(canvas); document.body.appendChild(ov);
   const W=ov.clientWidth||window.innerWidth, H=ov.clientHeight||window.innerHeight, dpr=Math.min(2,window.devicePixelRatio||1);
@@ -456,10 +456,10 @@ function runIntro(){
   const start=performance.now(); let prompt=false;
   function loop(now){ const t=now-start; ctx.clearRect(0,0,W,H); ctx.fillStyle='#ff5a00';
     for(const p of parts){ p.x+=(p.tx-p.x)*0.09+(Math.random()-.5)*0.35; p.y+=(p.ty-p.y)*0.09+(Math.random()-.5)*0.35; ctx.fillRect(p.x,p.y,2.2,2.2); }
-    if(!prompt && t>1150){ prompt=true; ov.appendChild(el(`<div style="position:absolute;left:0;right:0;bottom:0;padding:28px 24px;display:flex;flex-direction:column;align-items:center;gap:14px;background:linear-gradient(transparent,#050505 55%)">
-      <div style="color:#e8e8e8;font-family:var(--mono);font-size:14px;letter-spacing:.5px;text-align:center;line-height:1.6">How are you feeling today?<br><span style="color:#8a8a8a">Ready to get 1% better?</span></div>
+    if(!prompt && t>1150){ prompt=true; ov.appendChild(el(`<div style="position:absolute;left:0;right:0;bottom:0;padding:28px 24px;display:flex;flex-direction:column;align-items:center;gap:14px;background:linear-gradient(transparent,#ffffff 55%)">
+      <div style="color:#15150f;font-family:var(--mono);font-size:14px;letter-spacing:.5px;text-align:center;line-height:1.6">How are you feeling today?<br><span style="color:#6b6b63">Ready to get 1% better?</span></div>
       <button class="btn accent" style="width:auto;padding:14px 30px;font-size:14px">LET’S GO →</button>
-      <div style="color:#555;font-size:11px;letter-spacing:1px">tap anywhere to skip</div></div>`)); }
+      <div style="color:#9a9a90;font-size:11px;letter-spacing:1px">tap anywhere to skip</div></div>`)); }
     introRAF=requestAnimationFrame(loop); }
   function dismiss(){ if(introRAF) cancelAnimationFrame(introRAF); ov.remove(); S.lastIntro=today(); save(); }
   ov.addEventListener('click',dismiss);
@@ -486,7 +486,7 @@ async function openCamera(){
       <div style="position:absolute;left:0;right:0;top:0;padding:14px;color:#fff;font-family:var(--mono);font-size:11px;letter-spacing:1px;line-height:1.5;background:linear-gradient(rgba(0,0,0,.65),transparent)">
         ${prev?'GHOST = your last shot. Line up the same angle & distance.':'Set your framing — stand back, phone at chest height. This becomes your template.'}</div>
     </div>
-    <div style="display:flex;gap:10px;padding:14px;background:#050505;border-top:1px solid var(--line)">
+    <div style="display:flex;gap:10px;padding:14px;background:var(--bg);border-top:1px solid var(--line)">
       <button class="btn ghost" id="cam-cancel" style="width:auto;padding:14px 16px">Cancel</button>
       <button class="btn accent" id="cam-shoot" style="flex:1">Take progress photo</button>
     </div>`;
@@ -1049,7 +1049,7 @@ async function openCompare(){
       <div style="flex:1;display:flex;border-top:1px solid var(--line)">
         ${[['A',a],['B',b]].map(([lbl,p])=>`<div style="flex:1;display:flex;flex-direction:column;border-right:${lbl==='A'?'1px solid var(--line)':'0'}">
           <div style="display:flex;justify-content:space-between;padding:8px;border-bottom:1px solid var(--line)"><span class="faint">${lbl}</span><span class="dim" style="font-size:10px">${p?shortDate(p.date)+(p.kg?(' · '+p.kg+'kg'):''):'—'}</span></div>
-          <div style="flex:1;background:#000;position:relative">${p?`<img src="${p.dataUrl}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover"/>`:`<div class="faint" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">NO PHOTO</div>`}</div></div>`).join('')}
+          <div style="flex:1;background:#efefec;position:relative">${p?`<img src="${p.dataUrl}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover"/>`:`<div class="faint" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">NO PHOTO</div>`}</div></div>`).join('')}
       </div>
       <div class="faint" style="padding:12px 14px">Earliest vs latest at this angle. The scale lies during a recomp — the photos tell the truth.</div>`;
   }
