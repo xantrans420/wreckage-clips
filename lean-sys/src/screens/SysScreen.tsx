@@ -76,7 +76,10 @@ export function SysScreen() {
     });
     setAddOpen(false);
     setPName('');
-    Alert.alert('Added', 'New operator created and made active. Separate log, split, weigh-ins and photos.');
+    Alert.alert(
+      'Added',
+      'New operator created and made active. Separate log, weigh-ins and photos. No training plan is assigned — assign the A/B/C split from TRAIN when ready.',
+    );
   };
 
   const removeProfile = (id: number, label: string) => {
@@ -188,7 +191,9 @@ export function SysScreen() {
                     {on ? '  ·  ACTIVE' : ''}
                   </T>
                   <T dim size={FONT.xs}>
-                    {p.sex} · {p.weight_kg}kg · {p.equipment === 'machines_only' ? 'machines' : 'free weights'}
+                    {p.onboarded
+                      ? `${p.sex} · ${p.weight_kg}kg · ${p.equipment === 'machines_only' ? 'machines' : 'free weights'}`
+                      : `${p.sex} · setup pending`}
                   </T>
                 </Pressable>
                 <Pressable onPress={() => removeProfile(p.id, p.name)} hitSlop={8}>

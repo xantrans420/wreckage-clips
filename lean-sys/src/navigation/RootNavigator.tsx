@@ -45,7 +45,7 @@ function TabGlyph({ glyph, focused }: { glyph: string; focused: boolean }) {
 }
 
 export function RootNavigator() {
-  const { ready, profiles } = useApp();
+  const { ready, profile } = useApp();
 
   if (!ready) {
     return (
@@ -56,9 +56,11 @@ export function RootNavigator() {
     );
   }
 
-  // First launch: onboard operator 1 (name, sex, equipment). The partner is
-  // added later from SYS, so we only gate on whether anyone is set up yet.
-  if (!profiles.some((p) => p.onboarded)) {
+  // Both operators are seeded at launch; Op1 is fully set up (no questions
+  // asked). If the ACTIVE operator hasn't been set up yet (Op2: height/weight/
+  // deficit still to collect), route to their setup screen — switchable back to
+  // the other operator from within it.
+  if (profile && !profile.onboarded) {
     return <OnboardingScreen />;
   }
 

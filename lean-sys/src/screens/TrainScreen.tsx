@@ -11,10 +11,12 @@ import { TrainingDay, Exercise } from '../types';
 import { todayIso, shortLabel } from '../domain/dates';
 import {
   completedSessionCount,
+  getAllExercises,
   getExercises,
   isSessionDone,
   markSessionDone,
 } from '../db/repositories/train';
+import { seedSplit } from '../db/database';
 import { dayFromCompletedCount } from '../domain/rotation';
 
 const DAYS: { key: TrainingDay; label: string }[] = [
@@ -24,22 +26,33 @@ const DAYS: { key: TrainingDay; label: string }[] = [
 ];
 
 export function TrainScreen() {
-  const { activeId } = useApp();
+  const { activeId, profile } = useApp();
   const today = todayIso();
   const [day, setDay] = useState<TrainingDay>('A');
   const [exercises, setExercises] = useState<Exercise[]>([]);
+  const [hasPlan, setHasPlan] = useState(true);
   const [done, setDone] = useState(false);
   const [next, setNext] = useState<TrainingDay>('A');
 
   const load = useCallback(
     async (d: TrainingDay) => {
       if (activeId == null) return;
+      setHasPlan((await getAllExercises(activeId)).length > 0);
       setExercises(await getExercises(activeId, d));
       setDone(await isSessionDone(activeId, today));
       setNext(dayFromCompletedCount(await completedSessionCount(activeId)));
     },
     [activeId, today],
   );
+
+  const assignSplit = async () => {
+    if (activeId == null || !profile) return;
+    // Assign the standard A/B/C split on demand (respects the operator's
+    // equipment). This is the "assignable later" path — nothing is fabricated
+    // until the operator asks for it here.
+    await seedSplit(activeId, profile.equipment, true);
+    await load(day);
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -70,50 +83,72 @@ export function TrainScreen() {
         <View style={styles.headerWrap}>
           <ProfileBar title="TRAIN" />
           <T dim size={FONT.sm} style={{ marginTop: -SPACE.sm, marginBottom: SPACE.md }}>
-            NEXT UP IN ROTATION: {next}
+            {hasPlan ? `NEXT UP IN ROTATION: ${next}` : 'NO PLAN ASSIGNED'}
           </T>
-          <View style={styles.tabs}>
-            {DAYS.map((d) => (
-              <Pressable key={d.key} onPress={() => pick(d.key)} style={[styles.tab, day === d.key && styles.tabActive]}>
-                <T size={FONT.xs} style={{ color: day === d.key ? COLOR.bg : COLOR.textDim }} bold>
-                  {d.label}
-                </T>
-              </Pressable>
-            ))}
-          </View>
+          {hasPlan ? (
+            <View style={styles.tabs}>
+              {DAYS.map((d) => (
+                <Pressable key={d.key} onPress={() => pick(d.key)} style={[styles.tab, day === d.key && styles.tabActive]}>
+                  <T size={FONT.xs} style={{ color: day === d.key ? COLOR.bg : COLOR.textDim }} bold>
+                    {d.label}
+                  </T>
+                </Pressable>
+              ))}
+            </View>
+          ) : (
+            <View style={{ height: SPACE.md }} />
+          )}
         </View>
 
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          <Card style={{ marginBottom: SPACE.md }}>
-            <View style={styles.statusRow}>
-              <View>
-                <Label>DAY {day} · {shortLabel(today)}</Label>
-                <T size={FONT.md} style={{ marginTop: 2 }} dim>
-                  6 exercises · log weight × reps per set
-                </T>
-              </View>
-              {done ? (
-                <T bold style={{ color: COLOR.good }}>
-                  ✓ DONE
-                </T>
-              ) : null}
-            </View>
-          </Card>
-
-          {activeId != null &&
-            exercises.map((ex) => <ExerciseLogger key={ex.id} profileId={activeId} exercise={ex} date={today} />)}
-
-          <View style={{ height: SPACE.sm }} />
-          {!done ? (
-            <Button label={`Mark session ${day} done`} variant="accent" onPress={complete} />
+          {!hasPlan ? (
+            // Op2 (and any operator without a seeded plan): empty + assignable.
+            <Card>
+              <Label>NO TRAINING PLAN</Label>
+              <T dim size={FONT.sm} style={{ marginTop: SPACE.sm, lineHeight: 20 }}>
+                {profile?.name ?? 'This operator'} has no plan assigned yet. Nothing is invented automatically — assign
+                the standard posture-biased A/B/C split when ready, then edit it freely.
+              </T>
+              <View style={{ height: SPACE.md }} />
+              <Button label="Assign A/B/C split" variant="accent" onPress={assignSplit} />
+              <T faint size={FONT.xs} style={{ marginTop: SPACE.sm }}>
+                Uses {profile?.equipment === 'machines_only' ? 'machine swaps' : 'free weights'} · change equipment in SYS.
+              </T>
+            </Card>
           ) : (
-            <T dim size={FONT.sm} style={{ textAlign: 'center' }}>
-              Session logged. Rotation advances to {next}.
-            </T>
+            <>
+              <Card style={{ marginBottom: SPACE.md }}>
+                <View style={styles.statusRow}>
+                  <View>
+                    <Label>DAY {day} · {shortLabel(today)}</Label>
+                    <T size={FONT.md} style={{ marginTop: 2 }} dim>
+                      6 exercises · log weight × reps per set
+                    </T>
+                  </View>
+                  {done ? (
+                    <T bold style={{ color: COLOR.good }}>
+                      ✓ DONE
+                    </T>
+                  ) : null}
+                </View>
+              </Card>
+
+              {activeId != null &&
+                exercises.map((ex) => <ExerciseLogger key={ex.id} profileId={activeId} exercise={ex} date={today} />)}
+
+              <View style={{ height: SPACE.sm }} />
+              {!done ? (
+                <Button label={`Mark session ${day} done`} variant="accent" onPress={complete} />
+              ) : (
+                <T dim size={FONT.sm} style={{ textAlign: 'center' }}>
+                  Session logged. Rotation advances to {next}.
+                </T>
+              )}
+              <T faint size={FONT.xs} style={{ marginTop: SPACE.md, textAlign: 'center' }}>
+                All sets at the top of the rep range → “ADD WEIGHT” next time.
+              </T>
+            </>
           )}
-          <T faint size={FONT.xs} style={{ marginTop: SPACE.md, textAlign: 'center' }}>
-            All sets at the top of the rep range → “ADD WEIGHT” next time.
-          </T>
           <View style={{ height: SPACE.xxl }} />
         </ScrollView>
       </SafeAreaView>

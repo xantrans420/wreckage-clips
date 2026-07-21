@@ -1,5 +1,5 @@
 import * as SQLite from 'expo-sqlite';
-import { DEFAULT_PROFILE, SEED_FOODS, resolveSplit } from '../domain/seed';
+import { DEFAULT_PROFILE, SECONDARY_PROFILE, SEED_FOODS, resolveSplit } from '../domain/seed';
 import { Equipment, Weekday } from '../types';
 
 /**
@@ -207,30 +207,53 @@ export async function setActiveProfileId(id: number): Promise<void> {
 }
 
 /**
- * First-launch seed: create the first operator (onboarded = 0 so the app routes
- * through onboarding to set name/sex/equipment) and their default saved foods.
+ * First-launch seed — do not ask, seed both operators (per spec §0):
+ *   Op1 (primary): fully seeded, onboarded, with the A/B/C split + saved foods.
+ *   Op2 (secondary): female/38 profile stub, onboarded = 0 so height/weight/
+ *     deficit are collected on setup, and NO training plan is seeded (it stays
+ *     empty and assignable — do not fabricate one).
+ * Op1 is the active operator at launch.
  */
 export async function seedIfEmpty(): Promise<void> {
   const db = await getDb();
   const prof = await db.getFirstAsync<{ c: number }>('SELECT COUNT(*) AS c FROM profile');
-  if (!prof || prof.c === 0) {
-    const res = await db.runAsync(
-      `INSERT INTO profile (name, height_cm, weight_kg, age, sex, activity_mult, deficit, equipment, gym_days, onboarded)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
-      'Operator',
-      DEFAULT_PROFILE.height_cm,
-      DEFAULT_PROFILE.weight_kg,
-      DEFAULT_PROFILE.age,
-      DEFAULT_PROFILE.sex,
-      DEFAULT_PROFILE.activity_mult,
-      DEFAULT_PROFILE.deficit,
-      'free_weights',
-      JSON.stringify(DEFAULT_PROFILE.gym_days as unknown as Weekday[]),
-    );
-    const id = res.lastInsertRowId;
-    await seedFoodsForProfile(id);
-    await setActiveProfileId(id);
-  }
+  if (prof && prof.c > 0) return;
+
+  // Operator 1 — primary, fully seeded.
+  const op1 = await db.runAsync(
+    `INSERT INTO profile (name, height_cm, weight_kg, age, sex, activity_mult, deficit, equipment, gym_days, onboarded)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
+    DEFAULT_PROFILE.name,
+    DEFAULT_PROFILE.height_cm,
+    DEFAULT_PROFILE.weight_kg,
+    DEFAULT_PROFILE.age,
+    DEFAULT_PROFILE.sex,
+    DEFAULT_PROFILE.activity_mult,
+    DEFAULT_PROFILE.deficit,
+    DEFAULT_PROFILE.equipment,
+    JSON.stringify(DEFAULT_PROFILE.gym_days as unknown as Weekday[]),
+  );
+  const op1Id = op1.lastInsertRowId;
+  await seedSplit(op1Id, DEFAULT_PROFILE.equipment, true);
+  await seedFoodsForProfile(op1Id);
+
+  // Operator 2 — secondary, profile only. No split seeded.
+  const op2 = await db.runAsync(
+    `INSERT INTO profile (name, height_cm, weight_kg, age, sex, activity_mult, deficit, equipment, gym_days, onboarded)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
+    SECONDARY_PROFILE.name,
+    SECONDARY_PROFILE.height_cm,
+    SECONDARY_PROFILE.weight_kg,
+    SECONDARY_PROFILE.age,
+    SECONDARY_PROFILE.sex,
+    SECONDARY_PROFILE.activity_mult,
+    SECONDARY_PROFILE.deficit,
+    SECONDARY_PROFILE.equipment,
+    JSON.stringify(SECONDARY_PROFILE.gym_days as unknown as Weekday[]),
+  );
+  await seedFoodsForProfile(op2.lastInsertRowId);
+
+  await setActiveProfileId(op1Id);
 }
 
 /** Seed the default "My foods" list for a profile (only if it has none). */

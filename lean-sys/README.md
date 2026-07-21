@@ -52,31 +52,40 @@ npx expo export --platform ios --output-dir /tmp/leansys-export
 > not in Expo Go — install them and use a dev build. Without them the app
 > degrades gracefully to manual entry; it never hard-crashes.
 
-## Two operators (you + your wife)
+## Two operators
 
-First launch onboards **operator 1** (name, sex, height/weight/age, equipment).
-Add the second operator any time from **SYS → OPERATORS → + Add operator** — pick
-their name, sex, body stats and equipment and they get their own seeded split and
-"My foods". Every data table is scoped by profile, so the two logs never mix. The
-**switcher pills** at the top of HOME / FUEL / TRAIN / BODY flip whose data you're
-looking at; SYS is where you switch, edit, or delete an operator. Health data maps
-to whoever is active (one watch per person). Reset is available per-operator or
-for everyone.
+Both operators are **seeded at launch — nothing is asked**:
 
-## Config — seeded on first launch
+- **Operator 1 (primary)** — fully seeded: male, 197 cm / 95 kg / 36, free
+  weights, gym Mon/Wed/Fri, the A/B/C split and "My foods". The app opens
+  straight to Op1's log.
+- **Operator 2 (secondary)** — a female / 38 profile stub. Height, weight and
+  deficit are **collected on setup** (switch to her via the top pills and the
+  setup screen appears), and her **training plan is intentionally empty** — the
+  app never invents one. Assign the standard A/B/C split on demand from TRAIN
+  ("Assign A/B/C split"), then edit it freely.
 
-The first operator profile is pre-loaded (editable in **SYS**). Asked during
-onboarding:
+Every data table is scoped by operator, so the two logs never mix. The
+**switcher pills** at the top of HOME / FUEL / TRAIN / BODY flip whose data
+you're viewing; SYS is where you switch, edit, add, or delete an operator.
+Equipment is locked to free weights for Op1 but the machine-swap map is
+toggleable per operator in SYS. Health data maps to whoever is active (one watch
+per person). Reset is available per-operator or for everyone.
 
-| Field | Default | Notes |
+## Config — Operator 1 (seeded, not asked)
+
+Operator 1 is fully pre-loaded on first launch — no onboarding questions —
+editable afterwards in **SYS**:
+
+| Field | Value | Notes |
 |---|---|---|
 | Height | 197 cm | |
 | Start weight | 95 kg | live — drives all targets |
-| Age | 35 | **confirmed in onboarding** |
+| Age | 36 | |
 | Sex | male | |
 | Activity × | 1.375 | 3× gym + daily walking |
 | Deficit | 300 kcal | easy. never raised for this profile. |
-| `equipment` | **asked on first launch** | `free_weights` \| `machines_only` |
+| Equipment | `free_weights` | locked; machine-swap map toggleable per operator |
 | Gym days | Mon / Wed / Fri | editable |
 
 `platform` (iOS vs Android) is not a stored choice — the app picks HealthKit or
@@ -95,7 +104,7 @@ Cut target  = Maintenance - deficit
 Protein     = bodyweight_kg * 1.9        (high — protects muscle during recomp)
 ```
 
-At 95 kg / 197 cm / 35: maintenance ≈ 2,720 · cut ≈ 2,420 · protein ≈ 180 g/day.
+At 95 kg / 197 cm / 36: maintenance ≈ 2,720 · cut ≈ 2,420 · protein ≈ 180 g/day.
 
 ## Modules
 
@@ -141,11 +150,14 @@ absent.
 ## Data model (SQLite)
 
 `profile · food_log · saved_food · exercise · lift_log · weight_log · photo ·
-health_daily · session_log · meta`. Every data table carries a `profile_id`
+health_daily · session_log · meta`. The `profile` table is the spec's `operator`
+(and `profile_id` its `operator_id`) — same shape, kept under the original name
+to avoid a rename migration. Every data table carries a `profile_id`
 (FK → `profile`, `ON DELETE CASCADE`) so the two operators stay fully separate;
-the active operator is stored in `meta`. Targets are derived from each `profile`,
-never stored. Schema is versioned with an in-place v1→v2 migration. See
-`src/db/database.ts`.
+the active operator is stored in `meta`. Op1 is seeded with the split; Op2 is
+seeded as a profile with **no exercises** (empty, assignable). Targets are
+derived from each operator, never stored. Schema is versioned with an in-place
+v1→v2 migration. See `src/db/database.ts`.
 
 ## Non-goals
 

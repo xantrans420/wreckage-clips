@@ -85,8 +85,10 @@ export interface NewProfileInput {
   gym_days?: Weekday[];
 }
 
-/** Create a second operator (your partner), seed their split + foods, and make
- * them the active profile. Returns the new profile id. */
+/** Create an additional operator, seed their saved foods, and make them active.
+ * Their TRAINING PLAN is intentionally left empty and assignable (per spec: do
+ * not fabricate a plan) — assign the standard split later from TRAIN. Returns
+ * the new profile id. */
 export async function createProfile(input: NewProfileInput): Promise<number> {
   const db = await getDb();
   const equipment = input.equipment ?? 'free_weights';
@@ -105,7 +107,6 @@ export async function createProfile(input: NewProfileInput): Promise<number> {
     JSON.stringify(gymDays),
   );
   const id = res.lastInsertRowId;
-  await seedSplit(id, equipment, true);
   await seedFoodsForProfile(id);
   await setActiveProfileId(id);
   return id;

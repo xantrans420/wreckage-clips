@@ -87,13 +87,34 @@ export const BATCH_PREP =
   'Abs are built in training, revealed in the kitchen.';
 
 /** Default owner profile — pre-loaded, editable in settings. */
+/** Operator 1 — primary. Fully seeded, not asked. */
 export const DEFAULT_PROFILE = {
+  name: 'Primary',
   height_cm: 197,
   weight_kg: 95,
-  age: 35,
+  age: 36,
   sex: 'male' as const,
   activity_mult: 1.375, // 3x gym + daily walking
   deficit: 300, // easy. do not raise for this profile.
+  equipment: 'free_weights' as const, // locked for Op1
+  gym_days: ['Mon', 'Wed', 'Fri'] as const,
+};
+
+/**
+ * Operator 2 — secondary. Profile only at launch: female/38, but height, weight
+ * and deficit are collected on setup, and her TRAINING PLAN IS NOT SEEDED — it
+ * stays empty and assignable. Do not fabricate one.
+ */
+export const SECONDARY_PROFILE = {
+  name: 'Secondary',
+  sex: 'female' as const,
+  age: 38,
+  // Sentinels until setup fills them in (onboarded flag gates target display).
+  height_cm: 0,
+  weight_kg: 0,
+  activity_mult: 1.375,
+  deficit: 300,
+  equipment: 'free_weights' as const,
   gym_days: ['Mon', 'Wed', 'Fri'] as const,
 };
 
