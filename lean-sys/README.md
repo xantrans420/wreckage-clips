@@ -47,7 +47,9 @@ API for the estimate only, never stored. Needs the API key (below).
 The web build uses a **soft "aura" theme**: warm cream ground, blurred blue/cyan
 gradient glows, rounded cards with gentle shadows, airy sans type, a floating
 rounded nav, and one coral-orange highlight accent. Calm and premium rather than
-brutalist.
+brutalist. HOME leads with a full **gradient-aura hero** — the blue/cyan glow is
+the dominant visual, with one big thin protein number floating in it and a lot of
+whitespace; the aura turns green the day protein is hit.
 
 It also adds a **COACH** tab wired to an LLM: the coach knows your protocol,
 targets, and today's log, and answers in the app's plain terminal voice. It calls the
@@ -59,9 +61,10 @@ to Sonnet or Haiku there to cut cost. **SYS → Export** writes a JSON backup
 
 **Daily flow (the simple front door):** opening the app once a day plays a
 **particle intro** — dots swarm into "1% BETTER" over *"How are you feeling
-today? Ready to get 1% better?"*. HOME then leads with **Today's plan** — three
-taps: protein, train (gym day?), weekly photo — each jumps straight to the thing.
-The detailed logging still lives in the tabs, but you don't have to touch it daily.
+today? Ready to get 1% better?"*. HOME then shows the **gradient hero** — protein
+left today as one big thin number in the aura — over three **hairline rows**
+(Fuel, Train, Weekly photo), each jumping straight to the thing. The detailed
+logging still lives in the tabs, but you don't have to touch it daily.
 
 **The journey (BODY):** one **progress photo**, same angle each week. The camera
 opens with your **last shot ghosted at 40%** so you line up the same angle and
