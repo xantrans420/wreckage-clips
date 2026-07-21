@@ -52,6 +52,15 @@ console.anthropic.com), stored only on your device and sent only to
 to Sonnet or Haiku there to cut cost. **SYS → Export** writes a JSON backup
 (clearing browser data wipes everything, so back up first).
 
+**The journey (BODY):** shoot the same angle each week — front / side / relaxed —
+and the app builds a **time-lapse reel** that plays your photos in order,
+START → weekly → NOW, captioned with the week, date and weight. It's the
+"how have you grown" story, and it makes the flat-scale recomp visible. BODY
+also carries the motivation layer: your editable **mission** ("why" — defaults to
+being able to run and play with your kids in 10 years), a **protein streak**,
+**weeks-in / sessions** counts, unlockable **milestone** badges, and a rotating
+deck of health-span facts. The mission also shows on HOME.
+
 > The native Expo app below is the fuller build (health/watch sync, notifications).
 > The web build is the "use it today, with a coach" path. They don't share storage.
 

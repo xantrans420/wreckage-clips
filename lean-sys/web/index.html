@@ -173,6 +173,19 @@ const SEED_FOODS=[['Chicken thigh 150g',290,38],['Rice 200g',260,5],['3 eggs',21
 const PLATE=['1 palm+ protein','1 fist carb (2 on train days)','2 handfuls veg','1 thumb fat'];
 const DAYS=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 const STEP_GOAL=8000;
+const DEFAULT_MISSION='So I can still run and play with my kids in 10 years.';
+const FACTS=[
+  "You're not training for a beach photo. You're training to still get off the floor with your kids in 10 years.",
+  "Muscle is your retirement account for movement — build it now, spend it at 70.",
+  "Grip strength and leg strength predict how independent you'll be at 80. You're banking it today.",
+  "Every session you keep is a session your future self gets to run, lift, and play.",
+  "Protein protects the muscle you're building — it's the line between losing fat and losing yourself.",
+  "Consistency beats intensity: 3 sessions a week for a year is 156 votes for who you're becoming.",
+  "The scale lies during a recomp — muscle up, fat down, weight flat. The photos tell the truth.",
+  "Walking 8–10k steps a day is the cheapest longevity drug there is.",
+  "Sleep is when muscle is actually built. The cortisol from bad sleep is what holds the belly fat.",
+  "Strong parents raise kids who see strength as normal. You're setting the baseline for them too.",
+];
 
 // ---------- persistence ----------
 const KEY='leansys.v1';
@@ -183,8 +196,8 @@ function defaultState(){
     activeId:'op1',
     apiKey:'', model:'claude-opus-4-8',
     operators:{
-      op1:{id:'op1',name:'Operator 1',sex:'male',h:197,w:95,age:36,act:1.375,def:300,equip:'free_weights',gymDays:['Mon','Wed','Fri']},
-      op2:{id:'op2',name:'Operator 2',sex:'female',h:170,w:65,age:34,act:1.375,def:300,equip:'free_weights',gymDays:['Tue','Thu','Sat']},
+      op1:{id:'op1',name:'Operator 1',sex:'male',h:197,w:95,age:36,act:1.375,def:300,equip:'free_weights',gymDays:['Mon','Wed','Fri'],mission:DEFAULT_MISSION},
+      op2:{id:'op2',name:'Operator 2',sex:'female',h:170,w:65,age:34,act:1.375,def:300,equip:'free_weights',gymDays:['Tue','Thu','Sat'],mission:DEFAULT_MISSION},
     },
     data:{ op1:blankData(), op2:blankData() },
   };
@@ -195,7 +208,7 @@ function load(){
   catch(e){ S=defaultState(); }
   // migrate-safety
   if(!S.operators||!S.data){ S=defaultState(); }
-  for(const id of Object.keys(S.operators)){ if(!S.data[id]) S.data[id]=blankData(); }
+  for(const id of Object.keys(S.operators)){ if(!S.data[id]) S.data[id]=blankData(); if(!S.operators[id].mission) S.operators[id].mission=DEFAULT_MISSION; }
 }
 function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){ alert('Storage full or blocked: '+e.message); } }
 function op(){ return S.operators[S.activeId]; }
@@ -250,6 +263,104 @@ function trendSvg(data){
     <path d="${path}" fill="none" stroke="var(--accent)" stroke-width="1.5"/>${dots}</svg>`;
 }
 
+// ============================ GAMIFICATION + TIME-LAPSE ============================
+function allLogDates(){ const s=new Set(); d().weight.forEach(w=>s.add(w.date)); d().sessions.forEach(x=>s.add(x.date));
+  Object.keys(d().food).forEach(k=>{ if((d().food[k]||[]).length) s.add(k); }); return [...s].sort(); }
+function daysBetween(a,b){ return Math.round((new Date(b)-new Date(a))/86400000); }
+function weeksIn(extraFirst){ const ds=allLogDates(); let first=ds[0]; if(extraFirst&&(!first||extraFirst<first)) first=extraFirst;
+  if(!first) return 0; return Math.max(1,Math.floor(daysBetween(first,today())/7)+1); }
+function proteinStreak(){ const target=targets(op()).protein; let streak=0; const day=new Date(today());
+  for(let i=0;i<400;i++){ const ds=iso(day); const hit=dayTotals(ds).protein>=target && target>0;
+    if(i===0 && !hit){ day.setDate(day.getDate()-1); continue; } // grace: today may not be logged yet
+    if(hit){ streak++; day.setDate(day.getDate()-1); } else break; }
+  return streak; }
+function milestoneList(photoDates){
+  const w=weeksIn(photoDates[0]), sess=d().sessions.length, ps=proteinStreak(), photos=photoDates.length;
+  return [
+    {label:'FIRST SHOT', on:photos>=1},
+    {label:'BASELINE', on:photos>=1 && d().weight.length>=1},
+    {label:'SIDE-BY-SIDE', on:photoDates.length>=2},
+    {label:'4 WEEKS', on:w>=4},
+    {label:'12 WEEKS', on:w>=12},
+    {label:'10 SESSIONS', on:sess>=10},
+    {label:'25 SESSIONS', on:sess>=25},
+    {label:'PROTEIN ×7', on:ps>=7},
+    {label:'PROTEIN ×30', on:ps>=30},
+  ];
+}
+
+// ---- time-lapse reel ----
+let reel={angle:'front',rows:[],frames:[],idx:0,playing:false,timer:null};
+let factIdx=0;
+function reelPause(){ if(reel.timer){ clearInterval(reel.timer); reel.timer=null; } reel.playing=false;
+  const b=document.getElementById('reel-play'); if(b) b.textContent='▶ PLAY'; }
+function setReelFrames(){
+  const rows=reel.rows.filter(r=>r.angle===reel.angle).sort((a,b)=>a.date<b.date?-1:1);
+  const first=rows[0]?rows[0].date:null;
+  reel.frames=rows.map(r=>({dataUrl:r.dataUrl,date:r.date,kg:r.kg,week:first?Math.floor(daysBetween(first,r.date)/7)+1:1}));
+  reel.idx=0;
+}
+function reelShow(i){ if(!reel.frames.length) return; reel.idx=(i+reel.frames.length)%reel.frames.length;
+  const f=reel.frames[reel.idx];
+  const img=document.getElementById('reel-img'), cap=document.getElementById('reel-cap'), sc=document.getElementById('reel-scrub');
+  if(img) img.src=f.dataUrl; if(sc) sc.value=reel.idx;
+  if(cap){ const tag=reel.idx===0?'START':(reel.idx===reel.frames.length-1?'NOW':''); cap.textContent=`${tag?tag+' · ':''}WEEK ${f.week} · ${shortDate(f.date)}${f.kg?(' · '+f.kg+'kg'):''}`; }
+}
+function reelToggle(){ if(reel.playing){ reelPause(); return; } if(reel.frames.length<2) return;
+  reel.playing=true; const b=document.getElementById('reel-play'); if(b) b.textContent='▮▮ PAUSE';
+  reel.timer=setInterval(()=>reelShow(reel.idx+1),700); }
+
+async function buildJourney(){ reel.rows=await photoAll(S.activeId); setReelFrames(); paintJourney(); }
+function paintJourney(){ const box=document.getElementById('journey'); if(!box) return;
+  box.innerHTML=journeyHtml(); reelShow(reel.idx); }
+function journeyHtml(){
+  const o=op(); const photoDates=[...new Set(reel.rows.map(r=>r.date))].sort();
+  const w=weeksIn(photoDates[0]), sess=d().sessions.length, ps=proteinStreak();
+  const ms=milestoneList(photoDates);
+  const angles=['front','side','relaxed'];
+  const reelBody = reel.frames.length<2
+    ? `<div class="faint" style="padding:16px;border:1px solid var(--line);background:var(--surface2);text-align:center;line-height:1.6">
+         Shoot the same angle each week and the reel builds itself — start → weekly → where you land.<br>
+         ${reel.frames.length===1?'1 photo so far. One more next week and it plays.':'Take your START photo below.'}</div>`
+    : `<div style="border:1px solid var(--line2);background:#000;position:relative;aspect-ratio:3/4;overflow:hidden">
+         <img id="reel-img" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover"/>
+         <div id="reel-cap" style="position:absolute;left:0;right:0;bottom:0;background:linear-gradient(transparent,rgba(0,0,0,.75));
+           color:#fff;font-size:11px;letter-spacing:1px;padding:8px 10px"></div>
+       </div>
+       <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
+         <button class="btn accent" id="reel-play" style="width:auto;padding:10px 16px">▶ PLAY</button>
+         <input id="reel-scrub" type="range" min="0" max="${reel.frames.length-1}" value="${reel.idx}" step="1" style="flex:1"/>
+       </div>
+       <div class="faint" style="margin-top:6px">${reel.frames.length} frames · ${reel.angle} angle · drag to scrub</div>`;
+  return `
+    <div class="card accent">
+      <div class="label">Your why</div>
+      <div style="font-size:15px;line-height:1.5;margin-top:6px">${esc(o.mission)}</div>
+      <div class="faint" style="margin-top:6px">Not just for you. Edit it in SYS.</div>
+    </div>
+    <div class="card">
+      <div class="stats">
+        <div class="stat"><div class="k">Weeks in</div><div class="v accent">${w||0}</div></div>
+        <div class="stat"><div class="k">Sessions</div><div class="v">${sess}</div></div>
+        <div class="stat"><div class="k">Protein streak</div><div class="v ${ps>=7?'good':''}">${ps}<small> d</small></div></div>
+      </div>
+    </div>
+    <div class="label">Milestones</div>
+    <div class="chips" style="margin-bottom:12px">
+      ${ms.map(m=>`<span class="chip" style="cursor:default;border-color:${m.on?'var(--accent)':'var(--line)'};color:${m.on?'var(--accent)':'var(--faint)'}"><b>${m.on?'✓ ':'○ '}${m.label}</b></span>`).join('')}
+    </div>
+    <div class="card">
+      <div class="label">Why it matters</div>
+      <div id="fact-text" style="font-size:13px;line-height:1.55;margin-top:6px;color:var(--text)">${esc(FACTS[factIdx%FACTS.length])}</div>
+      <div style="height:8px"></div><button class="btn ghost" data-fact-next style="width:auto;padding:8px 14px">Next →</button>
+    </div>
+    <div class="label">Time-lapse · how you've grown</div>
+    <div style="height:8px"></div>
+    <div class="tabs3" style="margin-top:0">${angles.map(a=>`<button data-reelang="${a}" aria-pressed="${a===reel.angle}">${a.toUpperCase()}</button>`).join('')}</div>
+    ${reelBody}
+    <div class="divider"></div>`;
+}
+
 // ============================ SCREENS ============================
 function homeScreen(){
   const o=op(), t=targets(o), tot=dayTotals(today());
@@ -257,6 +368,7 @@ function homeScreen(){
   const kcalTarget=o.def>0?t.cut:t.maint, kcalRemain=kcalTarget-tot.kcal;
   const gymToday=o.gymDays.includes(weekdayOf(today())), sd=sessionDone(today());
   const lastW=d().weight[d().weight.length-1];
+  const streak=proteinStreak();
   return `
     <div class="sub">${esc(o.name)} · ${shortDate(today())}</div>
     <div class="card accent">
@@ -264,6 +376,7 @@ function homeScreen(){
       <div class="hero-num"><b class="${done?'done':''}">${Math.max(0,Math.round(remain))}</b><span class="u">g</span></div>
       <div class="hero-sub">${done?'TARGET HIT':`${Math.round(tot.protein)} / ${t.protein} g logged`}</div>
       <div class="bar"><i style="width:${pct(tot.protein,t.protein)}%"></i></div>
+      ${streak>0?`<div class="faint" style="margin-top:8px">PROTEIN STREAK ${streak} DAY${streak===1?'':'S'}${streak>=7?' · LOCKED IN':''}</div>`:''}
     </div>
     <div class="card">
       <div class="stats">
@@ -286,6 +399,9 @@ function homeScreen(){
     <div class="dim" style="font-size:13px;letter-spacing:1px;margin-top:6px">protein → near target → lift hard → walk → sleep</div>
     <div class="faint" style="margin-top:8px">Abs are built in training, revealed in the kitchen.</div>
     ${lastW?`<div class="faint" style="margin-top:8px">LAST WEIGH-IN ${lastW.kg} kg · ${shortDate(lastW.date)}</div>`:''}
+    <div class="divider"></div>
+    <div class="label">Mission</div>
+    <div class="dim" style="font-size:13px;margin-top:6px;line-height:1.5">${esc(o.mission)}</div>
     <div style="height:20px"></div>`;
 }
 
@@ -383,6 +499,7 @@ function bodyScreen(){
   const change=(latest&&first)?(latest.kg-first.kg):0;
   return `
     <div class="sub">${esc(o.name)} · the scale lies during a recomp</div>
+    <div id="journey"></div>
     <div class="card">
       <div class="stats">
         <div class="stat"><div class="k">Current</div><div class="v accent">${latest?latest.kg:'—'}<small> kg</small></div></div>
@@ -451,6 +568,9 @@ function sysScreen(){
     <div style="height:8px"></div>
     <input id="p-name" value="${esc(o.name)}" placeholder="name"/>
     <div style="height:8px"></div>
+    <span class="label">Your why (shown on HOME + BODY)</span><div style="height:4px"></div>
+    <textarea id="p-mission" rows="2" placeholder="why you're doing this">${esc(o.mission)}</textarea>
+    <div style="height:8px"></div>
     <div class="pillrow">${['male','female'].map(s=>`<button class="p2" data-sex="${s}" aria-pressed="${o.sex===s}">${s.toUpperCase()}</button>`).join('')}</div>
     <div style="height:8px"></div>
     <div class="row">
@@ -501,6 +621,7 @@ const SCREENS={home:homeScreen,fuel:fuelScreen,train:trainScreen,body:bodyScreen
 
 // ============================ RENDER ============================
 function render(){
+  reelPause();
   document.getElementById('scr-title').textContent = view.tab==='home'?'LEAN.SYS':(TABS.find(t=>t[0]===view.tab)[2]);
   document.getElementById('pills').innerHTML = Object.values(S.operators)
     .map(q=>`<button class="pill" data-profile="${q.id}" aria-pressed="${q.id===S.activeId}">${esc(q.name).toUpperCase().slice(0,10)}</button>`).join('');
@@ -508,7 +629,7 @@ function render(){
   scr.innerHTML=SCREENS[view.tab]();
   scr.scrollTop=0;
   document.getElementById('tabbar').innerHTML=TABS.map(([id,g,label])=>`<button data-tab="${id}" aria-pressed="${id===view.tab}"><span class="g">${g}</span><span class="t">${label}</span></button>`).join('');
-  if(view.tab==='body') renderPhotoHist();
+  if(view.tab==='body'){ buildJourney(); renderPhotoHist(); }
   if(view.tab==='coach'){ const c=document.getElementById('chat'); if(c) c.scrollTop=c.scrollHeight; }
 }
 
@@ -662,6 +783,9 @@ document.body.addEventListener('click', async (e)=>{
     op().w=kg; save(); render(); return; }
   const shoot=closest('[data-shoot]'); if(shoot){ window._shootAngle=shoot.dataset.shoot; document.getElementById('photo-input').click(); return; }
   if(T.id==='compare-link'){ openCompare(); return; }
+  const rang=closest('[data-reelang]'); if(rang){ reelPause(); reel.angle=rang.dataset.reelang; setReelFrames(); paintJourney(); return; }
+  if(T.id==='reel-play'){ reelToggle(); return; }
+  if(closest('[data-fact-next]')){ factIdx=(factIdx+1)%FACTS.length; const ft=document.getElementById('fact-text'); if(ft) ft.textContent=FACTS[factIdx%FACTS.length]; return; }
 
   // sys
   const sex=closest('[data-sex]'); if(sex){ op().sex=sex.dataset.sex; save(); render(); return; }
@@ -672,7 +796,9 @@ document.body.addEventListener('click', async (e)=>{
     o.name=document.getElementById('p-name').value.trim()||o.name;
     o.h=num(document.getElementById('p-h').value)||o.h; o.w=num(document.getElementById('p-w').value)||o.w;
     o.age=num(document.getElementById('p-age').value)||o.age; o.act=num(document.getElementById('p-act').value)||o.act;
-    o.def=num(document.getElementById('p-def').value); save(); render(); return; }
+    o.def=num(document.getElementById('p-def').value);
+    const mv=document.getElementById('p-mission').value.trim(); if(mv) o.mission=mv;
+    save(); render(); return; }
   if(T.id==='api-save'){ S.apiKey=document.getElementById('api-key').value.trim(); S.model=document.getElementById('api-model').value; save(); alert('Saved. Coach is ready.'); render(); return; }
   if(T.id==='export'){ const blob=new Blob([JSON.stringify(S,null,2)],{type:'application/json'});
     const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='leansys-backup-'+today()+'.json'; a.click(); URL.revokeObjectURL(a.href); return; }
@@ -693,6 +819,9 @@ document.body.addEventListener('pointerdown',(e)=>{
 });
 document.body.addEventListener('pointerup',()=>{ if(_lp){ clearTimeout(_lp); _lp=null; } });
 document.body.addEventListener('pointerleave',()=>{ if(_lp){ clearTimeout(_lp); _lp=null; } });
+
+// time-lapse scrubber
+document.body.addEventListener('input',(e)=>{ if(e.target.id==='reel-scrub'){ reelPause(); reelShow(+e.target.value); } });
 
 // coach: enter to send
 document.body.addEventListener('keydown',(e)=>{
