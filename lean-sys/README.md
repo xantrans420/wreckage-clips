@@ -39,8 +39,13 @@ BODY / HOME / SYS, the two-operator switcher, weight trend, and progress photos,
 all persisted in the browser (localStorage; photos in IndexedDB — nothing is
 uploaded).
 
-It adds a **COACH** tab wired to an LLM: the coach knows your protocol, targets,
-and today's log, and answers in the app's plain terminal voice. It calls the
+**Snap-to-log (FUEL):** tap "Estimate from a photo", point at your plate, and
+Claude's vision estimates the food's name, calories, and **protein grams** — it
+prefills the log form so you review and tap **Log it**. The photo is sent to the
+API for the estimate only, never stored. Needs the API key (below).
+
+It also adds a **COACH** tab wired to an LLM: the coach knows your protocol,
+targets, and today's log, and answers in the app's plain terminal voice. It calls the
 Anthropic API directly from the browser using **your own API key** (from
 console.anthropic.com), stored only on your device and sent only to
 `api.anthropic.com` — set it in **SYS**. Model defaults to Claude Opus 4.8; switch

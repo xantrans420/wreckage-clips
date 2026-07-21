@@ -313,6 +313,12 @@ function fuelScreen(){
       ${d().savedFoods.map((f,i)=>`<button class="chip" data-quick="${i}"><b>${esc(f.name)}</b><span>${f.kcal} · ${f.protein}p · hold=del</span></button>`).join('')}
     </div>
     <div class="divider"></div>
+    <div class="label">Snap food — estimate protein from a photo</div>
+    <div class="faint" style="margin:4px 0 8px">Point at your plate. The photo is sent to the API for an estimate, not stored. Always review before logging — vision estimates are rough.</div>
+    <button class="btn" id="snap-food">📷 Estimate from a photo</button>
+    <div id="snap-status" class="faint" style="margin-top:8px"></div>
+    <input type="file" id="food-photo-input" accept="image/*" capture="environment" style="display:none"/>
+    <div class="divider"></div>
     <div class="label">Log food (protein mandatory)</div>
     <div style="height:8px"></div>
     <input id="f-name" placeholder="food name" />
@@ -548,6 +554,46 @@ function buildCoachSystem(){
   ].join('\n');
 }
 
+// downscale a File to a jpeg data URL (keeps API payload + IndexedDB light)
+function fileToJpeg(file, max, quality){
+  return new Promise((res,rej)=>{
+    const reader=new FileReader();
+    reader.onerror=()=>rej(new Error('could not read file'));
+    reader.onload=()=>{ const img=new Image();
+      img.onerror=()=>rej(new Error('could not decode image'));
+      img.onload=()=>{ let {width,height}=img; const sc=Math.min(1,max/Math.max(width,height));
+        const c=document.createElement('canvas'); c.width=Math.round(width*sc); c.height=Math.round(height*sc);
+        c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+        res(c.toDataURL('image/jpeg',quality)); };
+      img.src=reader.result; };
+    reader.readAsDataURL(file);
+  });
+}
+
+// Vision: estimate a meal's protein + calories from a photo.
+async function estimateFoodFromPhoto(dataUrl){
+  const b64=dataUrl.split(',')[1];
+  const media=dataUrl.substring(5,dataUrl.indexOf(';')); // e.g. image/jpeg
+  const res=await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{'content-type':'application/json','x-api-key':S.apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+    body:JSON.stringify({
+      model:S.model, max_tokens:400,
+      system:'You estimate nutrition from a food photo for a protein-focused recomp tracker. Identify the food and estimate the visible portion. Protein grams is the priority — be realistic and lean toward known values for common foods. Reply with ONLY a JSON object and nothing else: {"name":"short label incl. rough portion","kcal":<integer>,"protein_g":<integer>,"note":"one short line on the portion/assumptions"}. If the image is not food, set kcal and protein_g to 0 and say so in note.',
+      messages:[{role:'user',content:[
+        {type:'image',source:{type:'base64',media_type:media,data:b64}},
+        {type:'text',text:'Estimate this meal. JSON only.'}
+      ]}]
+    })
+  });
+  const data=await res.json();
+  if(!res.ok) throw new Error((data&&data.error&&data.error.message)||('HTTP '+res.status));
+  const text=(data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
+  const m=text.match(/\{[\s\S]*\}/); if(!m) throw new Error('could not parse the estimate');
+  const obj=JSON.parse(m[0]);
+  return { name:String(obj.name||'meal'), kcal:Math.round(num(obj.kcal)), protein:Math.round(num(obj.protein_g)), note:String(obj.note||'') };
+}
+
 async function askCoach(userText){
   const chatEl=document.getElementById('chat');
   d().coach.push({role:'user',content:userText});
@@ -588,6 +634,7 @@ document.body.addEventListener('click', async (e)=>{
   const quick=closest('[data-quick]'); if(quick){ const f=d().savedFoods[+quick.dataset.quick];
     (d().food[today()]=d().food[today()]||[]).push({name:f.name,kcal:f.kcal,protein:f.protein}); save(); render(); return; }
   const df=closest('[data-delfood]'); if(df){ d().food[today()].splice(+df.dataset.delfood,1); save(); render(); return; }
+  if(T.id==='snap-food'){ if(!S.apiKey){ alert('Add your Anthropic API key in SYS first — the estimate uses the API.'); view.tab='sys'; render(); return; } document.getElementById('food-photo-input').click(); return; }
   if(T.id==='f-savechk'){ T.classList.toggle('on'); return; }
   if(T.id==='f-add'){
     const name=document.getElementById('f-name').value.trim();
@@ -652,28 +699,36 @@ document.body.addEventListener('keydown',(e)=>{
   if(e.target&&e.target.id==='coach-input'&&e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); const v=e.target.value.trim(); if(v){ e.target.value=''; askCoach(v); } }
 });
 
-// photo file input
+// photo file inputs
 document.body.addEventListener('change', async (e)=>{
-  if(e.target.id!=='photo-input') return;
-  const file=e.target.files[0]; if(!file) return;
-  const angle=window._shootAngle||'front';
-  const reader=new FileReader();
-  reader.onload=async()=>{
-    // downscale to keep IndexedDB light
-    const img=new Image();
-    img.onload=async()=>{
-      const max=1000; let {width,height}=img; const sc=Math.min(1,max/Math.max(width,height));
-      const c=document.createElement('canvas'); c.width=Math.round(width*sc); c.height=Math.round(height*sc);
-      c.getContext('2d').drawImage(img,0,0,c.width,c.height);
-      const dataUrl=c.toDataURL('image/jpeg',0.82);
+  // BODY: progress photo → store in IndexedDB
+  if(e.target.id==='photo-input'){
+    const file=e.target.files[0]; e.target.value=''; if(!file) return;
+    const angle=window._shootAngle||'front';
+    try{
+      const dataUrl=await fileToJpeg(file,1000,0.82);
       const latest=d().weight[d().weight.length-1];
       await photoPut({id:S.activeId+'-'+today()+'-'+angle+'-'+Date.now(),opId:S.activeId,date:today(),angle,dataUrl,kg:latest?latest.kg:null});
       renderPhotoHist();
-    };
-    img.src=reader.result;
-  };
-  reader.readAsDataURL(file);
-  e.target.value='';
+    }catch(err){ alert('Photo failed: '+err.message); }
+    return;
+  }
+  // FUEL: food photo → estimate protein via the API, prefill the log form
+  if(e.target.id==='food-photo-input'){
+    const file=e.target.files[0]; e.target.value=''; if(!file) return;
+    const status=document.getElementById('snap-status');
+    if(status){ status.style.color='var(--dim)'; status.textContent='analysing photo…'; }
+    try{
+      const dataUrl=await fileToJpeg(file,900,0.8);
+      const est=await estimateFoodFromPhoto(dataUrl);
+      const nameEl=document.getElementById('f-name'), kcalEl=document.getElementById('f-kcal'), protEl=document.getElementById('f-prot');
+      if(nameEl) nameEl.value=est.name; if(kcalEl) kcalEl.value=est.kcal; if(protEl) protEl.value=est.protein;
+      if(status){ status.style.color='var(--accent)'; status.textContent=`≈ ${est.protein} g protein · ${est.kcal} kcal — ${est.note} · review below, then Log it`; }
+    }catch(err){
+      if(status){ status.style.color='var(--bad)'; status.textContent='estimate failed: '+err.message+' (check API key/model in SYS)'; }
+    }
+    return;
+  }
 });
 
 // ---------- compare overlay ----------
