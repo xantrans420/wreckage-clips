@@ -1,0 +1,46 @@
+{
+  "expo": {
+    "name": "LEAN.SYS",
+    "slug": "lean-sys",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "scheme": "leansys",
+    "backgroundColor": "#050505",
+    "splash": {
+      "backgroundColor": "#050505",
+      "resizeMode": "contain"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "sys.lean.tracker",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Capture weekly progress photos. Photos are stored on-device only and never uploaded.",
+        "NSPhotoLibraryUsageDescription": "Attach a progress photo. Photos stay on-device and are never uploaded.",
+        "NSHealthShareUsageDescription": "Read steps, active energy, resting heart rate, sleep and workouts (e.g. synced from Garmin Connect) to enrich your log.",
+        "NSHealthUpdateUsageDescription": "LEAN.SYS does not write to Health."
+      }
+    },
+    "android": {
+      "package": "sys.lean.tracker",
+      "permissions": [
+        "android.permission.health.READ_STEPS",
+        "android.permission.health.READ_ACTIVE_CALORIES_BURNED",
+        "android.permission.health.READ_HEART_RATE",
+        "android.permission.health.READ_RESTING_HEART_RATE",
+        "android.permission.health.READ_SLEEP",
+        "android.permission.health.READ_EXERCISE"
+      ]
+    },
+    "plugins": [
+      "expo-notifications",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Attach a progress photo. Photos stay on-device and are never uploaded."
+        }
+      ]
+    ]
+  }
+}
