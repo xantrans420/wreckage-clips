@@ -146,6 +146,30 @@
   .dayrow .d.on{background:var(--accent);border-color:transparent;color:#fff}
   .check{width:18px;height:18px;border:1.5px solid var(--line2);display:inline-block;vertical-align:middle;border-radius:6px}
   .check.on{background:var(--accent);border-color:transparent}
+
+  /* minimal airy home — gradient-orb hero, big thin number, hairline rows */
+  .home{position:relative;min-height:74vh;padding-top:2px;isolation:isolate}
+  .orb{position:absolute;left:50%;top:2%;transform:translateX(-50%);width:128%;aspect-ratio:1;z-index:-1;
+    background:radial-gradient(closest-side at 46% 42%,rgba(150,205,255,.92),rgba(120,225,235,.42) 42%,rgba(255,190,150,.16) 62%,transparent 74%);
+    filter:blur(30px);opacity:1;animation:orbdrift 18s ease-in-out infinite alternate}
+  .orb.hit{background:radial-gradient(closest-side at 50% 42%,rgba(150,235,180,.85),rgba(150,220,235,.4) 46%,transparent 74%)}
+  @keyframes orbdrift{from{transform:translateX(-50%) translateY(0) scale(1)}to{transform:translateX(-52%) translateY(2%) scale(1.05)}}
+  .home-head{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;color:var(--dim);letter-spacing:.3px}
+  .home-head b{color:var(--text);font-weight:600;letter-spacing:0}
+  .hero-lead{padding:15vh 0 11vh;text-align:center}
+  .lead-label{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--dim)}
+  .lead-num{display:inline-flex;align-items:flex-start;justify-content:center;margin-top:10px;color:var(--text)}
+  .lead-num em{font-style:normal;font-size:104px;font-weight:200;letter-spacing:-5px;line-height:.9;font-variant-numeric:tabular-nums}
+  .lead-num span{font-size:26px;font-weight:300;color:var(--dim);margin-top:14px;margin-left:6px}
+  .lead-num.done em{color:var(--good)}
+  .lead-sub{color:var(--dim);font-size:13px;margin-top:18px;letter-spacing:.2px}
+  .min-row{display:flex;justify-content:space-between;align-items:center;padding:19px 4px;border-top:1px solid var(--line);
+    font-size:16px;font-weight:400;cursor:pointer;transition:.15s}
+  .min-row:active{opacity:.55}
+  .min-row .r{color:var(--faint);font-size:14px}
+  .min-row .r.hot{color:var(--accent)}
+  .min-row .r.ok{color:var(--good)}
+  .home-mission{text-align:center;color:var(--dim);font-size:13px;line-height:1.55;margin-top:34px;padding:0 8px}
 </style>
 </head>
 <body>
@@ -544,39 +568,23 @@ function todayCard(){
 // ============================ SCREENS ============================
 function homeScreen(){
   const o=op(), t=targets(o), tot=dayTotals(today());
-  const remain=t.protein-tot.protein, done=remain<=0;
-  const kcalTarget=o.def>0?t.cut:t.maint, kcalRemain=kcalTarget-tot.kcal;
-  const gymToday=o.gymDays.includes(weekdayOf(today())), sd=sessionDone(today());
-  const lastW=d().weight[d().weight.length-1];
-  const streak=proteinStreak();
+  const remain=Math.max(0,Math.round(t.protein-tot.protein)), done=remain<=0;
+  const kcalTarget=o.def>0?t.cut:t.maint, kcalRemain=Math.round(kcalTarget-tot.kcal);
+  const gymToday=o.gymDays.includes(weekdayOf(today())), sd=sessionDone(today()), due=photoDue();
   return `
-    <div class="sub">${esc(o.name)} · ${shortDate(today())}</div>
-    ${dueBanner()}
-    <div class="card accent">
-      <div class="label">Protein remaining today</div>
-      <div class="hero-num"><b class="${done?'done':''}">${Math.max(0,Math.round(remain))}</b><span class="u">g</span></div>
-      <div class="hero-sub">${done?'TARGET HIT':`${Math.round(tot.protein)} / ${t.protein} g logged`}</div>
-      <div class="bar"><i style="width:${pct(tot.protein,t.protein)}%"></i></div>
-      ${streak>0?`<div class="faint" style="margin-top:8px">PROTEIN STREAK ${streak} DAY${streak===1?'':'S'}${streak>=7?' · LOCKED IN':''}</div>`:''}
-    </div>
-    <div class="card">
-      <div class="stats">
-        <div class="stat"><div class="k">Cal remaining${o.def>0?' (cut)':''}</div><div class="v ${kcalRemain<0?'bad':''}">${Math.round(kcalRemain)}<small> kcal</small></div></div>
-        <div class="stat"><div class="k">Eaten</div><div class="v">${Math.round(tot.kcal)}<small> kcal</small></div></div>
+    <div class="home">
+      <div class="orb ${done?'hit':''}"></div>
+      <div class="home-head"><b>${esc(o.name)}</b><span>${shortDate(today())}</span></div>
+      <div class="hero-lead">
+        <div class="lead-label">${done?'Protein · done':'Protein left today'}</div>
+        <div class="lead-num ${done?'done':''}"><em>${remain}</em><span>g</span></div>
+        <div class="lead-sub">${Math.round(tot.protein)} / ${t.protein} g · ${kcalRemain>=0?kcalRemain+' kcal left':Math.abs(kcalRemain)+' kcal over'}</div>
       </div>
-      <div class="bar ${tot.kcal>kcalTarget?'over':'muted'}"><i style="width:${pct(tot.kcal,kcalTarget)}%"></i></div>
-      <div class="faint" style="margin-top:8px">TARGET ${kcalTarget} kcal · MAINT ${t.maint} · NEVER PUSH A HARD DEFICIT</div>
-    </div>
-    ${todayCard()}
-    <div class="divider"></div>
-    <div class="label">Priority order</div>
-    <div class="dim" style="font-size:13px;letter-spacing:1px;margin-top:6px">protein → near target → lift hard → walk → sleep</div>
-    <div class="faint" style="margin-top:8px">Abs are built in training, revealed in the kitchen.</div>
-    ${lastW?`<div class="faint" style="margin-top:8px">LAST WEIGH-IN ${lastW.kg} kg · ${shortDate(lastW.date)}</div>`:''}
-    <div class="divider"></div>
-    <div class="label">Mission</div>
-    <div class="dim" style="font-size:13px;margin-top:6px;line-height:1.5">${esc(o.mission)}</div>
-    <div style="height:20px"></div>`;
+      <div class="min-row" data-goto="fuel"><span>Fuel</span><span class="r ${done?'ok':'hot'}">${done?'protein hit':remain+'g to go'}</span></div>
+      <div class="min-row" data-goto="train"><span>Train</span><span class="r ${sd?'ok':(gymToday?'hot':'')}">${sd?'done':(gymToday?('session '+nextDay()):'rest day')}</span></div>
+      <div class="min-row" data-goto="camera"><span>Weekly photo</span><span class="r ${due?'hot':'ok'}">${due?'take it':'done'}</span></div>
+      <div class="home-mission">${esc(o.mission)}</div>
+    </div>`;
 }
 
 function fuelScreen(){
