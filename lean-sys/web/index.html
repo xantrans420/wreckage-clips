@@ -1,0 +1,1198 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>LEAN.SYS</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#f3efe6" />
+<style>
+  :root{
+    --bg:#f3efe6; --card:rgba(255,255,255,.80); --surface:rgba(255,255,255,.80); --surface2:#efeade;
+    --line:rgba(70,60,40,.10); --line2:rgba(70,60,40,.18);
+    --text:#211f18; --dim:#7d766a; --faint:#aaa294; --accent:#ff5a00; --accent2:#7fb2ff;
+    --good:#1f9d57; --warn:#b5820c; --bad:#d2361c;
+    --radius:20px; --shadow:0 10px 30px rgba(90,70,40,.08), 0 2px 8px rgba(90,70,40,.05);
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,"Helvetica Neue",Arial,"Noto Sans",sans-serif;
+    --mono:var(--sans);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--bg);color:var(--text);font-family:var(--sans);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  body{min-height:100dvh;display:flex;flex-direction:column;position:relative;overflow-x:hidden}
+  input,textarea,select,button{font-family:var(--sans);color:var(--text)}
+  a{color:var(--accent);text-decoration:none}
+
+  /* ambient aura + grain */
+  .aura{position:fixed;inset:0;z-index:-2;overflow:hidden;pointer-events:none}
+  .aura b{position:absolute;border-radius:50%;filter:blur(60px);opacity:.55}
+  .aura .b1{width:70vmax;height:70vmax;left:-16vmax;top:-24vmax;background:radial-gradient(closest-side,#9cc4ff,transparent 70%)}
+  .aura .b2{width:60vmax;height:60vmax;right:-20vmax;top:22vmax;background:radial-gradient(closest-side,#a6ece6,transparent 70%);opacity:.45}
+  .aura .b3{width:44vmax;height:44vmax;left:12vmax;bottom:-18vmax;background:radial-gradient(closest-side,#ffc7a6,transparent 70%);opacity:.35}
+  .grain{position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.05;mix-blend-mode:multiply;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+
+  /* header */
+  header.app{flex:0 0 auto;padding:14px 18px 12px;display:flex;align-items:center;justify-content:space-between;gap:10px;
+    position:sticky;top:0;z-index:5;background:linear-gradient(var(--bg),rgba(243,239,230,.6) 70%,transparent);backdrop-filter:blur(6px)}
+  .title{color:var(--text);font-size:19px;font-weight:600;letter-spacing:-.2px}
+  .title::first-letter{color:var(--accent)}
+  .pills{display:flex;gap:4px;background:rgba(255,255,255,.45);padding:3px;border-radius:999px;border:1px solid var(--line)}
+  .pill{border:0;background:transparent;color:var(--faint);font-size:11px;font-weight:600;
+    letter-spacing:.3px;padding:7px 13px;cursor:pointer;border-radius:999px;transition:.15s}
+  .pill[aria-pressed="true"]{background:#fff;color:var(--accent);box-shadow:0 2px 8px rgba(90,70,40,.12)}
+
+  main.screen{flex:1 1 auto;overflow-y:auto;padding:6px 16px 18px;max-width:560px;width:100%;margin:0 auto}
+  .sub{color:var(--dim);font-size:12px;letter-spacing:.2px;margin:2px 0 14px}
+
+  .label{color:var(--dim);font-size:10px;letter-spacing:1.4px;text-transform:uppercase;font-weight:600}
+  .faint{color:var(--faint);font-size:11px;line-height:1.6}
+  .dim{color:var(--dim)}
+  .card{background:var(--card);border:1px solid var(--line);padding:17px;margin-bottom:12px;border-radius:var(--radius);
+    box-shadow:var(--shadow);backdrop-filter:blur(10px)}
+  .card.accent{border-color:rgba(255,90,0,.28);
+    background:radial-gradient(130% 120% at 100% 0%,rgba(127,178,255,.22),rgba(255,255,255,.82) 55%)}
+  .divider{height:1px;background:var(--line);margin:16px 2px;border:0}
+
+  .hero-num{display:flex;align-items:flex-end;gap:8px;margin-top:6px}
+  .hero-num b{color:var(--accent);font-size:64px;font-weight:600;line-height:.92;letter-spacing:-2px;font-variant-numeric:tabular-nums}
+  .hero-num b.done{color:var(--good)}
+  .hero-num .u{color:var(--dim);font-size:20px;margin-bottom:9px}
+  .hero-sub{color:var(--dim);font-size:12px;letter-spacing:.3px;margin-top:6px}
+
+  .bar{height:8px;background:rgba(70,60,40,.08);margin-top:11px;border-radius:999px;overflow:hidden}
+  .bar>i{display:block;height:100%;background:linear-gradient(90deg,#ff7a2e,var(--accent));border-radius:999px}
+  .bar.muted>i{background:var(--dim)} .bar.over>i{background:var(--bad)}
+
+  .stats{display:flex;gap:12px} .stat{flex:1}
+  .stat .k{color:var(--dim);font-size:10px;letter-spacing:1.2px;text-transform:uppercase;font-weight:600}
+  .stat .v{font-size:24px;font-weight:600;margin-top:3px;letter-spacing:-.5px;font-variant-numeric:tabular-nums}
+  .stat .v small{font-size:12px;color:var(--dim);font-weight:400}
+  .v.accent{color:var(--accent)} .v.good{color:var(--good)} .v.warn{color:var(--warn)} .v.bad{color:var(--bad)}
+
+  .rowline{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid var(--line);font-size:14px;gap:8px}
+  .rowline:last-child{border-bottom:0}
+  .rowline .p{color:var(--accent);width:46px;text-align:right;font-weight:600;font-variant-numeric:tabular-nums}
+  .del{color:var(--bad);font-size:10px;letter-spacing:.5px;cursor:pointer;border:1px solid var(--line2);padding:4px 9px;background:transparent;border-radius:999px}
+
+  input,textarea,select{background:rgba(255,255,255,.7);border:1px solid var(--line);padding:11px 13px;font-size:15px;width:100%;border-radius:13px}
+  input::placeholder,textarea::placeholder{color:var(--faint)}
+  input:focus,textarea:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(255,90,0,.12)}
+  .field{flex:1} .field .label{display:block;margin-bottom:5px}
+  .row{display:flex;gap:8px;align-items:flex-end}
+
+  .btn{display:block;width:100%;text-align:center;border:1px solid var(--line2);background:rgba(255,255,255,.7);
+    font-size:14px;font-weight:600;letter-spacing:.2px;padding:14px;cursor:pointer;border-radius:14px;transition:.15s}
+  .btn:active{transform:translateY(1px)}
+  .btn.accent{background:var(--accent);border-color:transparent;color:#fff;box-shadow:0 8px 20px rgba(255,90,0,.28)}
+  .btn.ghost{background:transparent;border-color:var(--line2)}
+  .btn.danger{background:transparent;border-color:rgba(210,54,28,.4);color:var(--bad)}
+  .btn:disabled{opacity:.4;cursor:default;box-shadow:none}
+
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+  .chip{border:1px solid var(--line);background:rgba(255,255,255,.7);padding:9px 13px;cursor:pointer;text-align:left;border-radius:14px;box-shadow:var(--shadow)}
+  .chip b{font-size:13px;font-weight:500} .chip span{display:block;color:var(--dim);font-size:11px;margin-top:2px}
+
+  .tabs3{display:flex;gap:6px;margin:12px 0;background:rgba(255,255,255,.5);padding:4px;border-radius:14px;border:1px solid var(--line)}
+  .tabs3 button{flex:1;border:0;background:transparent;color:var(--dim);font-size:11px;font-weight:600;
+    letter-spacing:.3px;padding:9px 0;cursor:pointer;border-radius:10px;transition:.15s}
+  .tabs3 button[aria-pressed="true"]{background:#fff;color:var(--text);box-shadow:0 2px 8px rgba(90,70,40,.12)}
+
+  .ex{border:1px solid var(--line);background:var(--card);padding:15px;margin-bottom:10px;border-radius:var(--radius);box-shadow:var(--shadow)}
+  .ex .top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+  .ex .name{font-weight:600;font-size:15px} .ex .scheme{color:var(--dim);font-size:11px;margin-top:2px}
+  .flag{background:var(--accent);color:#fff;font-size:9px;font-weight:700;letter-spacing:.5px;padding:4px 9px;white-space:nowrap;border-radius:999px}
+  .ex .last{color:var(--faint);font-size:11px;margin-top:8px}
+  .setgrid{display:grid;grid-template-columns:20px 1fr 1fr;gap:7px;margin-top:12px;align-items:center}
+  .setgrid .h{color:var(--faint);font-size:9px;letter-spacing:.8px;text-transform:uppercase;font-weight:600}
+  .setgrid input{padding:9px;text-align:center;font-size:14px}
+  .setgrid input.hit{color:var(--good);border-color:var(--good)}
+  .setgrid .idx{color:var(--dim);font-size:12px}
+
+  .photos{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+  .frame{aspect-ratio:3/4;border:1px solid var(--line);background:#efeade;
+    display:flex;align-items:flex-end;overflow:hidden;position:relative;cursor:pointer;border-radius:14px}
+  .frame img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .frame span{font-size:9px;color:var(--dim);letter-spacing:.5px;padding:6px;z-index:1;position:relative}
+
+  svg{display:block}
+
+  /* coach */
+  .chat{display:flex;flex-direction:column;gap:10px;margin-bottom:12px}
+  .msg{padding:12px 14px;font-size:14px;line-height:1.5;white-space:pre-wrap;word-break:break-word;border-radius:18px;box-shadow:var(--shadow)}
+  .msg.user{background:var(--accent);color:#fff;align-self:flex-end;max-width:85%;border-bottom-right-radius:6px}
+  .msg.assistant{background:var(--card);border:1px solid var(--line);align-self:flex-start;max-width:92%;border-bottom-left-radius:6px}
+  .msg.sys{background:rgba(181,130,12,.1);color:var(--warn);font-size:12px;box-shadow:none}
+  .composer{display:flex;gap:8px;align-items:flex-end;position:sticky;bottom:0;padding:8px 0;background:linear-gradient(transparent,var(--bg) 30%)}
+  .composer textarea{resize:none;min-height:46px;max-height:140px;border-radius:16px}
+  .composer .btn{width:auto;padding:13px 18px}
+
+  /* bottom nav */
+  nav.tabbar{flex:0 0 auto;display:flex;position:sticky;bottom:0;margin:8px auto 12px;max-width:520px;width:calc(100% - 24px);
+    background:rgba(255,255,255,.82);backdrop-filter:blur(14px);border:1px solid var(--line);border-radius:22px;
+    box-shadow:0 8px 28px rgba(90,70,40,.14);padding:8px 4px}
+  nav.tabbar button{flex:1;background:none;border:0;color:var(--faint);display:flex;flex-direction:column;align-items:center;
+    justify-content:center;gap:4px;cursor:pointer;padding:6px 0;border-radius:14px}
+  nav.tabbar button .g{font-size:16px} nav.tabbar button .t{font-size:9px;letter-spacing:.6px;font-weight:600}
+  nav.tabbar button[aria-pressed="true"]{color:var(--accent)}
+
+  .op{display:flex;align-items:center;gap:12px;border:1px solid var(--line);background:var(--card);padding:14px;margin-bottom:8px;border-radius:16px;box-shadow:var(--shadow)}
+  .op.active{border-color:rgba(255,90,0,.35)} .op .nm{flex:1} .op.active .nm b{color:var(--accent)}
+  .op .nm span{display:block;color:var(--dim);font-size:11px;margin-top:2px}
+
+  .pillrow{display:flex;gap:8px} .pillrow .p2{flex:1;border:1px solid var(--line);background:rgba(255,255,255,.7);color:var(--dim);
+    font-size:12px;font-weight:600;padding:11px 0;text-align:center;cursor:pointer;letter-spacing:.3px;border-radius:12px}
+  .pillrow .p2[aria-pressed="true"]{background:var(--accent);border-color:transparent;color:#fff;box-shadow:0 4px 12px rgba(255,90,0,.25)}
+  .dayrow{display:flex;gap:6px} .dayrow .d{flex:1;aspect-ratio:1;border:1px solid var(--line);background:rgba(255,255,255,.7);
+    display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:var(--dim);cursor:pointer;border-radius:12px}
+  .dayrow .d.on{background:var(--accent);border-color:transparent;color:#fff}
+  .check{width:18px;height:18px;border:1.5px solid var(--line2);display:inline-block;vertical-align:middle;border-radius:6px}
+  .check.on{background:var(--accent);border-color:transparent}
+
+  /* minimal airy home — gradient-orb hero, big thin number, hairline rows */
+  .home{position:relative;min-height:74vh;padding-top:2px;isolation:isolate}
+  .orb{position:absolute;left:50%;top:2%;transform:translateX(-50%);width:128%;aspect-ratio:1;z-index:-1;
+    background:radial-gradient(closest-side at 46% 42%,rgba(150,205,255,.92),rgba(120,225,235,.42) 42%,rgba(255,190,150,.16) 62%,transparent 74%);
+    filter:blur(30px);opacity:1;animation:orbdrift 18s ease-in-out infinite alternate}
+  .orb.hit{background:radial-gradient(closest-side at 50% 42%,rgba(150,235,180,.85),rgba(150,220,235,.4) 46%,transparent 74%)}
+  @keyframes orbdrift{from{transform:translateX(-50%) translateY(0) scale(1)}to{transform:translateX(-52%) translateY(2%) scale(1.05)}}
+  .home-head{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;color:var(--dim);letter-spacing:.3px}
+  .home-head b{color:var(--text);font-weight:600;letter-spacing:0}
+  .hero-lead{padding:15vh 0 11vh;text-align:center}
+  .lead-label{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--dim)}
+  .lead-num{display:inline-flex;align-items:flex-start;justify-content:center;margin-top:10px;color:var(--text)}
+  .lead-num em{font-style:normal;font-size:104px;font-weight:200;letter-spacing:-5px;line-height:.9;font-variant-numeric:tabular-nums}
+  .lead-num span{font-size:26px;font-weight:300;color:var(--dim);margin-top:14px;margin-left:6px}
+  .lead-num.done em{color:var(--good)}
+  .lead-sub{color:var(--dim);font-size:13px;margin-top:18px;letter-spacing:.2px}
+  .min-row{display:flex;justify-content:space-between;align-items:center;padding:19px 4px;border-top:1px solid var(--line);
+    font-size:16px;font-weight:400;cursor:pointer;transition:.15s}
+  .min-row:active{opacity:.55}
+  .min-row .r{color:var(--faint);font-size:14px}
+  .min-row .r.hot{color:var(--accent)}
+  .min-row .r.ok{color:var(--good)}
+  .home-mission{text-align:center;color:var(--dim);font-size:13px;line-height:1.55;margin-top:34px;padding:0 8px}
+
+  /* ============ talking-bubble flow ============ */
+  #app{flex:1 1 auto;display:flex;flex-direction:column;min-height:100dvh}
+  .topbar{position:fixed;top:0;left:0;right:0;z-index:4;display:flex;align-items:center;justify-content:space-between;
+    padding:16px 20px;font-size:13px;color:var(--faint)}
+  .topbar .who{cursor:pointer;font-weight:600;color:var(--dim);letter-spacing:.2px}
+  .topbar .date{color:var(--faint)}
+  .topbar .gear{cursor:pointer;font-size:17px;opacity:.55;line-height:1}
+  .stage{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    text-align:center;padding:80px 22px 40px;width:100%;max-width:520px;margin:0 auto}
+  .orb2{width:min(58vw,240px);aspect-ratio:1;border-radius:50%;flex:0 0 auto;
+    background:radial-gradient(closest-side at 44% 40%,rgba(150,205,255,.95),rgba(120,225,235,.5) 44%,rgba(255,190,150,.24) 66%,transparent 78%);
+    filter:blur(11px);animation:breathe 7s ease-in-out infinite;will-change:transform,opacity}
+  .orb2.good{background:radial-gradient(closest-side at 48% 40%,rgba(150,235,180,.9),rgba(150,220,235,.42) 46%,transparent 78%)}
+  .orb2.rough{background:radial-gradient(closest-side at 44% 40%,rgba(255,180,140,.9),rgba(255,150,150,.4) 46%,rgba(190,200,255,.25) 68%,transparent 80%)}
+  @keyframes breathe{0%,100%{transform:scale(1) translateY(0);opacity:.9}50%{transform:scale(1.06) translateY(-1.5%);opacity:1}}
+  .say{font-size:clamp(21px,5.6vw,27px);font-weight:300;line-height:1.42;color:var(--text);
+    max-width:15ch;margin:6vh auto 0;min-height:2.6em;opacity:0}
+  .say.say-in{animation:sayin .55s ease forwards}
+  .say b{font-weight:600} .say .em{color:var(--accent);font-weight:500}
+  @keyframes sayin{from{opacity:0;transform:translateY(10px);filter:blur(5px)}to{opacity:1;transform:none;filter:none}}
+  .say-sub{font-size:14px;color:var(--dim);margin:16px auto 0;max-width:26ch;line-height:1.55;opacity:0;animation:sayin .55s .12s ease forwards}
+  .choices{display:flex;flex-direction:column;gap:11px;width:min(90vw,340px);margin:7vh auto 0;transition:opacity .45s ease}
+  .choice{padding:16px 18px;border-radius:16px;border:1px solid var(--line);background:rgba(255,255,255,.72);
+    font-size:16px;font-weight:500;color:var(--text);cursor:pointer;box-shadow:var(--shadow);backdrop-filter:blur(8px);transition:.14s}
+  .choice:active{transform:translateY(1px)}
+  .choice.primary{background:var(--accent);color:#fff;border-color:transparent;box-shadow:0 10px 26px rgba(255,90,0,.3)}
+
+  /* overlay sheet (settings / coach / progress / picker) */
+  .sheet{position:fixed;inset:0;z-index:60;background:rgba(243,239,230,.78);backdrop-filter:blur(14px);overflow-y:auto}
+  .sheet-inner{max-width:560px;width:100%;margin:0 auto;padding:22px 16px 48px}
+  .sheet-h{display:flex;justify-content:space-between;align-items:center;font-size:19px;font-weight:600;margin-bottom:16px}
+  .sheet-h .x{cursor:pointer;color:var(--dim);font-size:17px;padding:4px 8px}
+  .pick{display:block;width:100%;text-align:left;border:1px solid var(--line);background:rgba(255,255,255,.75);
+    padding:15px 16px;border-radius:15px;margin-bottom:10px;cursor:pointer;box-shadow:var(--shadow)}
+  .pick b{font-size:16px;font-weight:500} .pick span{display:block;color:var(--dim);font-size:12px;margin-top:3px}
+</style>
+</head>
+<body>
+  <div class="aura"><b class="b1"></b><b class="b2"></b><b class="b3"></b></div>
+  <div class="grain"></div>
+  <div id="app"></div>
+  <input type="file" id="photo-input" accept="image/*" capture="user" style="display:none"/>
+  <input type="file" id="food-photo-input" accept="image/*" capture="environment" style="display:none"/>
+
+<script>
+"use strict";
+/* ============================ LEAN.SYS — local-first web build ============================
+   Two operators. All data persists in this browser (localStorage; photos in IndexedDB).
+   COACH talks to Claude via the Anthropic API using YOUR api key (stored locally, sent only
+   to api.anthropic.com). No server, no accounts. This is the recomp protocol, not a platform.
+========================================================================================== */
+
+// ---------- domain ----------
+function targets(p){
+  const base = 10*p.w + 6.25*p.h - 5*p.age;
+  const bmr = p.sex==='male' ? base+5 : base-161;
+  const maint = bmr*p.act;
+  return { bmr:Math.round(bmr), maint:Math.round(maint), cut:Math.round(maint-p.def), protein:Math.round(p.w*1.9) };
+}
+const SPLIT_FREE = {
+  A:[['Goblet / leg press','3x8-10'],['DB bench press','3x8-10'],['Lat pulldown','3x10'],
+     ['Seated cable row','3x10','posture'],['DB shoulder press','3x10'],['Plank','3x40s']],
+  B:[['Romanian deadlift','3x8-10'],['One-arm DB row','3x10'],['Incline DB press','3x10'],
+     ['Face pulls','3x15','fixes rounded shoulders'],['Leg curl','3x12'],['Hanging knee raise','3x12']],
+  C:[['Deadlift / trap-bar','3x6-8'],['Pull-up / assisted','3xmax'],['Flat DB bench','3x10'],
+     ['Bulgarian split squat','3x10/leg'],['Lateral raise','3x15'],['Cable crunch','3x15']],
+};
+const SPLIT_MACH = {
+  A:[['Leg press','3x8-10'],['Chest press machine','3x8-10'],['Lat pulldown','3x10'],
+     ['Seated cable row','3x10','posture'],['Shoulder press machine','3x10'],['Plank','3x40s']],
+  B:[['Leg curl + back extension','3x10'],['Seated cable row','3x10'],['Incline chest press machine','3x10'],
+     ['Face pulls','3x15','fixes rounded shoulders'],['Leg curl','3x12'],['Captain’s chair knee raise','3x12']],
+  C:[['Leg press','3x8'],['Assisted pull-up / lat pulldown','3x10'],['Chest press machine','3x10'],
+     ['Leg press','3x12'],['Lateral raise machine','3x15'],['Cable crunch','3x15']],
+};
+const SEED_FOODS=[['Chicken thigh 150g',290,38],['Rice 200g',260,5],['3 eggs',210,18],['Quark 250g',170,30],['Protein shake',130,25]];
+const PLATE=['1 palm+ protein','1 fist carb (2 on train days)','2 handfuls veg','1 thumb fat'];
+const DAYS=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const STEP_GOAL=8000;
+const DEFAULT_MISSION='So I can still run and play with my kids in 10 years.';
+const FACTS=[
+  "You're not training for a beach photo. You're training to still get off the floor with your kids in 10 years.",
+  "Muscle is your retirement account for movement — build it now, spend it at 70.",
+  "Grip strength and leg strength predict how independent you'll be at 80. You're banking it today.",
+  "Every session you keep is a session your future self gets to run, lift, and play.",
+  "Protein protects the muscle you're building — it's the line between losing fat and losing yourself.",
+  "Consistency beats intensity: 3 sessions a week for a year is 156 votes for who you're becoming.",
+  "The scale lies during a recomp — muscle up, fat down, weight flat. The photos tell the truth.",
+  "Walking 8–10k steps a day is the cheapest longevity drug there is.",
+  "Sleep is when muscle is actually built. The cortisol from bad sleep is what holds the belly fat.",
+  "Strong parents raise kids who see strength as normal. You're setting the baseline for them too.",
+];
+
+// ---------- persistence ----------
+const KEY='leansys.v1';
+function blankData(){ return { food:{}, savedFoods:SEED_FOODS.map(f=>({name:f[0],kcal:f[1],protein:f[2]})),
+  weight:[], lifts:{}, sessions:[], coach:[] }; }
+function defaultState(){
+  return {
+    activeId:'op1',
+    apiKey:'', model:'claude-opus-4-8', lastIntro:'',
+    operators:{
+      op1:{id:'op1',name:'Operator 1',sex:'male',h:197,w:95,age:36,act:1.375,def:300,equip:'free_weights',gymDays:['Mon','Wed','Fri'],mission:DEFAULT_MISSION,photoDay:'Sun'},
+      op2:{id:'op2',name:'Operator 2',sex:'female',h:170,w:65,age:34,act:1.375,def:300,equip:'free_weights',gymDays:['Tue','Thu','Sat'],mission:DEFAULT_MISSION,photoDay:'Sun'},
+    },
+    data:{ op1:blankData(), op2:blankData() },
+  };
+}
+let S;
+function load(){
+  try{ const raw=localStorage.getItem(KEY); S = raw? JSON.parse(raw): defaultState(); }
+  catch(e){ S=defaultState(); }
+  // migrate-safety
+  if(!S.operators||!S.data){ S=defaultState(); }
+  for(const id of Object.keys(S.operators)){ if(!S.data[id]) S.data[id]=blankData(); const o=S.operators[id]; if(!o.mission) o.mission=DEFAULT_MISSION; if(!o.photoDay) o.photoDay='Sun'; }
+}
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){ alert('Storage full or blocked: '+e.message); } }
+function op(){ return S.operators[S.activeId]; }
+function d(){ return S.data[S.activeId]; }
+function iso(dt){ dt=dt||new Date(); const y=dt.getFullYear(),m=String(dt.getMonth()+1).padStart(2,'0'),da=String(dt.getDate()).padStart(2,'0'); return `${y}-${m}-${da}`; }
+function today(){ return iso(); }
+function shortDate(s){ const M=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; const [y,m,da]=s.split('-').map(Number); return `${da} ${M[m-1]}`; }
+function weekdayOf(s){ const [y,m,da]=s.split('-').map(Number); const js=new Date(y,m-1,da).getDay(); return DAYS[js===0?6:js-1]; }
+
+// ---------- IndexedDB (photos) ----------
+let _db=null;
+function db(){ return new Promise((res,rej)=>{ if(_db) return res(_db);
+  const r=indexedDB.open('leansys-photos',1);
+  r.onupgradeneeded=()=>{ const store=r.result.createObjectStore('photos',{keyPath:'id'}); store.createIndex('op','opId'); };
+  r.onsuccess=()=>{ _db=r.result; res(_db); }; r.onerror=()=>rej(r.error); }); }
+async function photoPut(rec){ const x=await db(); return new Promise((res,rej)=>{ const t=x.transaction('photos','readwrite'); t.objectStore('photos').put(rec); t.oncomplete=res; t.onerror=()=>rej(t.error); }); }
+async function photoDel(id){ const x=await db(); return new Promise((res,rej)=>{ const t=x.transaction('photos','readwrite'); t.objectStore('photos').delete(id); t.oncomplete=res; t.onerror=()=>rej(t.error); }); }
+async function photoAll(opId){ const x=await db(); return new Promise((res,rej)=>{ const out=[]; const t=x.transaction('photos','readonly');
+  const idx=t.objectStore('photos').index('op'); const rq=idx.openCursor(IDBKeyRange.only(opId));
+  rq.onsuccess=()=>{ const c=rq.result; if(c){ out.push(c.value); c.continue(); } else res(out); }; rq.onerror=()=>rej(rq.error); }); }
+
+// ---------- helpers ----------
+const el=(h)=>{const t=document.createElement('template');t.innerHTML=h.trim();return t.content.firstElementChild;};
+const esc=(s)=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const pct=(v,t)=>Math.max(0,Math.min(100,t>0?(v/t)*100:0));
+const num=(v)=>{const n=Number(v);return Number.isFinite(n)?n:0;};
+
+function dayTotals(dateStr){ const list=(d().food[dateStr]||[]); return list.reduce((a,f)=>{a.kcal+=f.kcal;a.protein+=f.protein;return a;},{kcal:0,protein:0}); }
+function completedCount(){ return d().sessions.length; }
+function nextDay(){ return ['A','B','C'][completedCount()%3]; }
+function sessionDone(dateStr){ return d().sessions.some(s=>s.date===dateStr); }
+function splitFor(o){ return o.equip==='machines_only'?SPLIT_MACH:SPLIT_FREE; }
+function parseTop(scheme){ if(/max|s$/i.test(scheme.split('x')[1]||'')) return null; const m=(scheme.split('x')[1]||'').match(/\d+/g); if(!m) return null; return Number(m[m.length-1]); }
+function lastSession(exId, beforeDate){ const dates=Object.keys(d().lifts).filter(dt=>dt<beforeDate && (d().lifts[dt][exId]||[]).length).sort(); const dt=dates[dates.length-1]; return dt?{date:dt,sets:d().lifts[dt][exId]}:null; }
+
+// ---------- state ----------
+let view={ tab:'home', trainDay:null };
+const TABS=[['home','▚','HOME'],['fuel','◇','FUEL'],['train','≡','TRAIN'],['body','◱','BODY'],['coach','◈','COACH'],['sys','※','SYS']];
+
+// ---------- charts ----------
+function trendSvg(data){
+  const w=520,h=140,pl=32,pr=8,pt=12,pb=18;
+  if(data.length<2) return `<svg viewBox="0 0 ${w} ${h}" width="100%" height="140"><text x="${w/2}" y="${h/2}" fill="var(--faint)" font-family="var(--mono)" font-size="12" text-anchor="middle">NEED 2+ WEIGH-INS FOR A TREND</text></svg>`;
+  const kg=data.map(p=>p.kg); const min=Math.min(...kg)-0.5,max=Math.max(...kg)+0.5,span=(max-min)||1;
+  const x=i=>pl+(i/(data.length-1))*(w-pl-pr); const y=v=>pt+(1-(v-min)/span)*(h-pt-pb);
+  const path=data.map((p,i)=>(i?'L':'M')+x(i).toFixed(1)+','+y(p.kg).toFixed(1)).join(' ');
+  const dots=data.map((p,i)=>`<circle cx="${x(i).toFixed(1)}" cy="${y(p.kg).toFixed(1)}" r="2.2" fill="var(--accent)"/>`).join('');
+  return `<svg viewBox="0 0 ${w} ${h}" width="100%" height="140">
+    <line x1="${pl}" y1="${h-pb}" x2="${w-pr}" y2="${h-pb}" stroke="var(--line)"/>
+    <text x="2" y="${(y(max)+4).toFixed(0)}" fill="var(--faint)" font-family="var(--mono)" font-size="9">${max.toFixed(0)}</text>
+    <text x="2" y="${(y(min)+4).toFixed(0)}" fill="var(--faint)" font-family="var(--mono)" font-size="9">${min.toFixed(0)}</text>
+    <path d="${path}" fill="none" stroke="var(--accent)" stroke-width="1.5"/>${dots}</svg>`;
+}
+
+// ============================ GAMIFICATION + TIME-LAPSE ============================
+function allLogDates(){ const s=new Set(); d().weight.forEach(w=>s.add(w.date)); d().sessions.forEach(x=>s.add(x.date));
+  Object.keys(d().food).forEach(k=>{ if((d().food[k]||[]).length) s.add(k); }); return [...s].sort(); }
+function daysBetween(a,b){ return Math.round((new Date(b)-new Date(a))/86400000); }
+function weeksIn(extraFirst){ const ds=allLogDates(); let first=ds[0]; if(extraFirst&&(!first||extraFirst<first)) first=extraFirst;
+  if(!first) return 0; return Math.max(1,Math.floor(daysBetween(first,today())/7)+1); }
+function proteinStreak(){ const target=targets(op()).protein; let streak=0; const day=new Date(today());
+  for(let i=0;i<400;i++){ const ds=iso(day); const hit=dayTotals(ds).protein>=target && target>0;
+    if(i===0 && !hit){ day.setDate(day.getDate()-1); continue; } // grace: today may not be logged yet
+    if(hit){ streak++; day.setDate(day.getDate()-1); } else break; }
+  return streak; }
+function milestoneList(photoDates){
+  const w=weeksIn(photoDates[0]), sess=d().sessions.length, ps=proteinStreak(), photos=photoDates.length;
+  return [
+    {label:'FIRST SHOT', on:photos>=1},
+    {label:'BASELINE', on:photos>=1 && d().weight.length>=1},
+    {label:'SIDE-BY-SIDE', on:photoDates.length>=2},
+    {label:'4 WEEKS', on:w>=4},
+    {label:'12 WEEKS', on:w>=12},
+    {label:'10 SESSIONS', on:sess>=10},
+    {label:'25 SESSIONS', on:sess>=25},
+    {label:'PROTEIN ×7', on:ps>=7},
+    {label:'PROTEIN ×30', on:ps>=30},
+  ];
+}
+
+// ---- time-lapse reel ----
+let reel={angle:'front',rows:[],frames:[],idx:0,playing:false,timer:null};
+let factIdx=0;
+function reelPause(){ if(reel.timer){ clearInterval(reel.timer); reel.timer=null; } reel.playing=false;
+  const b=document.getElementById('reel-play'); if(b) b.textContent='▶ PLAY'; }
+function setReelFrames(){
+  const rows=reel.rows.filter(r=>r.angle===reel.angle).sort((a,b)=>a.date<b.date?-1:1);
+  const first=rows[0]?rows[0].date:null;
+  reel.frames=rows.map(r=>({dataUrl:r.dataUrl,date:r.date,kg:r.kg,week:first?Math.floor(daysBetween(first,r.date)/7)+1:1}));
+  reel.idx=0;
+}
+function reelShow(i){ if(!reel.frames.length) return; reel.idx=(i+reel.frames.length)%reel.frames.length;
+  const f=reel.frames[reel.idx];
+  const img=document.getElementById('reel-img'), cap=document.getElementById('reel-cap'), sc=document.getElementById('reel-scrub');
+  if(img) img.src=f.dataUrl; if(sc) sc.value=reel.idx;
+  if(cap){ const tag=reel.idx===0?'START':(reel.idx===reel.frames.length-1?'NOW':''); cap.textContent=`${tag?tag+' · ':''}WEEK ${f.week} · ${shortDate(f.date)}${f.kg?(' · '+f.kg+'kg'):''}`; }
+}
+function reelToggle(){ if(reel.playing){ reelPause(); return; } if(reel.frames.length<2) return;
+  reel.playing=true; const b=document.getElementById('reel-play'); if(b) b.textContent='▮▮ PAUSE';
+  reel.timer=setInterval(()=>reelShow(reel.idx+1),700); }
+
+async function buildJourney(){ reel.rows=await photoAll(S.activeId); setReelFrames(); paintJourney(); }
+function paintJourney(){ const box=document.getElementById('journey'); if(!box) return;
+  box.innerHTML=journeyHtml(); reelShow(reel.idx); }
+function journeyHtml(){
+  const o=op(); const photoDates=[...new Set(reel.rows.map(r=>r.date))].sort();
+  const w=weeksIn(photoDates[0]), sess=d().sessions.length, ps=proteinStreak();
+  const ms=milestoneList(photoDates);
+  const angles=['front','side','relaxed'];
+  const reelBody = reel.frames.length<2
+    ? `<div class="faint" style="padding:16px;border:1px solid var(--line);background:var(--surface2);text-align:center;line-height:1.6">
+         Shoot the same angle each week and the reel builds itself — start → weekly → where you land.<br>
+         ${reel.frames.length===1?'1 photo so far. One more next week and it plays.':'Take your START photo below.'}</div>`
+    : `<div style="border:1px solid var(--line2);background:#efefec;position:relative;aspect-ratio:3/4;overflow:hidden">
+         <img id="reel-img" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover"/>
+         <div id="reel-cap" style="position:absolute;left:0;right:0;bottom:0;background:linear-gradient(transparent,rgba(0,0,0,.75));
+           color:#fff;font-size:11px;letter-spacing:1px;padding:8px 10px"></div>
+       </div>
+       <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
+         <button class="btn accent" id="reel-play" style="width:auto;padding:10px 16px">▶ PLAY</button>
+         <input id="reel-scrub" type="range" min="0" max="${reel.frames.length-1}" value="${reel.idx}" step="1" style="flex:1"/>
+       </div>
+       <div style="height:8px"></div>
+       <button class="btn" id="reel-export" style="width:auto;padding:9px 14px">Export shareable video</button>
+       <span id="export-status" class="faint" style="margin-left:8px"></span>
+       <div class="faint" style="margin-top:6px">${reel.frames.length} frames · ${reel.angle} angle · drag to scrub. Video saves as .mp4/.webm to your device.</div>`;
+  return `
+    <div class="card accent">
+      <div class="label">Your why</div>
+      <div style="font-size:15px;line-height:1.5;margin-top:6px">${esc(o.mission)}</div>
+      <div class="faint" style="margin-top:6px">Not just for you. Edit it in SYS.</div>
+    </div>
+    <div class="card">
+      <div class="stats">
+        <div class="stat"><div class="k">Weeks in</div><div class="v accent">${w||0}</div></div>
+        <div class="stat"><div class="k">Sessions</div><div class="v">${sess}</div></div>
+        <div class="stat"><div class="k">Protein streak</div><div class="v ${ps>=7?'good':''}">${ps}<small> d</small></div></div>
+      </div>
+    </div>
+    <div class="label">Milestones</div>
+    <div class="chips" style="margin-bottom:12px">
+      ${ms.map(m=>`<span class="chip" style="cursor:default;border-color:${m.on?'var(--accent)':'var(--line)'};color:${m.on?'var(--accent)':'var(--faint)'}"><b>${m.on?'✓ ':'○ '}${m.label}</b></span>`).join('')}
+    </div>
+    <div class="card">
+      <div class="label">Why it matters</div>
+      <div id="fact-text" style="font-size:13px;line-height:1.55;margin-top:6px;color:var(--text)">${esc(FACTS[factIdx%FACTS.length])}</div>
+      <div style="height:8px"></div><button class="btn ghost" data-fact-next style="width:auto;padding:8px 14px">Next →</button>
+    </div>
+    <div class="label">Time-lapse · how you've grown</div>
+    <div style="height:8px"></div>
+    <div class="tabs3" style="margin-top:0">${angles.map(a=>`<button data-reelang="${a}" aria-pressed="${a===reel.angle}">${a.toUpperCase()}</button>`).join('')}</div>
+    ${reelBody}
+    <div class="divider"></div>`;
+}
+
+// ---- weekly photo reminder ----
+function photoDue(){ const lp=d().lastPhotoDate; return !lp || daysBetween(lp,today())>=7; }
+function dueBanner(){ if(!photoDue()) return '';
+  const isDay=weekdayOf(today())===(op().photoDay||'Sun');
+  return `<div class="card" style="border-color:var(--accent);background:#fff3ec">
+    <div class="label" style="color:var(--accent)">${isDay?'PHOTO DAY':'PHOTO DUE'}</div>
+    <div style="font-size:13px;margin-top:6px;line-height:1.5">Take your weekly progress photo — one shot, same angle. The 40% ghost lines it up. It feeds the time-lapse.</div>
+    <div style="height:8px"></div><button class="btn accent" id="go-body-shoot">Take photo →</button></div>`; }
+function nextWeekday(code){ const map={Sun:0,Mon:1,Tue:2,Wed:3,Thu:4,Fri:5,Sat:6}; const target=map[code]!=null?map[code]:0;
+  const dt=new Date(today()+'T00:00:00'); const add=(target-dt.getDay()+7)%7; dt.setDate(dt.getDate()+add); return dt; }
+function buildICS(o){ const WD={Sun:'SU',Mon:'MO',Tue:'TU',Wed:'WE',Thu:'TH',Fri:'FR',Sat:'SA'}; const day=o.photoDay||'Sun';
+  const dt=nextWeekday(day); const s=`${dt.getFullYear()}${String(dt.getMonth()+1).padStart(2,'0')}${String(dt.getDate()).padStart(2,'0')}T080000`;
+  return ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//LEAN.SYS//EN','CALSCALE:GREGORIAN',
+    'BEGIN:VEVENT','UID:leansys-photo-'+o.id+'@local','DTSTART:'+s,'DURATION:PT10M','RRULE:FREQ=WEEKLY;BYDAY='+WD[day],
+    'SUMMARY:LEAN.SYS — weekly progress photos + weigh-in',
+    'DESCRIPTION:Shoot front / side / relaxed. Morning\\, same spot\\, same light. Then weigh in (empty). The reel builds itself.',
+    'BEGIN:VALARM','TRIGGER:PT0S','ACTION:DISPLAY','DESCRIPTION:LEAN.SYS weekly photos','END:VALARM',
+    'END:VEVENT','END:VCALENDAR'].join('\r\n'); }
+function downloadText(name,text,mime){ const b=new Blob([text],{type:mime}); const a=document.createElement('a');
+  a.href=URL.createObjectURL(b); a.download=name; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),3000); }
+
+// ---- shareable time-lapse video (in-browser, no libraries) ----
+function loadImg(src){ return new Promise((res,rej)=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=()=>rej(new Error('image load failed')); i.src=src; }); }
+function pickMime(){ const c=['video/mp4;codecs=avc1.42E01E','video/mp4','video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'];
+  for(const t of c){ try{ if(window.MediaRecorder && MediaRecorder.isTypeSupported(t)) return t; }catch(e){} } return ''; }
+async function exportReel(){
+  const st=document.getElementById('export-status');
+  if(reel.frames.length<2){ alert('Need at least 2 photos at this angle for a video.'); return; }
+  const canvas=document.createElement('canvas');
+  if(typeof MediaRecorder==='undefined' || !canvas.captureStream){ alert('This browser can’t record video (older iOS Safari is common). Use the in-app PLAY reel here, or open it in Chrome to export a file. The calendar reminder + JSON backup still work.'); return; }
+  const mime=pickMime(); if(!mime){ alert('No supported video format in this browser.'); return; }
+  reelPause();
+  const o=op(); const frames=reel.frames.slice();
+  if(st){ st.style.color='var(--dim)'; st.textContent='loading photos…'; }
+  let imgs; try{ imgs=await Promise.all(frames.map(f=>loadImg(f.dataUrl))); }catch(e){ if(st){st.style.color='var(--bad)';st.textContent='export failed: '+e.message;} return; }
+  const W=720,H=960; canvas.width=W; canvas.height=H; const ctx=canvas.getContext('2d');
+  const stream=canvas.captureStream(30); const chunks=[];
+  const rec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:6000000});
+  rec.ondataavailable=e=>{ if(e.data&&e.data.size) chunks.push(e.data); };
+  const stopped=new Promise(res=>{ rec.onstop=res; });
+  function wrap(text,max){ const words=String(text).split(/\s+/); const lines=[]; let line='';
+    for(const w of words){ const test=line?line+' '+w:w; if(ctx.measureText(test).width>max && line){ lines.push(line); line=w; } else line=test; } if(line) lines.push(line); return lines; }
+  function card(title,sub){ ctx.fillStyle='#050505'; ctx.fillRect(0,0,W,H);
+    ctx.textAlign='center'; ctx.fillStyle='#ff5a00'; ctx.font='700 66px monospace'; ctx.fillText(title,W/2,H/2-24);
+    ctx.fillStyle='#8a8a8a'; ctx.font='24px monospace'; wrap(sub,W-140).forEach((l,i)=>ctx.fillText(l,W/2,H/2+34+i*34)); }
+  function frame(img,f,i){ ctx.fillStyle='#000'; ctx.fillRect(0,0,W,H);
+    const s=Math.max(W/img.width,H/img.height),dw=img.width*s,dh=img.height*s; ctx.drawImage(img,(W-dw)/2,(H-dh)/2,dw,dh);
+    const g=ctx.createLinearGradient(0,H-170,0,H); g.addColorStop(0,'rgba(0,0,0,0)'); g.addColorStop(1,'rgba(0,0,0,.82)'); ctx.fillStyle=g; ctx.fillRect(0,H-170,W,170);
+    const tag=i===0?'START':(i===frames.length-1?'NOW':'');
+    ctx.textAlign='left'; ctx.fillStyle='#8a8a8a'; ctx.font='20px monospace'; ctx.fillText('LEAN.SYS · '+(o.name||'').toUpperCase(),28,H-104);
+    ctx.fillStyle='#ff5a00'; ctx.font='700 32px monospace'; ctx.fillText((tag?tag+' · ':'')+'WEEK '+f.week+' · '+shortDate(f.date)+(f.kg?(' · '+f.kg+'kg'):''),28,H-46); }
+  const perFrame=750,titleMs=1000,endMs=1700,total=titleMs+frames.length*perFrame+endMs;
+  rec.start(); const t0=performance.now(); let raf;
+  await new Promise(res=>{ (function tick(now){ const t=now-t0;
+    if(t<titleMs) card('LEAN.SYS',(o.name||'').toUpperCase()+' · '+(weeksIn(frames[0].date)||frames.length)+' WEEKS IN');
+    else if(t<titleMs+frames.length*perFrame){ const i=Math.min(frames.length-1,Math.floor((t-titleMs)/perFrame)); frame(imgs[i],frames[i],i); }
+    else card('KEEP GOING', o.mission||'');
+    if(st) st.textContent='rendering… '+Math.min(100,Math.round(t/total*100))+'%';
+    if(t<total){ raf=requestAnimationFrame(tick); } else { cancelAnimationFrame(raf); rec.stop(); res(); } })(performance.now()); });
+  await stopped;
+  const ext=mime.indexOf('mp4')>=0?'mp4':'webm'; const blob=new Blob(chunks,{type:mime});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='leansys-timelapse-'+reel.angle+'-'+today()+'.'+ext; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),5000);
+  if(st){ st.style.color='var(--good)'; st.textContent='saved '+a.download+' · '+Math.round(blob.size/1024)+' KB'; }
+}
+
+// ---- particle intro: dots swarm into "1% BETTER" ----
+function sampleText(text,W,H){
+  const off=document.createElement('canvas'); off.width=W; off.height=H; const o=off.getContext('2d');
+  let fs=Math.floor(W/5); o.fillStyle='#fff'; o.textAlign='center'; o.textBaseline='middle';
+  for(;fs>10;fs-=2){ o.font='700 '+fs+'px monospace'; if(o.measureText(text).width<=W*0.84) break; }
+  o.font='700 '+fs+'px monospace'; o.fillText(text,W/2,H/2);
+  const img=o.getImageData(0,0,W,H).data, cand=[];
+  for(let y=0;y<H;y+=3){ for(let x=0;x<W;x+=3){ if(img[(y*W+x)*4+3]>128) cand.push({x,y}); } }
+  if(!cand.length) return [];
+  const N=Math.min(620,cand.length), out=[], stride=cand.length/N;
+  for(let i=0;i<N;i++) out.push(cand[Math.floor(i*stride)]);
+  return out;
+}
+let introRAF=null;
+function runIntro(){
+  const ov=el(`<div id="intro" style="position:fixed;inset:0;background:radial-gradient(62% 46% at 50% 38%,#dce8ff,#f3efe6 72%);z-index:100;overflow:hidden"></div>`);
+  const canvas=el(`<canvas style="position:absolute;inset:0;width:100%;height:100%"></canvas>`);
+  ov.appendChild(canvas); document.body.appendChild(ov);
+  const W=ov.clientWidth||window.innerWidth, H=ov.clientHeight||window.innerHeight, dpr=Math.min(2,window.devicePixelRatio||1);
+  canvas.width=W*dpr; canvas.height=H*dpr; const ctx=canvas.getContext('2d'); ctx.scale(dpr,dpr);
+  const pts=sampleText('1% BETTER',W,H);
+  if(!pts.length){ ov.remove(); S.lastIntro=today(); save(); return; }
+  const parts=pts.map(p=>({x:W/2+(Math.random()-.5)*W, y:H/2+(Math.random()-.5)*H*1.2, tx:p.x, ty:p.y}));
+  const start=performance.now(); let prompt=false;
+  function loop(now){ const t=now-start; ctx.clearRect(0,0,W,H); ctx.fillStyle='#ff5a00';
+    for(const p of parts){ p.x+=(p.tx-p.x)*0.09+(Math.random()-.5)*0.35; p.y+=(p.ty-p.y)*0.09+(Math.random()-.5)*0.35; ctx.fillRect(p.x,p.y,2.2,2.2); }
+    if(!prompt && t>1150){ prompt=true; ov.appendChild(el(`<div style="position:absolute;left:0;right:0;bottom:0;padding:28px 24px;display:flex;flex-direction:column;align-items:center;gap:14px;background:linear-gradient(transparent,#f3efe6 55%)">
+      <div style="color:#15150f;font-family:var(--mono);font-size:14px;letter-spacing:.5px;text-align:center;line-height:1.6">How are you feeling today?<br><span style="color:#6b6b63">Ready to get 1% better?</span></div>
+      <button class="btn accent" style="width:auto;padding:14px 30px;font-size:14px">LET’S GO →</button>
+      <div style="color:#9a9a90;font-size:11px;letter-spacing:1px">tap anywhere to skip</div></div>`)); }
+    introRAF=requestAnimationFrame(loop); }
+  function dismiss(){ if(introRAF) cancelAnimationFrame(introRAF); ov.remove(); S.lastIntro=today(); save(); }
+  ov.addEventListener('click',dismiss);
+  introRAF=requestAnimationFrame(loop);
+}
+
+// ---- one-photo capture with 40% ghost of the last shot ----
+let camStream=null;
+async function openCamera(){
+  const rows=await photoAll(S.activeId);
+  const fronts=rows.filter(r=>r.angle==='front').sort((a,b)=>a.date<b.date?-1:1);
+  const prev=fronts[fronts.length-1];
+  let stream=null;
+  try{ if(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia) stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:1080},height:{ideal:1440}},audio:false}); }
+  catch(e){ stream=null; }
+  if(!stream){ window._shootAngle='front'; document.getElementById('photo-input').click(); return; }
+  camStream=stream;
+  const ov=el(`<div id="cam" style="position:fixed;inset:0;background:#000;z-index:90;display:flex;flex-direction:column"></div>`);
+  ov.innerHTML=`
+    <div style="position:relative;flex:1;overflow:hidden">
+      <video id="cam-v" autoplay playsinline muted style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover"></video>
+      ${prev?`<img src="${prev.dataUrl}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.4;pointer-events:none"/>`:''}
+      <div style="position:absolute;inset:14px;border:1px solid rgba(255,90,0,.35);pointer-events:none"></div>
+      <div style="position:absolute;left:0;right:0;top:0;padding:14px;color:#fff;font-family:var(--mono);font-size:11px;letter-spacing:1px;line-height:1.5;background:linear-gradient(rgba(0,0,0,.65),transparent)">
+        ${prev?'GHOST = your last shot. Line up the same angle & distance.':'Set your framing — stand back, phone at chest height. This becomes your template.'}</div>
+    </div>
+    <div style="display:flex;gap:10px;padding:14px;background:var(--bg);border-top:1px solid var(--line)">
+      <button class="btn ghost" id="cam-cancel" style="width:auto;padding:14px 16px">Cancel</button>
+      <button class="btn accent" id="cam-shoot" style="flex:1">Take progress photo</button>
+    </div>`;
+  document.body.appendChild(ov);
+  ov.querySelector('#cam-v').srcObject=stream;
+}
+function closeCamera(){ if(camStream){ camStream.getTracks().forEach(t=>t.stop()); camStream=null; } const c=document.getElementById('cam'); if(c) c.remove(); }
+async function shootCamera(){
+  const v=document.getElementById('cam-v'); if(!v||!v.videoWidth){ return; }
+  const vw=v.videoWidth,vh=v.videoHeight,ar=3/4; let sw=vw,sh=vw/ar; if(sh>vh){ sh=vh; sw=vh*ar; }
+  const c=document.createElement('canvas'); c.width=900; c.height=1200;
+  c.getContext('2d').drawImage(v,(vw-sw)/2,(vh-sh)/2,sw,sh,0,0,900,1200);
+  const dataUrl=c.toDataURL('image/jpeg',0.82);
+  const latest=d().weight[d().weight.length-1];
+  await photoPut({id:S.activeId+'-'+today()+'-front-'+Date.now(),opId:S.activeId,date:today(),angle:'front',dataUrl,kg:latest?latest.kg:null});
+  d().lastPhotoDate=today(); save(); closeCamera();
+  if(document.getElementById('ov')){ buildJourney(); renderPhotoHist(); } else { renderStage(); }
+}
+
+// ============================ THE TALKING BUBBLE (guided daily flow) ============================
+// One screen. A living bubble that talks, asks, and takes answers — never more than 3 buttons.
+const FLOW=['greet','fuel','train','photo','weigh','done'];
+let flow={i:0, ate:false, mood:''};
+let CUR=null;
+function firstName(){ const n=op().name.trim(); const w=n.split(/\s+/)[0]; return esc(/^operator$/i.test(w)?n:w); }
+function timeGreet(){ const h=new Date().getHours(); return h<5?'Late one':h<11?'Morning':h<17?'Afternoon':h<22?'Evening':'Late one'; }
+
+function beat(){
+  const o=op(), t=targets(o), tot=dayTotals(today());
+  const remain=Math.max(0,Math.round(t.protein-tot.protein)), pdone=remain<=0 && t.protein>0;
+  const gymToday=o.gymDays.includes(weekdayOf(today())), sd=sessionDone(today()), due=photoDue();
+  const phase=FLOW[flow.i];
+
+  if(phase==='greet') return { mood:flow.mood,
+    say:`${timeGreet()}, <b>${firstName()}</b>. Ready to get <span class="em">1% better</span> today?`,
+    choices:[{t:"Let's go",primary:true,go:adv},{t:'Feeling rough',go:()=>{flow.mood='rough';adv();}}] };
+
+  if(phase==='fuel'){
+    if(pdone) return { mood:'good',
+      say:`Protein's <span class="em">done</span> — ${Math.round(tot.protein)}g in. That's the hard part won.`,
+      choices:[{t:'Next',primary:true,go:adv}] };
+    return {
+      say: flow.ate ? `Logged. <b>${remain}g</b> of protein still to go.`
+                    : `You've got <b>${remain}g</b> of protein left today. What have you eaten?`,
+      choices:[
+        {t:'📷 Photo my plate',primary:true,go:foodPhoto},
+        {t:'Quick add',go:foodPicker},
+        flow.ate?{t:'Done eating',go:adv}:{t:'Nothing yet',go:adv}
+      ] };
+  }
+
+  if(phase==='train'){
+    if(sd) return { say:`Session logged. Rotation moves to <b>${nextDay()}</b>. Now recover.`, choices:[{t:'Next',primary:true,go:adv}] };
+    if(gymToday) return { say:`Training day — <b>session ${nextDay()}</b> is up. Did you train?`,
+      choices:[{t:'Log my sets',primary:true,go:trainSheet},{t:'Just mark it done',go:markSessionQuick},{t:'Resting today',go:adv}] };
+    return { say:`No session scheduled today. Walk, hit protein, sleep well.`, choices:[{t:'Next',primary:true,go:adv}] };
+  }
+
+  if(phase==='photo'){
+    if(due) return { say:`Weekly <span class="em">photo</span> time. Same angle — I'll ghost your last shot so you line it up.`,
+      choices:[{t:'Take it',primary:true,go:takePhoto},{t:'Later',go:adv}] };
+    return null;
+  }
+
+  if(phase==='weigh'){
+    const isDay=weekdayOf(today())===(o.photoDay||'Sun'), wToday=d().weight.some(w=>w.date===today());
+    if(isDay && !wToday) return { say:`Step on the scale? Morning, empty — the most honest number.`,
+      choices:[{t:'Log weight',primary:true,go:weighIn},{t:'Skip',go:adv}] };
+    return null;
+  }
+
+  // done
+  return { mood:'good',
+    say:`That's <span class="em">1% better</span>, ${firstName()}.`,
+    sub:esc(o.mission),
+    choices:[{t:'See my progress',primary:true,go:showProgress},{t:'Ask the coach',go:showCoach},{t:'Done',go:finish}] };
+}
+
+function adv(){ flow.i=Math.min(flow.i+1,FLOW.length-1); renderStage(); }
+
+function renderStage(){
+  let b=beat(), guard=0;
+  while(b===null && flow.i<FLOW.length-1 && guard++<12){ flow.i++; b=beat(); }
+  renderBeat(b);
+}
+function renderBeat(b){
+  CUR=b;
+  const stage=document.getElementById('stage'); if(!stage) return;
+  stage.innerHTML=`
+    <div class="orb2 ${b.mood||''}"></div>
+    <div class="say" id="say"></div>
+    ${b.sub?`<div class="say-sub">${b.sub}</div>`:''}
+    <div class="choices" id="choices" style="opacity:0"></div>`;
+  const say=document.getElementById('say');
+  say.innerHTML=b.say; requestAnimationFrame(()=>say.classList.add('say-in'));
+  setTimeout(()=>{
+    const cbox=document.getElementById('choices'); if(!cbox) return;
+    cbox.innerHTML=(b.choices||[]).filter(Boolean).map((c,i)=>`<button class="choice ${c.primary?'primary':''}" data-choice="${i}">${c.t}</button>`).join('');
+    requestAnimationFrame(()=>{ cbox.style.opacity='1'; });
+  }, b.choices&&b.choices.length?470:0);
+}
+
+// ---- overlay sheet helper (settings / coach / progress / quick-add) ----
+let overlayState=null;
+function showOverlay(build,onmount){ overlayState={build,onmount}; paintOverlay(); }
+function closeOverlay(){ overlayState=null; const o=document.getElementById('ov'); if(o) o.remove(); }
+function paintOverlay(){
+  let o=document.getElementById('ov');
+  if(!overlayState){ if(o) o.remove(); return; }
+  if(!o){ o=el('<div id="ov" class="sheet"></div>'); document.body.appendChild(o); }
+  o.innerHTML=`<div class="sheet-inner">${overlayState.build()}</div>`;
+  if(overlayState.onmount) overlayState.onmount();
+}
+
+// ---- flow actions ----
+function foodPhoto(){
+  if(!S.apiKey){ renderBeat({ say:`The plate-reader uses the Anthropic API. Add your key in settings first.`,
+    choices:[{t:'Open settings',primary:true,go:showSettings},{t:'Quick add instead',go:foodPicker},{t:'Back',go:renderStage}] }); return; }
+  document.getElementById('food-photo-input').click();
+}
+function foodPicker(){
+  showOverlay(()=>`
+    <div class="sheet-h"><span>Quick add</span><span class="x" data-close>✕</span></div>
+    ${d().savedFoods.map((f,i)=>`<button class="pick" data-pick="${i}"><b>${esc(f.name)}</b><span>${f.protein}g protein · ${f.kcal} kcal · hold to delete</span></button>`).join('')||'<div class="faint">No saved foods.</div>'}
+    <div class="faint" style="margin-top:8px">Tap one to log it.</div>`);
+}
+function trainSheet(){ view.trainDay=nextDay(); showOverlay(()=>`<div class="sheet-h"><span>Log your session</span><span class="x" data-close>✕</span></div>${trainScreen()}`); }
+function markSessionQuick(){ const day=nextDay(); if(!sessionDone(today())) d().sessions.push({date:today(),day}); save(); renderStage(); }
+function takePhoto(){ openCamera(); }
+function weighIn(){
+  showOverlay(()=>`
+    <div class="sheet-h"><span>Weigh-in</span><span class="x" data-close>✕</span></div>
+    <div class="faint" style="margin-bottom:12px;line-height:1.5">Morning, empty. It's the weekly trend that matters, not the daily number.</div>
+    <input id="w-kg" inputmode="decimal" placeholder="0.0" style="font-size:20px"/>
+    <div style="height:12px"></div>
+    <button class="btn accent" id="w-save2">Save weight</button>`);
+}
+function showProgress(){
+  showOverlay(()=>`
+    <div class="sheet-h"><span>Your progress</span><span class="x" data-close>✕</span></div>
+    <div id="journey"></div>
+    <div style="height:6px"></div>
+    <button class="btn accent" id="open-camera">Take this week's photo</button>
+    <div id="photo-hist"></div>
+    <div style="height:8px"></div>
+    <a id="compare-link" class="dim" style="font-size:12px;cursor:pointer">COMPARE TWO DATES →</a>`,
+    ()=>{ buildJourney(); renderPhotoHist(); });
+}
+function showCoach(){
+  showOverlay(()=>`<div class="sheet-h"><span>Coach</span><span class="x" data-close>✕</span></div>${coachScreen()}`,
+    ()=>{ const c=document.getElementById('chat'); if(c) c.scrollTop=c.scrollHeight; });
+}
+function showSettings(){ showOverlay(()=>`<div class="sheet-h"><span>Settings</span><span class="x" data-close>✕</span></div>${sysScreen()}`); }
+function finish(){ renderBeat({ mood:'good',
+  say:`Good work, ${firstName()}. See you tomorrow — <span class="em">1% better</span>.`,
+  choices:[{t:'Start over',go:()=>{flow={i:0,ate:false,mood:''};renderStage();}}] }); }
+
+function trainScreen(){
+  const o=op(); const day=view.trainDay||nextDay(); const rows=splitFor(o)[day];
+  const sd=sessionDone(today());
+  const labels={A:'A · PUSH',B:'B · PULL',C:'C · STRENGTH'};
+  return `
+    <div class="sub">${esc(o.name)} · next up in rotation: ${nextDay()} · ${o.equip==='machines_only'?'machines':'free weights'}</div>
+    <div class="tabs3">${['A','B','C'].map(dd=>`<button data-day="${dd}" aria-pressed="${dd===day}">${labels[dd]}</button>`).join('')}</div>
+    <div class="card" style="padding:12px"><div style="display:flex;justify-content:space-between;align-items:center">
+      <div><div class="label">Day ${day} · ${shortDate(today())}</div><div class="dim" style="font-size:12px;margin-top:2px">6 exercises · log weight × reps</div></div>
+      ${sd?'<div style="color:var(--good);font-weight:700">✓ DONE</div>':''}</div></div>
+    ${rows.map((ex,i)=>{
+      const exId=day+'-'+i; const top=parseTop(ex[1]);
+      const prev=lastSession(exId,today());
+      const cur=(d().lifts[today()]&&d().lifts[today()][exId])||[];
+      const nSets=Math.max(3,cur.length); const seed=Array.from({length:nSets},(_,k)=>cur[k]||(prev&&prev.sets[k]?{w:prev.sets[k].w,reps:''}:{w:'',reps:''}));
+      const capped=prev&&top&&prev.sets.length&&prev.sets.every(s=>Number(s.reps)>=top);
+      const lastTxt=prev?`LAST ${shortDate(prev.date)}: ${prev.sets.map(s=>s.w+'×'+s.reps).join('  ')}`:'NO HISTORY — set the baseline';
+      return `<div class="ex" data-ex="${exId}">
+        <div class="top"><div><div class="name">${esc(ex[0])}</div><div class="scheme">${ex[1]}${ex[2]?('  · '+ex[2]):''}</div></div>${capped?'<div class="flag">ADD WEIGHT</div>':''}</div>
+        <div class="last">${lastTxt}</div>
+        <div class="setgrid">
+          <div class="h">#</div><div class="h">KG</div><div class="h">REPS${top?(' (top '+top+')'):''}</div>
+          ${seed.map((s,k)=>`<div class="idx">${k+1}</div>
+            <input data-w="${k}" inputmode="decimal" value="${esc(s.w)}" placeholder="—"/>
+            <input data-r="${k}" inputmode="numeric" value="${esc(s.reps)}" placeholder="—" class="${top&&s.reps!==''&&Number(s.reps)>=top?'hit':''}"/>`).join('')}
+        </div>
+        <div style="height:8px"></div>
+        <button class="btn ghost" data-savesets="${exId}" style="width:auto;padding:8px 14px;display:inline-block">Save sets</button>
+      </div>`;
+    }).join('')}
+    <div style="height:8px"></div>
+    ${sd?`<div class="dim" style="text-align:center;font-size:13px">Session logged. Rotation advances to ${nextDay()}.</div>`
+        :`<button class="btn accent" id="mark-done">Mark session ${day} done</button>`}
+    <div class="faint" style="text-align:center;margin-top:12px">All sets at the top of the rep range → “ADD WEIGHT” next time.</div>
+    <div style="height:24px"></div>`;
+}
+
+function bodyScreen(){
+  const o=op(); const hist=d().weight.slice().sort((a,b)=>a.date<b.date?-1:1);
+  const latest=hist[hist.length-1], first=hist[0];
+  const change=(latest&&first)?(latest.kg-first.kg):0;
+  return `
+    <div class="sub">${esc(o.name)} · the scale lies during a recomp</div>
+    ${dueBanner()}
+    <div id="journey"></div>
+    <div class="card">
+      <div class="stats">
+        <div class="stat"><div class="k">Current</div><div class="v accent">${latest?latest.kg:'—'}<small> kg</small></div></div>
+        <div class="stat"><div class="k">Total change</div><div class="v ${change<0?'good':''}">${change>0?'+':''}${change.toFixed(1)}<small> kg</small></div></div>
+        <div class="stat"><div class="k">Weigh-ins</div><div class="v">${hist.length}</div></div>
+      </div>
+      <div style="margin-top:12px">${trendSvg(hist)}</div>
+      <div class="faint" style="margin-top:8px">WEEKLY · SAME DAY · MORNING · EMPTY. Trend, not daily noise — weight can sit flat while fat drops and muscle builds.</div>
+    </div>
+    <div class="row"><div class="field"><span class="label">Log weigh-in (kg)</span><input id="w-kg" inputmode="decimal" placeholder="0.0"/></div>
+      <button class="btn accent" id="w-save" style="width:auto;padding:12px 16px">Save</button></div>
+    <div class="divider"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div class="label">Progress photo</div><a id="compare-link" style="font-size:12px;cursor:pointer">COMPARE →</a></div>
+    <div class="faint" style="margin:4px 0 2px">One shot, same angle each week. A 40% ghost of your last photo helps you line it up. On-device only, never uploaded.</div>
+    <button class="btn accent" id="open-camera" style="margin-top:10px">Take progress photo</button>
+    <div id="photo-hist"></div>
+    <input type="file" id="photo-input" accept="image/*" capture="user" style="display:none"/>
+    <div style="height:24px"></div>`;
+}
+
+function coachScreen(){
+  const o=op(); const chat=d().coach;
+  const hasKey=!!S.apiKey;
+  return `
+    <div class="sub">${esc(o.name)} · coach knows your protocol + today's numbers</div>
+    ${!hasKey?`<div class="card" style="border-color:var(--warn)">
+      <div class="label" style="color:var(--warn)">No API key</div>
+      <div class="dim" style="font-size:12px;margin-top:6px;line-height:1.5">The coach uses the Anthropic API with your own key. It's stored only in this browser and sent only to api.anthropic.com. Add it in SYS.</div>
+      <div style="height:8px"></div><button class="btn" id="go-sys">Go to SYS →</button></div>`:''}
+    <div class="chat" id="chat">
+      ${chat.length?chat.map(m=>`<div class="msg ${m.role}">${esc(m.content)}</div>`).join('')
+        :`<div class="msg assistant">Ask me anything about your training, food, or recovery. I know your targets, today's log, and your last weigh-in. Try: “what should I eat tonight to hit protein?” or “add weight on bench next session?”</div>`}
+    </div>
+    <div class="composer">
+      <textarea id="coach-input" placeholder="${hasKey?'message the coach…':'add API key in SYS first'}" ${hasKey?'':'disabled'}></textarea>
+      <button class="btn accent" id="coach-send" ${hasKey?'':'disabled'}>SEND</button>
+    </div>`;
+}
+
+function sysScreen(){
+  const o=op(), t=targets(o);
+  return `
+    <div class="sub">system · two operators, one device</div>
+    <div class="card accent">
+      <div class="label">Live targets (Mifflin-St Jeor)</div>
+      <div class="stats" style="margin-top:6px">
+        <div class="stat"><div class="k">Maint</div><div class="v">${t.maint}<small> kcal</small></div></div>
+        <div class="stat"><div class="k">Cut</div><div class="v accent">${t.cut}<small> kcal</small></div></div>
+        <div class="stat"><div class="k">Protein</div><div class="v">${t.protein}<small> g</small></div></div>
+      </div>
+      <div class="faint" style="margin-top:8px">BMR ${t.bmr} · recomputed whenever weight changes</div>
+    </div>
+
+    <div class="label">Operators</div>
+    <div style="margin-top:8px">
+      ${Object.values(S.operators).map(q=>`<div class="op ${q.id===S.activeId?'active':''}" data-op="${q.id}">
+        <div class="nm"><b>${esc(q.name)}${q.id===S.activeId?'  ·  ACTIVE':''}</b><span>${q.sex} · ${q.w}kg · ${q.equip==='machines_only'?'machines':'free weights'}</span></div>
+      </div>`).join('')}
+    </div>
+
+    <div class="divider"></div>
+    <div class="label">Edit: ${esc(o.name).toUpperCase()}</div>
+    <div style="height:8px"></div>
+    <input id="p-name" value="${esc(o.name)}" placeholder="name"/>
+    <div style="height:8px"></div>
+    <span class="label">Your why (shown on HOME + BODY)</span><div style="height:4px"></div>
+    <textarea id="p-mission" rows="2" placeholder="why you're doing this">${esc(o.mission)}</textarea>
+    <div style="height:8px"></div>
+    <div class="pillrow">${['male','female'].map(s=>`<button class="p2" data-sex="${s}" aria-pressed="${o.sex===s}">${s.toUpperCase()}</button>`).join('')}</div>
+    <div style="height:8px"></div>
+    <div class="row">
+      <div class="field"><span class="label">height cm</span><input id="p-h" inputmode="decimal" value="${o.h}"/></div>
+      <div class="field"><span class="label">weight kg</span><input id="p-w" inputmode="decimal" value="${o.w}"/></div>
+      <div class="field"><span class="label">age</span><input id="p-age" inputmode="numeric" value="${o.age}"/></div>
+    </div>
+    <div style="height:8px"></div>
+    <div class="row">
+      <div class="field"><span class="label">activity ×</span><input id="p-act" inputmode="decimal" value="${o.act}"/></div>
+      <div class="field"><span class="label">deficit</span><input id="p-def" inputmode="numeric" value="${o.def}"/></div>
+    </div>
+    <div class="faint" style="margin-top:6px">Deficit stays easy (≈300). Never push an aggressive cut for the recomp profile — build muscle first.</div>
+    <div style="height:8px"></div>
+    <div class="label">Equipment</div>
+    <div class="pillrow" style="margin-top:6px">${['free_weights','machines_only'].map(eq=>`<button class="p2" data-equip="${eq}" aria-pressed="${o.equip===eq}">${eq==='free_weights'?'FREE WEIGHTS':'MACHINES'}</button>`).join('')}</div>
+    <div style="height:10px"></div>
+    <button class="btn accent" id="p-save">Save operator</button>
+
+    <div class="divider"></div>
+    <div class="label">Schedule · gym days</div>
+    <div class="dayrow" style="margin-top:8px">${DAYS.map(dd=>`<div class="d ${o.gymDays.includes(dd)?'on':''}" data-gday="${dd}">${dd[0]}</div>`).join('')}</div>
+    <div class="faint" style="margin-top:8px">${o.gymDays.join(' · ')||'none'} · A→B→C rotation</div>
+
+    <div style="height:14px"></div>
+    <div class="label">Weekly photo reminder</div>
+    <div style="height:6px"></div>
+    <span class="label">Photo day</span><div style="height:4px"></div>
+    <select id="photo-day">${DAYS.map(dd=>`<option value="${dd}" ${(o.photoDay||'Sun')===dd?'selected':''}>${dd}</option>`).join('')}</select>
+    <div style="height:8px"></div>
+    <button class="btn accent" id="ics-dl">Add weekly reminder to calendar (.ics)</button>
+    <div class="faint" style="margin-top:6px;line-height:1.5">Imports a repeating weekly event with an alarm into your phone's calendar — a real notification, even when this app is closed. This is the reliable reminder.</div>
+    <div style="height:8px"></div>
+    <button class="btn" id="notif-enable">Enable in-app notification</button>
+    <div class="faint" style="margin-top:6px">Bonus: pops a notification when you open the app on a due day (only fires while the app is open).</div>
+
+    <div class="divider"></div>
+    <div class="label">Coach · Anthropic API</div>
+    <div class="faint" style="margin:6px 0 8px;line-height:1.5">Your API key is stored only in this browser (localStorage) and sent only to api.anthropic.com. Get one at console.anthropic.com. Uses direct browser access.</div>
+    <input id="api-key" type="password" placeholder="sk-ant-…" value="${esc(S.apiKey)}"/>
+    <div style="height:8px"></div>
+    <span class="label">Model</span><div style="height:4px"></div>
+    <select id="api-model">
+      ${[['claude-opus-4-8','Opus 4.8 (best)'],['claude-sonnet-5','Sonnet 5 (balanced)'],['claude-haiku-4-5','Haiku 4.5 (cheapest)']].map(m=>`<option value="${m[0]}" ${S.model===m[0]?'selected':''}>${m[1]}</option>`).join('')}
+    </select>
+    <div style="height:8px"></div>
+    <button class="btn" id="api-save">Save API settings</button>
+
+    <div class="divider"></div>
+    <div class="label">Data</div>
+    <div class="faint" style="margin-top:6px;line-height:1.5">Local-only. No accounts, no server. Everything lives in this browser — clearing site data wipes it. Export a backup before you do.</div>
+    <div style="height:8px"></div>
+    <button class="btn" id="export">Export backup (JSON)</button>
+    <div style="height:8px"></div>
+    <button class="btn danger" id="reset-op">Reset ${esc(o.name)}’s log</button>
+    <div style="height:24px"></div>`;
+}
+
+// ============================ RENDER ============================
+function render(){
+  reelPause();
+  const app=document.getElementById('app'); if(!app) return;
+  const many=Object.keys(S.operators).length>1;
+  app.innerHTML=`
+    <div class="topbar">
+      <span class="who" data-switchop>${esc(op().name)}${many?' ⇄':''}</span>
+      <span class="date">${shortDate(today())}</span>
+      <span class="gear" data-settings>⚙</span>
+    </div>
+    <div class="stage" id="stage"></div>`;
+  renderStage();
+  paintOverlay();
+}
+
+async function renderPhotoHist(){
+  const wrap=document.getElementById('photo-hist'); if(!wrap) return;
+  const rows=await photoAll(S.activeId);
+  const fronts=rows.filter(r=>r.angle==='front').sort((a,b)=>a.date<b.date?1:-1);
+  if(!fronts.length){ wrap.innerHTML=`<div class="faint" style="margin-top:12px">No photos yet. Take your first — it becomes your template.</div>`; return; }
+  wrap.innerHTML=`<div class="label" style="margin-top:16px">Photos · ${fronts.length} (hold to delete)</div>
+    <div style="display:flex;gap:8px;overflow-x:auto;margin-top:8px;padding-bottom:4px">
+    ${fronts.map(p=>`<div style="flex:0 0 84px"><div class="frame" data-delphoto="${p.id}" style="aspect-ratio:3/4"><img src="${p.dataUrl}"/></div>
+      <div class="faint" style="margin-top:4px;text-align:center">${shortDate(p.date)}</div></div>`).join('')}</div>`;
+}
+
+// ============================ COACH (LLM) ============================
+function buildCoachSystem(){
+  const o=op(), t=targets(o), tot=dayTotals(today());
+  const hist=d().weight.slice().sort((a,b)=>a.date<b.date?-1:1);
+  const latest=hist[hist.length-1], first=hist[0];
+  const change=(latest&&first)?(latest.kg-first.kg).toFixed(1):'n/a';
+  return [
+`You are the coach inside LEAN.SYS, a hard-coded personal recomp tracker. You advise ONE operator at a time and you speak plainly — terse, no cheerleading, no emoji, no hype. Dark HUD terminal tone.`,
+`THE PROTOCOL (do not deviate):`,
+`- Goal is body recomposition (build muscle, strip lower-belly fat slowly), NOT weight loss.`,
+`- Priority order, always: protein → stay near calorie target → lift hard → walk → sleep.`,
+`- Protein is the hero metric. Target = bodyweight_kg × 1.9.`,
+`- Deficit stays EASY (≈300 kcal) or maintenance. NEVER recommend an aggressive deficit for this profile.`,
+`- Training is a posture-biased A/B/C split, 3x/week. Progression: when all sets hit the top of the rep range, add weight next time.`,
+`- Abs are built in training, revealed in the kitchen. The scale lies during a recomp — trust the photos and the trend.`,
+`OPERATOR: ${o.name}, ${o.sex}, ${o.h}cm, ${o.w}kg, age ${o.age}, equipment ${o.equip}.`,
+`TARGETS: maintenance ${t.maint} kcal, cut ${t.cut} kcal, protein ${t.protein} g/day. Weight change so far: ${change} kg.`,
+`TODAY SO FAR: ${Math.round(tot.protein)}/${t.protein} g protein, ${Math.round(tot.kcal)} kcal eaten (target ${o.def>0?t.cut:t.maint}).`,
+`Give specific, numeric, actionable answers grounded in these numbers. Keep replies short unless asked to go deep.`
+  ].join('\n');
+}
+
+// downscale a File to a jpeg data URL (keeps API payload + IndexedDB light)
+function fileToJpeg(file, max, quality){
+  return new Promise((res,rej)=>{
+    const reader=new FileReader();
+    reader.onerror=()=>rej(new Error('could not read file'));
+    reader.onload=()=>{ const img=new Image();
+      img.onerror=()=>rej(new Error('could not decode image'));
+      img.onload=()=>{ let {width,height}=img; const sc=Math.min(1,max/Math.max(width,height));
+        const c=document.createElement('canvas'); c.width=Math.round(width*sc); c.height=Math.round(height*sc);
+        c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+        res(c.toDataURL('image/jpeg',quality)); };
+      img.src=reader.result; };
+    reader.readAsDataURL(file);
+  });
+}
+
+// Vision: estimate a meal's protein + calories from a photo.
+async function estimateFoodFromPhoto(dataUrl){
+  const b64=dataUrl.split(',')[1];
+  const media=dataUrl.substring(5,dataUrl.indexOf(';')); // e.g. image/jpeg
+  const res=await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{'content-type':'application/json','x-api-key':S.apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+    body:JSON.stringify({
+      model:S.model, max_tokens:400,
+      system:'You estimate nutrition from a food photo for a protein-focused recomp tracker. Identify the food and estimate the visible portion. Protein grams is the priority — be realistic and lean toward known values for common foods. Reply with ONLY a JSON object and nothing else: {"name":"short label incl. rough portion","kcal":<integer>,"protein_g":<integer>,"note":"one short line on the portion/assumptions"}. If the image is not food, set kcal and protein_g to 0 and say so in note.',
+      messages:[{role:'user',content:[
+        {type:'image',source:{type:'base64',media_type:media,data:b64}},
+        {type:'text',text:'Estimate this meal. JSON only.'}
+      ]}]
+    })
+  });
+  const data=await res.json();
+  if(!res.ok) throw new Error((data&&data.error&&data.error.message)||('HTTP '+res.status));
+  const text=(data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
+  const m=text.match(/\{[\s\S]*\}/); if(!m) throw new Error('could not parse the estimate');
+  const obj=JSON.parse(m[0]);
+  return { name:String(obj.name||'meal'), kcal:Math.round(num(obj.kcal)), protein:Math.round(num(obj.protein_g)), note:String(obj.note||'') };
+}
+
+async function askCoach(userText){
+  const chatEl=document.getElementById('chat');
+  d().coach.push({role:'user',content:userText});
+  chatEl.appendChild(el(`<div class="msg user">${esc(userText)}</div>`));
+  const thinking=el(`<div class="msg assistant dim">…</div>`); chatEl.appendChild(thinking); chatEl.scrollTop=chatEl.scrollHeight;
+  save();
+  try{
+    const messages=d().coach.slice(-20).map(m=>({role:m.role,content:m.content}));
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'content-type':'application/json','x-api-key':S.apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:S.model,max_tokens:1024,system:buildCoachSystem(),messages})
+    });
+    const data=await res.json();
+    if(!res.ok){ throw new Error((data&&data.error&&data.error.message)||('HTTP '+res.status)); }
+    const text=(data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('').trim()||'(no response)';
+    d().coach.push({role:'assistant',content:text}); save();
+    thinking.remove(); chatEl.appendChild(el(`<div class="msg assistant">${esc(text)}</div>`));
+  }catch(err){
+    thinking.remove();
+    chatEl.appendChild(el(`<div class="msg sys">coach error: ${esc(err.message)}. Check your API key / model in SYS. (A 401 = bad key; a network/CORS error usually means the key or the direct-browser-access header was rejected.)</div>`));
+  }
+  chatEl.scrollTop=chatEl.scrollHeight;
+}
+
+// ============================ EVENTS ============================
+document.body.addEventListener('click', async (e)=>{
+  const T=e.target;
+  const closest=(a)=>T.closest(a);
+
+  // bubble choices (the ≤3 flow buttons)
+  const ch=closest('[data-choice]'); if(ch){ const c=CUR&&CUR.choices&&CUR.choices.filter(Boolean)[+ch.dataset.choice]; if(c&&c.go) c.go(); return; }
+  // overlay close
+  if(closest('[data-close]')){ closeOverlay(); return; }
+  // quick-add pick
+  const pk=closest('[data-pick]'); if(pk){ const f=d().savedFoods[+pk.dataset.pick];
+    (d().food[today()]=d().food[today()]||[]).push({name:f.name,kcal:f.kcal,protein:f.protein}); flow.ate=true; save(); closeOverlay(); renderStage(); return; }
+
+  // top bar
+  if(closest('[data-switchop]')){ const ids=Object.keys(S.operators); if(ids.length>1){ const i=ids.indexOf(S.activeId);
+    S.activeId=ids[(i+1)%ids.length]; save(); flow={i:0,ate:false,mood:''}; view.trainDay=null; render(); } return; }
+  if(closest('[data-settings]')){ showSettings(); return; }
+
+  // operator rows (inside settings)
+  const pill=closest('[data-profile]'); if(pill){ S.activeId=pill.dataset.profile; save(); flow={i:0,ate:false,mood:''}; view.trainDay=null; render(); return; }
+  const opRow=closest('[data-op]'); if(opRow){ S.activeId=opRow.dataset.op; save(); flow={i:0,ate:false,mood:''}; view.trainDay=null; render(); return; }
+  if(T.id==='go-sys'){ showSettings(); return; }
+
+  // fuel
+  const quick=closest('[data-quick]'); if(quick){ const f=d().savedFoods[+quick.dataset.quick];
+    (d().food[today()]=d().food[today()]||[]).push({name:f.name,kcal:f.kcal,protein:f.protein}); save(); render(); return; }
+  const df=closest('[data-delfood]'); if(df){ d().food[today()].splice(+df.dataset.delfood,1); save(); render(); return; }
+  if(T.id==='snap-food'){ if(!S.apiKey){ alert('Add your Anthropic API key in SYS first — the estimate uses the API.'); view.tab='sys'; render(); return; } document.getElementById('food-photo-input').click(); return; }
+  if(T.id==='f-savechk'){ T.classList.toggle('on'); return; }
+  if(T.id==='f-add'){
+    const name=document.getElementById('f-name').value.trim();
+    const prot=document.getElementById('f-prot').value.trim();
+    if(!name||prot===''){ alert('Name and protein are required.'); return; }
+    const kcal=num(document.getElementById('f-kcal').value), protein=num(prot);
+    (d().food[today()]=d().food[today()]||[]).push({name,kcal,protein});
+    if(document.getElementById('f-savechk').classList.contains('on')) d().savedFoods.push({name,kcal,protein});
+    save(); render(); return;
+  }
+
+  // train
+  const day=closest('[data-day]'); if(day){ view.trainDay=day.dataset.day; render(); return; }
+  const ss=closest('[data-savesets]'); if(ss){
+    const exId=ss.dataset.savesets; const box=closest('.ex');
+    const ws=[...box.querySelectorAll('[data-w]')], rs=[...box.querySelectorAll('[data-r]')];
+    const sets=[]; for(let k=0;k<ws.length;k++){ const w=ws[k].value.trim(),r=rs[k].value.trim(); if(w!==''||r!=='') sets.push({w:num(w),reps:num(r)}); }
+    (d().lifts[today()]=d().lifts[today()]||{})[exId]=sets; save(); render(); return;
+  }
+  if(T.id==='mark-done'){ const day=view.trainDay||nextDay(); if(!sessionDone(today())) d().sessions.push({date:today(),day}); save(); closeOverlay(); renderStage(); return; }
+
+  // body
+  if(T.id==='w-save2'){ const kg=num(document.getElementById('w-kg').value); if(kg<=0){alert('Enter a weight.');return;}
+    const t=today(); const ex=d().weight.find(w=>w.date===t); if(ex) ex.kg=kg; else d().weight.push({date:t,kg});
+    op().w=kg; save(); closeOverlay(); renderStage(); return; }
+  if(T.id==='w-save'){ const kg=num(document.getElementById('w-kg').value); if(kg<=0){alert('Enter a weight.');return;}
+    const t=today(); const ex=d().weight.find(w=>w.date===t); if(ex) ex.kg=kg; else d().weight.push({date:t,kg});
+    op().w=kg; save(); render(); return; }
+  const shoot=closest('[data-shoot]'); if(shoot){ window._shootAngle=shoot.dataset.shoot; document.getElementById('photo-input').click(); return; }
+  if(T.id==='compare-link'){ openCompare(); return; }
+  const rang=closest('[data-reelang]'); if(rang){ reelPause(); reel.angle=rang.dataset.reelang; setReelFrames(); paintJourney(); return; }
+  if(T.id==='reel-play'){ reelToggle(); return; }
+  if(T.id==='reel-export'){ exportReel(); return; }
+  if(T.id==='go-body-shoot'){ openCamera(); return; }
+  if(T.id==='open-camera'){ openCamera(); return; }
+  if(T.id==='cam-shoot'){ shootCamera(); return; }
+  if(T.id==='cam-cancel'){ closeCamera(); return; }
+  const gt=closest('[data-goto]'); if(gt){ const g=gt.dataset.goto; if(g==='camera'){ openCamera(); } else { view.tab=g; render(); } return; }
+  if(T.id==='ics-dl'){ downloadText('leansys-weekly-photo-'+op().id+'.ics', buildICS(op()), 'text/calendar'); return; }
+  if(T.id==='notif-enable'){
+    if(!('Notification' in window)){ alert('Notifications aren’t supported in this browser. The calendar reminder still works.'); return; }
+    Notification.requestPermission().then(p=>{ if(p==='granted'){ try{ new Notification('LEAN.SYS',{body:'Notifications on. You’ll get a nudge when you open the app on photo day.'}); }catch(e){} } else alert('Not enabled — use the calendar (.ics) reminder instead.'); });
+    return;
+  }
+  if(closest('[data-fact-next]')){ factIdx=(factIdx+1)%FACTS.length; const ft=document.getElementById('fact-text'); if(ft) ft.textContent=FACTS[factIdx%FACTS.length]; return; }
+
+  // sys
+  const sex=closest('[data-sex]'); if(sex){ op().sex=sex.dataset.sex; save(); render(); return; }
+  const eq=closest('[data-equip]'); if(eq){ op().equip=eq.dataset.equip; save(); render(); return; }
+  const gd=closest('[data-gday]'); if(gd){ const dd=gd.dataset.gday; const g=op().gymDays;
+    op().gymDays = g.includes(dd)? g.filter(x=>x!==dd) : DAYS.filter(x=>g.includes(x)||x===dd); save(); render(); return; }
+  if(T.id==='p-save'){ const o=op();
+    o.name=document.getElementById('p-name').value.trim()||o.name;
+    o.h=num(document.getElementById('p-h').value)||o.h; o.w=num(document.getElementById('p-w').value)||o.w;
+    o.age=num(document.getElementById('p-age').value)||o.age; o.act=num(document.getElementById('p-act').value)||o.act;
+    o.def=num(document.getElementById('p-def').value);
+    const mv=document.getElementById('p-mission').value.trim(); if(mv) o.mission=mv;
+    save(); render(); return; }
+  if(T.id==='api-save'){ S.apiKey=document.getElementById('api-key').value.trim(); S.model=document.getElementById('api-model').value; save(); alert('Saved. Coach is ready.'); render(); return; }
+  if(T.id==='export'){ const blob=new Blob([JSON.stringify(S,null,2)],{type:'application/json'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='leansys-backup-'+today()+'.json'; a.click(); URL.revokeObjectURL(a.href); return; }
+  if(T.id==='reset-op'){ if(confirm('Clear '+op().name+'’s log (food, lifts, weigh-ins, sessions, chat)? Keeps the profile.')){ S.data[S.activeId]=blankData(); save(); render(); } return; }
+
+  // coach
+  if(T.id==='coach-send'){ const box=document.getElementById('coach-input'); const v=box.value.trim(); if(!v) return; box.value=''; askCoach(v); return; }
+
+  // delete photo (click after long-press flag)
+});
+
+// long-press to delete photo / saved food
+let _lp=null;
+document.body.addEventListener('pointerdown',(e)=>{
+  const p=e.target.closest('[data-delphoto]'); const q=e.target.closest('[data-pick]');
+  if(p){ _lp=setTimeout(async()=>{ if(confirm('Delete this photo?')){ await photoDel(p.dataset.delphoto); renderPhotoHist(); } },550); }
+  else if(q){ _lp=setTimeout(()=>{ if(confirm('Delete this saved food?')){ d().savedFoods.splice(+q.dataset.pick,1); save(); paintOverlay(); } },550); }
+});
+document.body.addEventListener('pointerup',()=>{ if(_lp){ clearTimeout(_lp); _lp=null; } });
+document.body.addEventListener('pointerleave',()=>{ if(_lp){ clearTimeout(_lp); _lp=null; } });
+
+// time-lapse scrubber
+document.body.addEventListener('input',(e)=>{ if(e.target.id==='reel-scrub'){ reelPause(); reelShow(+e.target.value); } });
+
+// coach: enter to send
+document.body.addEventListener('keydown',(e)=>{
+  if(e.target&&e.target.id==='coach-input'&&e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); const v=e.target.value.trim(); if(v){ e.target.value=''; askCoach(v); } }
+});
+
+// photo file inputs
+document.body.addEventListener('change', async (e)=>{
+  if(e.target.id==='photo-day'){ op().photoDay=e.target.value; save(); return; }
+  // progress photo (fallback path / gallery) → store in IndexedDB
+  if(e.target.id==='photo-input'){
+    const file=e.target.files[0]; e.target.value=''; if(!file) return;
+    const angle=window._shootAngle||'front';
+    try{
+      const dataUrl=await fileToJpeg(file,1000,0.82);
+      const latest=d().weight[d().weight.length-1];
+      await photoPut({id:S.activeId+'-'+today()+'-'+angle+'-'+Date.now(),opId:S.activeId,date:today(),angle,dataUrl,kg:latest?latest.kg:null});
+      d().lastPhotoDate=today(); save();
+      if(document.getElementById('ov')){ buildJourney(); renderPhotoHist(); } else { renderStage(); }
+    }catch(err){ alert('Photo failed: '+err.message); }
+    return;
+  }
+  // food photo → estimate protein via the API, confirm in the bubble
+  if(e.target.id==='food-photo-input'){
+    const file=e.target.files[0]; e.target.value=''; if(!file) return;
+    renderBeat({say:`Reading your plate…`, choices:[]});
+    try{
+      const dataUrl=await fileToJpeg(file,900,0.8);
+      const est=await estimateFoodFromPhoto(dataUrl);
+      renderBeat({
+        say:`Looks like <b>${esc(est.name)}</b> — about <span class="em">${est.protein}g protein</span>, ${est.kcal} kcal.${est.note?` <span style="color:var(--faint);font-size:.8em">(${esc(est.note)})</span>`:''}`,
+        sub:'Log it?',
+        choices:[
+          {t:'Log it',primary:true,go:()=>{ (d().food[today()]=d().food[today()]||[]).push({name:est.name,kcal:est.kcal,protein:est.protein}); flow.ate=true; save(); renderStage(); }},
+          {t:'Retake',go:foodPhoto},
+          {t:'Not that',go:renderStage}
+        ]});
+    }catch(err){
+      renderBeat({ say:`Couldn't read that one — ${esc(err.message)}.`,
+        choices:[{t:'Try again',primary:true,go:foodPhoto},{t:'Skip',go:renderStage}] });
+    }
+    return;
+  }
+});
+
+// ---------- compare overlay ----------
+async function openCompare(){
+  const rows=await photoAll(S.activeId);
+  if(!rows.length){ alert('No photos yet.'); return; }
+  const overlay=el(`<div style="position:fixed;inset:0;background:var(--bg);z-index:50;display:flex;flex-direction:column"></div>`);
+  const angles=['front','side','relaxed'];
+  let angle='front';
+  function datesFor(a){ return [...new Set(rows.filter(r=>r.angle===a).map(r=>r.date))].sort(); }
+  function draw(){
+    const ds=datesFor(angle);
+    const a=rows.find(r=>r.angle===angle&&r.date===ds[0]);
+    const b=rows.find(r=>r.angle===angle&&r.date===ds[ds.length-1]);
+    overlay.innerHTML=`
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:14px;border-bottom:1px solid var(--line)">
+        <div class="title" style="font-size:16px">COMPARE</div><div class="dim" id="c-close" style="cursor:pointer">CLOSE ✕</div></div>
+      <div style="display:flex;gap:5px;padding:10px 14px">${angles.map(x=>`<button class="p2" data-cang="${x}" aria-pressed="${x===angle}" style="border:1px solid ${x===angle?'var(--accent)':'var(--line)'};background:${x===angle?'var(--accent)':'var(--surface2)'};color:${x===angle?'var(--bg)':'var(--dim)'};flex:1;padding:8px 0;font-size:10px;font-weight:700;letter-spacing:1px;cursor:pointer">${x.toUpperCase()}</button>`).join('')}</div>
+      <div style="flex:1;display:flex;border-top:1px solid var(--line)">
+        ${[['A',a],['B',b]].map(([lbl,p])=>`<div style="flex:1;display:flex;flex-direction:column;border-right:${lbl==='A'?'1px solid var(--line)':'0'}">
+          <div style="display:flex;justify-content:space-between;padding:8px;border-bottom:1px solid var(--line)"><span class="faint">${lbl}</span><span class="dim" style="font-size:10px">${p?shortDate(p.date)+(p.kg?(' · '+p.kg+'kg'):''):'—'}</span></div>
+          <div style="flex:1;background:#efefec;position:relative">${p?`<img src="${p.dataUrl}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover"/>`:`<div class="faint" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">NO PHOTO</div>`}</div></div>`).join('')}
+      </div>
+      <div class="faint" style="padding:12px 14px">Earliest vs latest at this angle. The scale lies during a recomp — the photos tell the truth.</div>`;
+  }
+  overlay.addEventListener('click',(e)=>{ if(e.target.id==='c-close'||e.target.closest('#c-close')){ overlay.remove(); return; }
+    const ca=e.target.closest('[data-cang]'); if(ca){ angle=ca.dataset.cang; draw(); } });
+  draw(); document.body.appendChild(overlay);
+}
+
+// ---------- boot ----------
+load(); render();
+if(S.lastIntro!==today()) runIntro();
+try{ if(photoDue() && 'Notification' in window && Notification.permission==='granted'){ new Notification('LEAN.SYS',{body:'Weekly progress photo — one shot, same angle.'}); } }catch(e){}
+</script>
+</body>
+</html>
