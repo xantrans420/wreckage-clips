@@ -194,7 +194,7 @@ function blankData(){ return { food:{}, savedFoods:SEED_FOODS.map(f=>({name:f[0]
 function defaultState(){
   return {
     activeId:'op1',
-    apiKey:'', model:'claude-opus-4-8',
+    apiKey:'', model:'claude-opus-4-8', lastIntro:'',
     operators:{
       op1:{id:'op1',name:'Operator 1',sex:'male',h:197,w:95,age:36,act:1.375,def:300,equip:'free_weights',gymDays:['Mon','Wed','Fri'],mission:DEFAULT_MISSION,photoDay:'Sun'},
       op2:{id:'op2',name:'Operator 2',sex:'female',h:170,w:65,age:34,act:1.375,def:300,equip:'free_weights',gymDays:['Tue','Thu','Sat'],mission:DEFAULT_MISSION,photoDay:'Sun'},
@@ -430,6 +430,97 @@ async function exportReel(){
   if(st){ st.style.color='var(--good)'; st.textContent='saved '+a.download+' · '+Math.round(blob.size/1024)+' KB'; }
 }
 
+// ---- particle intro: dots swarm into "1% BETTER" ----
+function sampleText(text,W,H){
+  const off=document.createElement('canvas'); off.width=W; off.height=H; const o=off.getContext('2d');
+  let fs=Math.floor(W/5); o.fillStyle='#fff'; o.textAlign='center'; o.textBaseline='middle';
+  for(;fs>10;fs-=2){ o.font='700 '+fs+'px monospace'; if(o.measureText(text).width<=W*0.84) break; }
+  o.font='700 '+fs+'px monospace'; o.fillText(text,W/2,H/2);
+  const img=o.getImageData(0,0,W,H).data, cand=[];
+  for(let y=0;y<H;y+=3){ for(let x=0;x<W;x+=3){ if(img[(y*W+x)*4+3]>128) cand.push({x,y}); } }
+  if(!cand.length) return [];
+  const N=Math.min(620,cand.length), out=[], stride=cand.length/N;
+  for(let i=0;i<N;i++) out.push(cand[Math.floor(i*stride)]);
+  return out;
+}
+let introRAF=null;
+function runIntro(){
+  const ov=el(`<div id="intro" style="position:fixed;inset:0;background:#050505;z-index:100;overflow:hidden"></div>`);
+  const canvas=el(`<canvas style="position:absolute;inset:0;width:100%;height:100%"></canvas>`);
+  ov.appendChild(canvas); document.body.appendChild(ov);
+  const W=ov.clientWidth||window.innerWidth, H=ov.clientHeight||window.innerHeight, dpr=Math.min(2,window.devicePixelRatio||1);
+  canvas.width=W*dpr; canvas.height=H*dpr; const ctx=canvas.getContext('2d'); ctx.scale(dpr,dpr);
+  const pts=sampleText('1% BETTER',W,H);
+  if(!pts.length){ ov.remove(); S.lastIntro=today(); save(); return; }
+  const parts=pts.map(p=>({x:W/2+(Math.random()-.5)*W, y:H/2+(Math.random()-.5)*H*1.2, tx:p.x, ty:p.y}));
+  const start=performance.now(); let prompt=false;
+  function loop(now){ const t=now-start; ctx.clearRect(0,0,W,H); ctx.fillStyle='#ff5a00';
+    for(const p of parts){ p.x+=(p.tx-p.x)*0.09+(Math.random()-.5)*0.35; p.y+=(p.ty-p.y)*0.09+(Math.random()-.5)*0.35; ctx.fillRect(p.x,p.y,2.2,2.2); }
+    if(!prompt && t>1150){ prompt=true; ov.appendChild(el(`<div style="position:absolute;left:0;right:0;bottom:0;padding:28px 24px;display:flex;flex-direction:column;align-items:center;gap:14px;background:linear-gradient(transparent,#050505 55%)">
+      <div style="color:#e8e8e8;font-family:var(--mono);font-size:14px;letter-spacing:.5px;text-align:center;line-height:1.6">How are you feeling today?<br><span style="color:#8a8a8a">Ready to get 1% better?</span></div>
+      <button class="btn accent" style="width:auto;padding:14px 30px;font-size:14px">LET’S GO →</button>
+      <div style="color:#555;font-size:11px;letter-spacing:1px">tap anywhere to skip</div></div>`)); }
+    introRAF=requestAnimationFrame(loop); }
+  function dismiss(){ if(introRAF) cancelAnimationFrame(introRAF); ov.remove(); S.lastIntro=today(); save(); }
+  ov.addEventListener('click',dismiss);
+  introRAF=requestAnimationFrame(loop);
+}
+
+// ---- one-photo capture with 40% ghost of the last shot ----
+let camStream=null;
+async function openCamera(){
+  const rows=await photoAll(S.activeId);
+  const fronts=rows.filter(r=>r.angle==='front').sort((a,b)=>a.date<b.date?-1:1);
+  const prev=fronts[fronts.length-1];
+  let stream=null;
+  try{ if(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia) stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:1080},height:{ideal:1440}},audio:false}); }
+  catch(e){ stream=null; }
+  if(!stream){ window._shootAngle='front'; document.getElementById('photo-input').click(); return; }
+  camStream=stream;
+  const ov=el(`<div id="cam" style="position:fixed;inset:0;background:#000;z-index:90;display:flex;flex-direction:column"></div>`);
+  ov.innerHTML=`
+    <div style="position:relative;flex:1;overflow:hidden">
+      <video id="cam-v" autoplay playsinline muted style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover"></video>
+      ${prev?`<img src="${prev.dataUrl}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.4;pointer-events:none"/>`:''}
+      <div style="position:absolute;inset:14px;border:1px solid rgba(255,90,0,.35);pointer-events:none"></div>
+      <div style="position:absolute;left:0;right:0;top:0;padding:14px;color:#fff;font-family:var(--mono);font-size:11px;letter-spacing:1px;line-height:1.5;background:linear-gradient(rgba(0,0,0,.65),transparent)">
+        ${prev?'GHOST = your last shot. Line up the same angle & distance.':'Set your framing — stand back, phone at chest height. This becomes your template.'}</div>
+    </div>
+    <div style="display:flex;gap:10px;padding:14px;background:#050505;border-top:1px solid var(--line)">
+      <button class="btn ghost" id="cam-cancel" style="width:auto;padding:14px 16px">Cancel</button>
+      <button class="btn accent" id="cam-shoot" style="flex:1">Take progress photo</button>
+    </div>`;
+  document.body.appendChild(ov);
+  ov.querySelector('#cam-v').srcObject=stream;
+}
+function closeCamera(){ if(camStream){ camStream.getTracks().forEach(t=>t.stop()); camStream=null; } const c=document.getElementById('cam'); if(c) c.remove(); }
+async function shootCamera(){
+  const v=document.getElementById('cam-v'); if(!v||!v.videoWidth){ return; }
+  const vw=v.videoWidth,vh=v.videoHeight,ar=3/4; let sw=vw,sh=vw/ar; if(sh>vh){ sh=vh; sw=vh*ar; }
+  const c=document.createElement('canvas'); c.width=900; c.height=1200;
+  c.getContext('2d').drawImage(v,(vw-sw)/2,(vh-sh)/2,sw,sh,0,0,900,1200);
+  const dataUrl=c.toDataURL('image/jpeg',0.82);
+  const latest=d().weight[d().weight.length-1];
+  await photoPut({id:S.activeId+'-'+today()+'-front-'+Date.now(),opId:S.activeId,date:today(),angle:'front',dataUrl,kg:latest?latest.kg:null});
+  d().lastPhotoDate=today(); save(); closeCamera();
+  if(view.tab==='body'){ buildJourney(); renderPhotoHist(); } else { view.tab='body'; render(); }
+}
+
+// ---- today's plan (the daily flow) ----
+function todayCard(){
+  const o=op(), t=targets(o), tot=dayTotals(today());
+  const proteinOk=tot.protein>=t.protein && t.protein>0;
+  const gymToday=o.gymDays.includes(weekdayOf(today())), sd=sessionDone(today()), due=photoDue();
+  const item=(goto,label,val,ok,tone)=>`<div class="rowline" data-goto="${goto}" style="cursor:pointer">
+    <span class="check ${ok?'on':''}" style="margin-right:10px"></span><span style="flex:1">${label}</span>
+    <span style="font-size:12px;color:${tone||'var(--dim)'}">${val} ›</span></div>`;
+  return `<div class="card"><div class="label">Today's plan</div><div style="height:6px"></div>
+    ${item('fuel','Protein', proteinOk?'hit':(Math.round(t.protein-tot.protein)+'g to go'), proteinOk, proteinOk?'var(--good)':'var(--accent)')}
+    ${item('train','Train', sd?'done':(gymToday?('Session '+nextDay()):'rest day'), sd||!gymToday, (gymToday&&!sd)?'var(--accent)':'var(--good)')}
+    ${item('camera','Weekly photo', due?'take it':'done', !due, due?'var(--accent)':'var(--good)')}
+  </div>`;
+}
+
 // ============================ SCREENS ============================
 function homeScreen(){
   const o=op(), t=targets(o), tot=dayTotals(today());
@@ -456,14 +547,7 @@ function homeScreen(){
       <div class="bar ${tot.kcal>kcalTarget?'over':'muted'}"><i style="width:${pct(tot.kcal,kcalTarget)}%"></i></div>
       <div class="faint" style="margin-top:8px">TARGET ${kcalTarget} kcal · MAINT ${t.maint} · NEVER PUSH A HARD DEFICIT</div>
     </div>
-    <div class="card">
-      <div class="label">Today</div>
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">
-        <div><div style="color:${(gymToday&&!sd)?'var(--accent)':'var(--text)'};font-size:30px;font-weight:700">${sd?'DONE':gymToday?('SESSION '+nextDay()):'REST'}</div>
-        <div class="dim" style="font-size:12px">${sd?'session logged':gymToday?'next in A/B/C rotation':'not a gym day'}</div></div>
-        <div style="color:var(--faint);font-size:52px;font-weight:700">${nextDay()}</div>
-      </div>
-    </div>
+    ${todayCard()}
     <div class="divider"></div>
     <div class="label">Priority order</div>
     <div class="dim" style="font-size:13px;letter-spacing:1px;margin-top:6px">protein → near target → lift hard → walk → sleep</div>
@@ -584,11 +668,9 @@ function bodyScreen(){
       <button class="btn accent" id="w-save" style="width:auto;padding:12px 16px">Save</button></div>
     <div class="divider"></div>
     <div style="display:flex;justify-content:space-between;align-items:center">
-      <div class="label">Progress photos · 3 angles</div><a id="compare-link" style="font-size:12px;cursor:pointer">COMPARE →</a></div>
-    <div class="faint" style="margin:4px 0 2px">Weekly. On-device only (this browser), never uploaded. Front / side / relaxed-front.</div>
-    <div class="photos" id="capture-row">
-      ${['front','side','relaxed'].map(a=>`<div class="frame" data-shoot="${a}"><span>${a.toUpperCase()}</span></div>`).join('')}
-    </div>
+      <div class="label">Progress photo</div><a id="compare-link" style="font-size:12px;cursor:pointer">COMPARE →</a></div>
+    <div class="faint" style="margin:4px 0 2px">One shot, same angle each week. A 40% ghost of your last photo helps you line it up. On-device only, never uploaded.</div>
+    <button class="btn accent" id="open-camera" style="margin-top:10px">Take progress photo</button>
     <div id="photo-hist"></div>
     <input type="file" id="photo-input" accept="image/*" capture="user" style="display:none"/>
     <div style="height:24px"></div>`;
@@ -719,21 +801,12 @@ function render(){
 async function renderPhotoHist(){
   const wrap=document.getElementById('photo-hist'); if(!wrap) return;
   const rows=await photoAll(S.activeId);
-  // fill capture row with today's shots
-  const t=today();
-  ['front','side','relaxed'].forEach(a=>{
-    const p=rows.find(r=>r.date===t&&r.angle===a);
-    const cell=document.querySelector(`[data-shoot="${a}"]`);
-    if(cell&&p) cell.innerHTML=`<img src="${p.dataUrl}"/><span>${a.toUpperCase()}</span>`;
-  });
-  const dates=[...new Set(rows.map(r=>r.date))].sort().reverse();
-  if(!dates.length){ wrap.innerHTML=''; return; }
-  wrap.innerHTML=`<div class="label" style="margin-top:16px">History (hold to delete)</div>`+dates.map(dt=>{
-    const w=rows.find(r=>r.date===dt&&r.kg);
-    return `<div style="margin-top:8px"><div class="dim" style="font-size:11px">${shortDate(dt)}${w&&w.kg?(' · '+w.kg+'kg'):''}</div>
-      <div class="photos">${['front','side','relaxed'].map(a=>{const p=rows.find(r=>r.date===dt&&r.angle===a);
-        return `<div class="frame" ${p?`data-delphoto="${p.id}"`:''}>${p?`<img src="${p.dataUrl}"/>`:`<span>${a[0].toUpperCase()}</span>`}</div>`;}).join('')}</div></div>`;
-  }).join('');
+  const fronts=rows.filter(r=>r.angle==='front').sort((a,b)=>a.date<b.date?1:-1);
+  if(!fronts.length){ wrap.innerHTML=`<div class="faint" style="margin-top:12px">No photos yet. Take your first — it becomes your template.</div>`; return; }
+  wrap.innerHTML=`<div class="label" style="margin-top:16px">Photos · ${fronts.length} (hold to delete)</div>
+    <div style="display:flex;gap:8px;overflow-x:auto;margin-top:8px;padding-bottom:4px">
+    ${fronts.map(p=>`<div style="flex:0 0 84px"><div class="frame" data-delphoto="${p.id}" style="aspect-ratio:3/4"><img src="${p.dataUrl}"/></div>
+      <div class="faint" style="margin-top:4px;text-align:center">${shortDate(p.date)}</div></div>`).join('')}</div>`;
 }
 
 // ============================ COACH (LLM) ============================
@@ -869,7 +942,11 @@ document.body.addEventListener('click', async (e)=>{
   const rang=closest('[data-reelang]'); if(rang){ reelPause(); reel.angle=rang.dataset.reelang; setReelFrames(); paintJourney(); return; }
   if(T.id==='reel-play'){ reelToggle(); return; }
   if(T.id==='reel-export'){ exportReel(); return; }
-  if(T.id==='go-body-shoot'){ view.tab='body'; render(); return; }
+  if(T.id==='go-body-shoot'){ openCamera(); return; }
+  if(T.id==='open-camera'){ openCamera(); return; }
+  if(T.id==='cam-shoot'){ shootCamera(); return; }
+  if(T.id==='cam-cancel'){ closeCamera(); return; }
+  const gt=closest('[data-goto]'); if(gt){ const g=gt.dataset.goto; if(g==='camera'){ openCamera(); } else { view.tab=g; render(); } return; }
   if(T.id==='ics-dl'){ downloadText('leansys-weekly-photo-'+op().id+'.ics', buildICS(op()), 'text/calendar'); return; }
   if(T.id==='notif-enable'){
     if(!('Notification' in window)){ alert('Notifications aren’t supported in this browser. The calendar reminder still works.'); return; }
@@ -983,7 +1060,8 @@ async function openCompare(){
 
 // ---------- boot ----------
 load(); render();
-try{ if(photoDue() && 'Notification' in window && Notification.permission==='granted'){ new Notification('LEAN.SYS',{body:'Weekly progress photos — shoot front / side / relaxed.'}); } }catch(e){}
+if(S.lastIntro!==today()) runIntro();
+try{ if(photoDue() && 'Notification' in window && Notification.permission==='granted'){ new Notification('LEAN.SYS',{body:'Weekly progress photo — one shot, same angle.'}); } }catch(e){}
 </script>
 </body>
 </html>

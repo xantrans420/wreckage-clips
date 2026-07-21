@@ -52,8 +52,17 @@ console.anthropic.com), stored only on your device and sent only to
 to Sonnet or Haiku there to cut cost. **SYS → Export** writes a JSON backup
 (clearing browser data wipes everything, so back up first).
 
-**The journey (BODY):** shoot the same angle each week — front / side / relaxed —
-and the app builds a **time-lapse reel** that plays your photos in order,
+**Daily flow (the simple front door):** opening the app once a day plays a
+**particle intro** — dots swarm into "1% BETTER" over *"How are you feeling
+today? Ready to get 1% better?"*. HOME then leads with **Today's plan** — three
+taps: protein, train (gym day?), weekly photo — each jumps straight to the thing.
+The detailed logging still lives in the tabs, but you don't have to touch it daily.
+
+**The journey (BODY):** one **progress photo**, same angle each week. The camera
+opens with your **last shot ghosted at 40%** so you line up the same angle and
+distance every time (first shot sets your template); it falls back to your
+device camera where the in-app camera isn't available. From those the app builds
+a **time-lapse reel** that plays your photos in order,
 START → weekly → NOW, captioned with the week, date and weight. It's the
 "how have you grown" story, and it makes the flat-scale recomp visible.
 **Export shareable video** renders the reel to a real file on your device
