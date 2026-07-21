@@ -55,11 +55,18 @@ to Sonnet or Haiku there to cut cost. **SYS → Export** writes a JSON backup
 **The journey (BODY):** shoot the same angle each week — front / side / relaxed —
 and the app builds a **time-lapse reel** that plays your photos in order,
 START → weekly → NOW, captioned with the week, date and weight. It's the
-"how have you grown" story, and it makes the flat-scale recomp visible. BODY
-also carries the motivation layer: your editable **mission** ("why" — defaults to
-being able to run and play with your kids in 10 years), a **protein streak**,
-**weeks-in / sessions** counts, unlockable **milestone** badges, and a rotating
-deck of health-span facts. The mission also shows on HOME.
+"how have you grown" story, and it makes the flat-scale recomp visible.
+**Export shareable video** renders the reel to a real file on your device
+(`.mp4` where the browser supports it, else `.webm`) with title/end cards and
+per-frame captions — no server, no library. **Weekly reminder:** pick a photo
+day in SYS and **add it to your phone calendar (.ics)** — a repeating weekly
+event with an alarm that fires even when the app is closed (the reliable path);
+an in-app "photo day" banner also appears when you're due.
+
+BODY also carries the motivation layer: your editable **mission** ("why" —
+defaults to being able to run and play with your kids in 10 years), a **protein
+streak**, **weeks-in / sessions** counts, unlockable **milestone** badges, and a
+rotating deck of health-span facts. The mission also shows on HOME.
 
 > The native Expo app below is the fuller build (health/watch sync, notifications).
 > The web build is the "use it today, with a coach" path. They don't share storage.

@@ -196,8 +196,8 @@ function defaultState(){
     activeId:'op1',
     apiKey:'', model:'claude-opus-4-8',
     operators:{
-      op1:{id:'op1',name:'Operator 1',sex:'male',h:197,w:95,age:36,act:1.375,def:300,equip:'free_weights',gymDays:['Mon','Wed','Fri'],mission:DEFAULT_MISSION},
-      op2:{id:'op2',name:'Operator 2',sex:'female',h:170,w:65,age:34,act:1.375,def:300,equip:'free_weights',gymDays:['Tue','Thu','Sat'],mission:DEFAULT_MISSION},
+      op1:{id:'op1',name:'Operator 1',sex:'male',h:197,w:95,age:36,act:1.375,def:300,equip:'free_weights',gymDays:['Mon','Wed','Fri'],mission:DEFAULT_MISSION,photoDay:'Sun'},
+      op2:{id:'op2',name:'Operator 2',sex:'female',h:170,w:65,age:34,act:1.375,def:300,equip:'free_weights',gymDays:['Tue','Thu','Sat'],mission:DEFAULT_MISSION,photoDay:'Sun'},
     },
     data:{ op1:blankData(), op2:blankData() },
   };
@@ -208,7 +208,7 @@ function load(){
   catch(e){ S=defaultState(); }
   // migrate-safety
   if(!S.operators||!S.data){ S=defaultState(); }
-  for(const id of Object.keys(S.operators)){ if(!S.data[id]) S.data[id]=blankData(); if(!S.operators[id].mission) S.operators[id].mission=DEFAULT_MISSION; }
+  for(const id of Object.keys(S.operators)){ if(!S.data[id]) S.data[id]=blankData(); const o=S.operators[id]; if(!o.mission) o.mission=DEFAULT_MISSION; if(!o.photoDay) o.photoDay='Sun'; }
 }
 function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){ alert('Storage full or blocked: '+e.message); } }
 function op(){ return S.operators[S.activeId]; }
@@ -331,7 +331,10 @@ function journeyHtml(){
          <button class="btn accent" id="reel-play" style="width:auto;padding:10px 16px">▶ PLAY</button>
          <input id="reel-scrub" type="range" min="0" max="${reel.frames.length-1}" value="${reel.idx}" step="1" style="flex:1"/>
        </div>
-       <div class="faint" style="margin-top:6px">${reel.frames.length} frames · ${reel.angle} angle · drag to scrub</div>`;
+       <div style="height:8px"></div>
+       <button class="btn" id="reel-export" style="width:auto;padding:9px 14px">Export shareable video</button>
+       <span id="export-status" class="faint" style="margin-left:8px"></span>
+       <div class="faint" style="margin-top:6px">${reel.frames.length} frames · ${reel.angle} angle · drag to scrub. Video saves as .mp4/.webm to your device.</div>`;
   return `
     <div class="card accent">
       <div class="label">Your why</div>
@@ -361,6 +364,72 @@ function journeyHtml(){
     <div class="divider"></div>`;
 }
 
+// ---- weekly photo reminder ----
+function photoDue(){ const lp=d().lastPhotoDate; return !lp || daysBetween(lp,today())>=7; }
+function dueBanner(){ if(!photoDue()) return '';
+  const isDay=weekdayOf(today())===(op().photoDay||'Sun');
+  return `<div class="card" style="border-color:var(--accent);background:#170c04">
+    <div class="label" style="color:var(--accent)">${isDay?'PHOTO DAY':'PHOTO DUE'}</div>
+    <div style="font-size:13px;margin-top:6px;line-height:1.5">Shoot your weekly 3 angles — front / side / relaxed. Same spot, same light. It feeds the time-lapse.</div>
+    <div style="height:8px"></div><button class="btn accent" id="go-body-shoot">Take photos →</button></div>`; }
+function nextWeekday(code){ const map={Sun:0,Mon:1,Tue:2,Wed:3,Thu:4,Fri:5,Sat:6}; const target=map[code]!=null?map[code]:0;
+  const dt=new Date(today()+'T00:00:00'); const add=(target-dt.getDay()+7)%7; dt.setDate(dt.getDate()+add); return dt; }
+function buildICS(o){ const WD={Sun:'SU',Mon:'MO',Tue:'TU',Wed:'WE',Thu:'TH',Fri:'FR',Sat:'SA'}; const day=o.photoDay||'Sun';
+  const dt=nextWeekday(day); const s=`${dt.getFullYear()}${String(dt.getMonth()+1).padStart(2,'0')}${String(dt.getDate()).padStart(2,'0')}T080000`;
+  return ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//LEAN.SYS//EN','CALSCALE:GREGORIAN',
+    'BEGIN:VEVENT','UID:leansys-photo-'+o.id+'@local','DTSTART:'+s,'DURATION:PT10M','RRULE:FREQ=WEEKLY;BYDAY='+WD[day],
+    'SUMMARY:LEAN.SYS — weekly progress photos + weigh-in',
+    'DESCRIPTION:Shoot front / side / relaxed. Morning\\, same spot\\, same light. Then weigh in (empty). The reel builds itself.',
+    'BEGIN:VALARM','TRIGGER:PT0S','ACTION:DISPLAY','DESCRIPTION:LEAN.SYS weekly photos','END:VALARM',
+    'END:VEVENT','END:VCALENDAR'].join('\r\n'); }
+function downloadText(name,text,mime){ const b=new Blob([text],{type:mime}); const a=document.createElement('a');
+  a.href=URL.createObjectURL(b); a.download=name; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),3000); }
+
+// ---- shareable time-lapse video (in-browser, no libraries) ----
+function loadImg(src){ return new Promise((res,rej)=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=()=>rej(new Error('image load failed')); i.src=src; }); }
+function pickMime(){ const c=['video/mp4;codecs=avc1.42E01E','video/mp4','video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'];
+  for(const t of c){ try{ if(window.MediaRecorder && MediaRecorder.isTypeSupported(t)) return t; }catch(e){} } return ''; }
+async function exportReel(){
+  const st=document.getElementById('export-status');
+  if(reel.frames.length<2){ alert('Need at least 2 photos at this angle for a video.'); return; }
+  const canvas=document.createElement('canvas');
+  if(typeof MediaRecorder==='undefined' || !canvas.captureStream){ alert('This browser can’t record video (older iOS Safari is common). Use the in-app PLAY reel here, or open it in Chrome to export a file. The calendar reminder + JSON backup still work.'); return; }
+  const mime=pickMime(); if(!mime){ alert('No supported video format in this browser.'); return; }
+  reelPause();
+  const o=op(); const frames=reel.frames.slice();
+  if(st){ st.style.color='var(--dim)'; st.textContent='loading photos…'; }
+  let imgs; try{ imgs=await Promise.all(frames.map(f=>loadImg(f.dataUrl))); }catch(e){ if(st){st.style.color='var(--bad)';st.textContent='export failed: '+e.message;} return; }
+  const W=720,H=960; canvas.width=W; canvas.height=H; const ctx=canvas.getContext('2d');
+  const stream=canvas.captureStream(30); const chunks=[];
+  const rec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:6000000});
+  rec.ondataavailable=e=>{ if(e.data&&e.data.size) chunks.push(e.data); };
+  const stopped=new Promise(res=>{ rec.onstop=res; });
+  function wrap(text,max){ const words=String(text).split(/\s+/); const lines=[]; let line='';
+    for(const w of words){ const test=line?line+' '+w:w; if(ctx.measureText(test).width>max && line){ lines.push(line); line=w; } else line=test; } if(line) lines.push(line); return lines; }
+  function card(title,sub){ ctx.fillStyle='#050505'; ctx.fillRect(0,0,W,H);
+    ctx.textAlign='center'; ctx.fillStyle='#ff5a00'; ctx.font='700 66px monospace'; ctx.fillText(title,W/2,H/2-24);
+    ctx.fillStyle='#8a8a8a'; ctx.font='24px monospace'; wrap(sub,W-140).forEach((l,i)=>ctx.fillText(l,W/2,H/2+34+i*34)); }
+  function frame(img,f,i){ ctx.fillStyle='#000'; ctx.fillRect(0,0,W,H);
+    const s=Math.max(W/img.width,H/img.height),dw=img.width*s,dh=img.height*s; ctx.drawImage(img,(W-dw)/2,(H-dh)/2,dw,dh);
+    const g=ctx.createLinearGradient(0,H-170,0,H); g.addColorStop(0,'rgba(0,0,0,0)'); g.addColorStop(1,'rgba(0,0,0,.82)'); ctx.fillStyle=g; ctx.fillRect(0,H-170,W,170);
+    const tag=i===0?'START':(i===frames.length-1?'NOW':'');
+    ctx.textAlign='left'; ctx.fillStyle='#8a8a8a'; ctx.font='20px monospace'; ctx.fillText('LEAN.SYS · '+(o.name||'').toUpperCase(),28,H-104);
+    ctx.fillStyle='#ff5a00'; ctx.font='700 32px monospace'; ctx.fillText((tag?tag+' · ':'')+'WEEK '+f.week+' · '+shortDate(f.date)+(f.kg?(' · '+f.kg+'kg'):''),28,H-46); }
+  const perFrame=750,titleMs=1000,endMs=1700,total=titleMs+frames.length*perFrame+endMs;
+  rec.start(); const t0=performance.now(); let raf;
+  await new Promise(res=>{ (function tick(now){ const t=now-t0;
+    if(t<titleMs) card('LEAN.SYS',(o.name||'').toUpperCase()+' · '+(weeksIn(frames[0].date)||frames.length)+' WEEKS IN');
+    else if(t<titleMs+frames.length*perFrame){ const i=Math.min(frames.length-1,Math.floor((t-titleMs)/perFrame)); frame(imgs[i],frames[i],i); }
+    else card('KEEP GOING', o.mission||'');
+    if(st) st.textContent='rendering… '+Math.min(100,Math.round(t/total*100))+'%';
+    if(t<total){ raf=requestAnimationFrame(tick); } else { cancelAnimationFrame(raf); rec.stop(); res(); } })(performance.now()); });
+  await stopped;
+  const ext=mime.indexOf('mp4')>=0?'mp4':'webm'; const blob=new Blob(chunks,{type:mime});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='leansys-timelapse-'+reel.angle+'-'+today()+'.'+ext; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),5000);
+  if(st){ st.style.color='var(--good)'; st.textContent='saved '+a.download+' · '+Math.round(blob.size/1024)+' KB'; }
+}
+
 // ============================ SCREENS ============================
 function homeScreen(){
   const o=op(), t=targets(o), tot=dayTotals(today());
@@ -371,6 +440,7 @@ function homeScreen(){
   const streak=proteinStreak();
   return `
     <div class="sub">${esc(o.name)} · ${shortDate(today())}</div>
+    ${dueBanner()}
     <div class="card accent">
       <div class="label">Protein remaining today</div>
       <div class="hero-num"><b class="${done?'done':''}">${Math.max(0,Math.round(remain))}</b><span class="u">g</span></div>
@@ -499,6 +569,7 @@ function bodyScreen(){
   const change=(latest&&first)?(latest.kg-first.kg):0;
   return `
     <div class="sub">${esc(o.name)} · the scale lies during a recomp</div>
+    ${dueBanner()}
     <div id="journey"></div>
     <div class="card">
       <div class="stats">
@@ -594,6 +665,18 @@ function sysScreen(){
     <div class="label">Schedule · gym days</div>
     <div class="dayrow" style="margin-top:8px">${DAYS.map(dd=>`<div class="d ${o.gymDays.includes(dd)?'on':''}" data-gday="${dd}">${dd[0]}</div>`).join('')}</div>
     <div class="faint" style="margin-top:8px">${o.gymDays.join(' · ')||'none'} · A→B→C rotation</div>
+
+    <div style="height:14px"></div>
+    <div class="label">Weekly photo reminder</div>
+    <div style="height:6px"></div>
+    <span class="label">Photo day</span><div style="height:4px"></div>
+    <select id="photo-day">${DAYS.map(dd=>`<option value="${dd}" ${(o.photoDay||'Sun')===dd?'selected':''}>${dd}</option>`).join('')}</select>
+    <div style="height:8px"></div>
+    <button class="btn accent" id="ics-dl">Add weekly reminder to calendar (.ics)</button>
+    <div class="faint" style="margin-top:6px;line-height:1.5">Imports a repeating weekly event with an alarm into your phone's calendar — a real notification, even when this app is closed. This is the reliable reminder.</div>
+    <div style="height:8px"></div>
+    <button class="btn" id="notif-enable">Enable in-app notification</button>
+    <div class="faint" style="margin-top:6px">Bonus: pops a notification when you open the app on a due day (only fires while the app is open).</div>
 
     <div class="divider"></div>
     <div class="label">Coach · Anthropic API</div>
@@ -785,6 +868,14 @@ document.body.addEventListener('click', async (e)=>{
   if(T.id==='compare-link'){ openCompare(); return; }
   const rang=closest('[data-reelang]'); if(rang){ reelPause(); reel.angle=rang.dataset.reelang; setReelFrames(); paintJourney(); return; }
   if(T.id==='reel-play'){ reelToggle(); return; }
+  if(T.id==='reel-export'){ exportReel(); return; }
+  if(T.id==='go-body-shoot'){ view.tab='body'; render(); return; }
+  if(T.id==='ics-dl'){ downloadText('leansys-weekly-photo-'+op().id+'.ics', buildICS(op()), 'text/calendar'); return; }
+  if(T.id==='notif-enable'){
+    if(!('Notification' in window)){ alert('Notifications aren’t supported in this browser. The calendar reminder still works.'); return; }
+    Notification.requestPermission().then(p=>{ if(p==='granted'){ try{ new Notification('LEAN.SYS',{body:'Notifications on. You’ll get a nudge when you open the app on photo day.'}); }catch(e){} } else alert('Not enabled — use the calendar (.ics) reminder instead.'); });
+    return;
+  }
   if(closest('[data-fact-next]')){ factIdx=(factIdx+1)%FACTS.length; const ft=document.getElementById('fact-text'); if(ft) ft.textContent=FACTS[factIdx%FACTS.length]; return; }
 
   // sys
@@ -830,6 +921,7 @@ document.body.addEventListener('keydown',(e)=>{
 
 // photo file inputs
 document.body.addEventListener('change', async (e)=>{
+  if(e.target.id==='photo-day'){ op().photoDay=e.target.value; save(); return; }
   // BODY: progress photo → store in IndexedDB
   if(e.target.id==='photo-input'){
     const file=e.target.files[0]; e.target.value=''; if(!file) return;
@@ -838,7 +930,8 @@ document.body.addEventListener('change', async (e)=>{
       const dataUrl=await fileToJpeg(file,1000,0.82);
       const latest=d().weight[d().weight.length-1];
       await photoPut({id:S.activeId+'-'+today()+'-'+angle+'-'+Date.now(),opId:S.activeId,date:today(),angle,dataUrl,kg:latest?latest.kg:null});
-      renderPhotoHist();
+      d().lastPhotoDate=today(); save();
+      buildJourney(); renderPhotoHist();
     }catch(err){ alert('Photo failed: '+err.message); }
     return;
   }
@@ -890,6 +983,7 @@ async function openCompare(){
 
 // ---------- boot ----------
 load(); render();
+try{ if(photoDue() && 'Notification' in window && Notification.permission==='granted'){ new Notification('LEAN.SYS',{body:'Weekly progress photos — shoot front / side / relaxed.'}); } }catch(e){}
 </script>
 </body>
 </html>
