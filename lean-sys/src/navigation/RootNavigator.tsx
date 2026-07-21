@@ -45,7 +45,7 @@ function TabGlyph({ glyph, focused }: { glyph: string; focused: boolean }) {
 }
 
 export function RootNavigator() {
-  const { ready, profile } = useApp();
+  const { ready, profiles } = useApp();
 
   if (!ready) {
     return (
@@ -56,8 +56,9 @@ export function RootNavigator() {
     );
   }
 
-  // First launch: route through onboarding to lock equipment + confirm age.
-  if (!profile || !profile.onboarded) {
+  // First launch: onboard operator 1 (name, sex, equipment). The partner is
+  // added later from SYS, so we only gate on whether anyone is set up yet.
+  if (!profiles.some((p) => p.onboarded)) {
     return <OnboardingScreen />;
   }
 

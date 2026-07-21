@@ -12,6 +12,8 @@ export const WEEKDAYS: Weekday[] = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'S
 
 export interface Profile {
   id: number;
+  /** Operator name, e.g. "Tom" / "Anna". Two profiles: you and your wife. */
+  name: string;
   height_cm: number;
   weight_kg: number;
   age: number;

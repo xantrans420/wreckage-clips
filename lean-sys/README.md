@@ -1,9 +1,15 @@
 # LEAN.SYS
 
-A personal recomp tracker for **one operator**. Not a generic fitness app — a
-hard-coded implementation of a specific protocol. No social, no gamification, no
-marketplace, no accounts, no cloud. Dark HUD / terminal aesthetic, single orange
-accent (`#ff5a00`), monospace, zero border-radius.
+A personal recomp tracker for **two operators on one device** — you and your
+wife, each with a separate log, split, weigh-ins and photos, one tap apart. Not a
+generic fitness app — a hard-coded implementation of a specific protocol. No
+social, no gamification, no marketplace, no accounts, no cloud. Dark HUD /
+terminal aesthetic, single orange accent (`#ff5a00`), monospace, zero
+border-radius.
+
+Runs on **iPhone and Android** from one codebase. Each operator has their own
+sex (the BMR formula switches male/female), body stats and targets; a switcher
+at the top of every screen flips between them.
 
 The hero number on the home screen is **protein remaining today**. The core rule
 the app reinforces everywhere: `protein → stay near target → lift hard → walk →
@@ -46,10 +52,21 @@ npx expo export --platform ios --output-dir /tmp/leansys-export
 > not in Expo Go — install them and use a dev build. Without them the app
 > degrades gracefully to manual entry; it never hard-crashes.
 
+## Two operators (you + your wife)
+
+First launch onboards **operator 1** (name, sex, height/weight/age, equipment).
+Add the second operator any time from **SYS → OPERATORS → + Add operator** — pick
+their name, sex, body stats and equipment and they get their own seeded split and
+"My foods". Every data table is scoped by profile, so the two logs never mix. The
+**switcher pills** at the top of HOME / FUEL / TRAIN / BODY flip whose data you're
+looking at; SYS is where you switch, edit, or delete an operator. Health data maps
+to whoever is active (one watch per person). Reset is available per-operator or
+for everyone.
+
 ## Config — seeded on first launch
 
-The owner profile is pre-loaded (editable in **SYS**). Two things are asked on
-first launch:
+The first operator profile is pre-loaded (editable in **SYS**). Asked during
+onboarding:
 
 | Field | Default | Notes |
 |---|---|---|
@@ -124,8 +141,11 @@ absent.
 ## Data model (SQLite)
 
 `profile · food_log · saved_food · exercise · lift_log · weight_log · photo ·
-health_daily · session_log · meta`. Targets are derived from `profile`, never
-stored. See `src/db/database.ts`.
+health_daily · session_log · meta`. Every data table carries a `profile_id`
+(FK → `profile`, `ON DELETE CASCADE`) so the two operators stay fully separate;
+the active operator is stored in `meta`. Targets are derived from each `profile`,
+never stored. Schema is versioned with an in-place v1→v2 migration. See
+`src/db/database.ts`.
 
 ## Non-goals
 

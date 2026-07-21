@@ -1,17 +1,18 @@
 import { getDb } from '../database';
 import { HealthDaily } from '../../types';
 
-/** Cache of the day's metrics pulled from the OS health store. */
-export async function upsertHealthDaily(entry: HealthDaily): Promise<void> {
+/** Cache of the day's metrics pulled from the OS health store, per profile. */
+export async function upsertHealthDaily(profileId: number, entry: HealthDaily): Promise<void> {
   const db = await getDb();
   await db.runAsync(
-    `INSERT INTO health_daily (date, steps, active_kcal, resting_hr, sleep_hours)
-     VALUES (?, ?, ?, ?, ?)
-     ON CONFLICT(date) DO UPDATE SET
+    `INSERT INTO health_daily (profile_id, date, steps, active_kcal, resting_hr, sleep_hours)
+     VALUES (?, ?, ?, ?, ?, ?)
+     ON CONFLICT(profile_id, date) DO UPDATE SET
        steps = excluded.steps,
        active_kcal = excluded.active_kcal,
        resting_hr = excluded.resting_hr,
        sleep_hours = excluded.sleep_hours`,
+    profileId,
     entry.date,
     entry.steps,
     entry.active_kcal,
@@ -20,7 +21,7 @@ export async function upsertHealthDaily(entry: HealthDaily): Promise<void> {
   );
 }
 
-export async function getHealthDaily(date: string): Promise<HealthDaily | null> {
+export async function getHealthDaily(profileId: number, date: string): Promise<HealthDaily | null> {
   const db = await getDb();
-  return (await db.getFirstAsync<HealthDaily>('SELECT * FROM health_daily WHERE date = ?', date)) ?? null;
+  return (await db.getFirstAsync<HealthDaily>('SELECT * FROM health_daily WHERE profile_id = ? AND date = ?', profileId, date)) ?? null;
 }

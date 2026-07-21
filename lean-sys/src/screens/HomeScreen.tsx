@@ -6,10 +6,11 @@ import { COLOR, FONT, SPACE } from '../theme';
 import { Card, Divider, Label, Screen, Stat, T } from '../components/ui';
 import { HeroNumber } from '../components/HeroNumber';
 import { Bar } from '../components/Bar';
+import { ProfileBar } from '../components/ProfileBar';
 import { useApp } from '../context/AppContext';
 import { todayIso, shortLabel } from '../domain/dates';
 import { getDayTotals, DayTotals } from '../db/repositories/fuel';
-import { completedSessionCount, isSessionDone, lastCompletedDay } from '../db/repositories/train';
+import { completedSessionCount, isSessionDone } from '../db/repositories/train';
 import { getHealthDaily } from '../db/repositories/health';
 import { getLatestWeight } from '../db/repositories/body';
 import { dayFromCompletedCount, isGymDay } from '../domain/rotation';
@@ -18,7 +19,7 @@ import { HealthDaily, TrainingDay, WeightLog } from '../types';
 import { STEP_GOAL } from '../domain/seed';
 
 export function HomeScreen() {
-  const { profile, targets } = useApp();
+  const { profile, targets, activeId } = useApp();
   const today = todayIso();
   const [totals, setTotals] = useState<DayTotals>({ kcal: 0, protein_g: 0, carbs_g: 0, fat_g: 0 });
   const [nextDay, setNextDay] = useState<TrainingDay>('A');
@@ -28,12 +29,13 @@ export function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
-    setTotals(await getDayTotals(today));
-    setNextDay(dayFromCompletedCount(await completedSessionCount()));
-    setDoneToday(await isSessionDone(today));
-    setHealth(await getHealthDaily(today));
-    setWeight(await getLatestWeight());
-  }, [today]);
+    if (activeId == null) return;
+    setTotals(await getDayTotals(activeId, today));
+    setNextDay(dayFromCompletedCount(await completedSessionCount(activeId)));
+    setDoneToday(await isSessionDone(activeId, today));
+    setHealth(await getHealthDaily(activeId, today));
+    setWeight(await getLatestWeight(activeId));
+  }, [activeId, today]);
 
   useFocusEffect(
     useCallback(() => {
@@ -42,11 +44,12 @@ export function HomeScreen() {
   );
 
   const onRefresh = useCallback(async () => {
+    if (activeId == null) return;
     setRefreshing(true);
-    await syncHealthForDate(today); // no-op if no provider
+    await syncHealthForDate(activeId, today); // no-op if no provider
     await load();
     setRefreshing(false);
-  }, [today, load]);
+  }, [activeId, today, load]);
 
   if (!profile || !targets) return null;
 
@@ -63,14 +66,10 @@ export function HomeScreen() {
           contentContainerStyle={styles.content}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLOR.accent} />}
         >
-          <View style={styles.header}>
-            <T accent bold size={FONT.lg} style={{ letterSpacing: 2 }}>
-              LEAN.SYS
-            </T>
-            <T dim size={FONT.sm}>
-              {shortLabel(today)}
-            </T>
-          </View>
+          <ProfileBar title="LEAN.SYS" />
+          <T dim size={FONT.sm} style={{ marginTop: -SPACE.sm, marginBottom: SPACE.md }}>
+            {profile.name} · {shortLabel(today)}
+          </T>
 
           {/* HERO — protein remaining. The one number that matters. */}
           <Card style={styles.hero}>
@@ -159,7 +158,6 @@ export function HomeScreen() {
 
 const styles = StyleSheet.create({
   content: { padding: SPACE.lg },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACE.md },
   hero: { borderColor: COLOR.accent, paddingBottom: SPACE.lg },
   statRow: { flexDirection: 'row', gap: SPACE.md },
   trainRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: SPACE.xs },

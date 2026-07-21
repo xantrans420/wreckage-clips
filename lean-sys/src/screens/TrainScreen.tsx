@@ -5,6 +5,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import { COLOR, FONT, SPACE } from '../theme';
 import { Button, Card, Label, Screen, T } from '../components/ui';
 import { ExerciseLogger } from '../components/ExerciseLogger';
+import { ProfileBar } from '../components/ProfileBar';
+import { useApp } from '../context/AppContext';
 import { TrainingDay, Exercise } from '../types';
 import { todayIso, shortLabel } from '../domain/dates';
 import {
@@ -22,6 +24,7 @@ const DAYS: { key: TrainingDay; label: string }[] = [
 ];
 
 export function TrainScreen() {
+  const { activeId } = useApp();
   const today = todayIso();
   const [day, setDay] = useState<TrainingDay>('A');
   const [exercises, setExercises] = useState<Exercise[]>([]);
@@ -30,22 +33,24 @@ export function TrainScreen() {
 
   const load = useCallback(
     async (d: TrainingDay) => {
-      setExercises(await getExercises(d));
-      setDone(await isSessionDone(today));
-      setNext(dayFromCompletedCount(await completedSessionCount()));
+      if (activeId == null) return;
+      setExercises(await getExercises(activeId, d));
+      setDone(await isSessionDone(activeId, today));
+      setNext(dayFromCompletedCount(await completedSessionCount(activeId)));
     },
-    [today],
+    [activeId, today],
   );
 
   useFocusEffect(
     useCallback(() => {
+      if (activeId == null) return;
       // On focus, default the tab to the next session in rotation.
       (async () => {
-        const n = dayFromCompletedCount(await completedSessionCount());
+        const n = dayFromCompletedCount(await completedSessionCount(activeId));
         setDay(n);
         await load(n);
       })();
-    }, [load]),
+    }, [activeId, load]),
   );
 
   const pick = async (d: TrainingDay) => {
@@ -54,7 +59,8 @@ export function TrainScreen() {
   };
 
   const complete = async () => {
-    await markSessionDone(today, day, 'manual');
+    if (activeId == null) return;
+    await markSessionDone(activeId, today, day, 'manual');
     await load(day);
   };
 
@@ -62,14 +68,10 @@ export function TrainScreen() {
     <Screen>
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>
         <View style={styles.headerWrap}>
-          <View style={styles.header}>
-            <T accent bold size={FONT.lg} style={{ letterSpacing: 2 }}>
-              TRAIN
-            </T>
-            <T dim size={FONT.sm}>
-              NEXT UP: {next}
-            </T>
-          </View>
+          <ProfileBar title="TRAIN" />
+          <T dim size={FONT.sm} style={{ marginTop: -SPACE.sm, marginBottom: SPACE.md }}>
+            NEXT UP IN ROTATION: {next}
+          </T>
           <View style={styles.tabs}>
             {DAYS.map((d) => (
               <Pressable key={d.key} onPress={() => pick(d.key)} style={[styles.tab, day === d.key && styles.tabActive]}>
@@ -98,9 +100,8 @@ export function TrainScreen() {
             </View>
           </Card>
 
-          {exercises.map((ex) => (
-            <ExerciseLogger key={ex.id} exercise={ex} date={today} />
-          ))}
+          {activeId != null &&
+            exercises.map((ex) => <ExerciseLogger key={ex.id} profileId={activeId} exercise={ex} date={today} />)}
 
           <View style={{ height: SPACE.sm }} />
           {!done ? (

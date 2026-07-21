@@ -14,15 +14,18 @@ export function getHealthProvider(): HealthProvider {
 }
 
 /**
- * Sync one day's metrics into the local cache, and auto-complete a training
- * session if the watch recorded a strength workout. Safe to call when no
- * provider is available — it simply no-ops.
+ * Sync one day's metrics into the active profile's cache, and auto-complete a
+ * training session if the watch recorded a strength workout. Safe to call when
+ * no provider is available — it simply no-ops.
+ *
+ * Health data is one physical device/watch per person, so it maps to whichever
+ * profile is currently active (the operator wearing the watch).
  */
-export async function syncHealthForDate(date: string): Promise<void> {
+export async function syncHealthForDate(profileId: number, date: string): Promise<void> {
   const provider = getHealthProvider();
   if (!(await provider.isAvailable())) return;
   const m = await provider.getDailyMetrics(date);
-  await upsertHealthDaily({
+  await upsertHealthDaily(profileId, {
     date: m.date,
     steps: m.steps,
     active_kcal: m.activeKcal,
@@ -30,7 +33,7 @@ export async function syncHealthForDate(date: string): Promise<void> {
     sleep_hours: m.sleepHours,
   });
   if (m.workouts.some((w) => w.isStrength)) {
-    const nextDay = dayFromCompletedCount(await completedSessionCount());
-    await markSessionDone(date, nextDay, 'watch');
+    const nextDay = dayFromCompletedCount(await completedSessionCount(profileId));
+    await markSessionDone(profileId, date, nextDay, 'watch');
   }
 }

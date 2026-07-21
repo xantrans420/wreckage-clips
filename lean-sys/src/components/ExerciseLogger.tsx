@@ -17,7 +17,7 @@ interface Draft {
  * "add weight" when the last session capped the rep range, and lets you log
  * this session's sets. Saves are idempotent per (exercise, date).
  */
-export function ExerciseLogger({ exercise, date }: { exercise: Exercise; date: string }) {
+export function ExerciseLogger({ profileId, exercise, date }: { profileId: number; exercise: Exercise; date: string }) {
   const [last, setLast] = useState<LastSession | null>(null);
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [saved, setSaved] = useState(false);
@@ -61,7 +61,7 @@ export function ExerciseLogger({ exercise, date }: { exercise: Exercise; date: s
     const rows = drafts
       .filter((d) => d.weight.trim() !== '' || d.reps.trim() !== '')
       .map((d) => ({ weight_kg: Number(d.weight) || 0, reps: Number(d.reps) || 0 }));
-    await saveSets(exercise.id, date, rows);
+    await saveSets(profileId, exercise.id, date, rows);
     setSaved(true);
     await load();
   };

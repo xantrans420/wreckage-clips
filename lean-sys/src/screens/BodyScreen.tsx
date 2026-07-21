@@ -6,6 +6,7 @@ import { COLOR, FONT, SPACE } from '../theme';
 import { Button, Card, Divider, Field, Label, Screen, Stat, T } from '../components/ui';
 import { TrendChart } from '../components/TrendChart';
 import { PhotoCompare } from '../components/PhotoCompare';
+import { ProfileBar } from '../components/ProfileBar';
 import { useApp } from '../context/AppContext';
 import { todayIso, shortLabel } from '../domain/dates';
 import {
@@ -22,7 +23,7 @@ import { ANGLES, ANGLE_LABEL, capturePhoto } from '../domain/photos';
 import { deleteFile } from '../domain/photos';
 
 export function BodyScreen() {
-  const { profile, patchProfile } = useApp();
+  const { profile, patchProfile, activeId } = useApp();
   const today = todayIso();
   const [history, setHistory] = useState<WeightLog[]>([]);
   const [latest, setLatest] = useState<WeightLog | null>(null);
@@ -32,11 +33,12 @@ export function BodyScreen() {
   const [compare, setCompare] = useState(false);
 
   const load = useCallback(async () => {
-    setHistory(await getWeightHistory());
-    setLatest(await getLatestWeight());
-    setFirst(await getFirstWeight());
-    setPhotos(await getPhotos());
-  }, []);
+    if (activeId == null) return;
+    setHistory(await getWeightHistory(activeId));
+    setLatest(await getLatestWeight(activeId));
+    setFirst(await getFirstWeight(activeId));
+    setPhotos(await getPhotos(activeId));
+  }, [activeId]);
 
   useFocusEffect(
     useCallback(() => {
@@ -46,8 +48,8 @@ export function BodyScreen() {
 
   const submitWeight = async () => {
     const kg = Number(weighIn);
-    if (!kg || kg <= 0) return;
-    await logWeight(today, kg);
+    if (!kg || kg <= 0 || activeId == null) return;
+    await logWeight(activeId, today, kg);
     // Weight change recomputes all targets — keep the profile's live weight in sync.
     await patchProfile({ weight_kg: kg });
     setWeighIn('');
@@ -55,9 +57,10 @@ export function BodyScreen() {
   };
 
   const shoot = async (angle: PhotoAngle) => {
+    if (activeId == null) return;
     const uri = await capturePhoto(today, angle);
     if (!uri) return;
-    await savePhoto({ date: today, angle, file_uri: uri, weight_kg: latest?.kg ?? null });
+    await savePhoto(activeId, { date: today, angle, file_uri: uri, weight_kg: latest?.kg ?? null });
     await load();
   };
 
@@ -84,9 +87,7 @@ export function BodyScreen() {
     <Screen>
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          <T accent bold size={FONT.lg} style={{ letterSpacing: 2, marginBottom: SPACE.md }}>
-            BODY
-          </T>
+          <ProfileBar title="BODY" />
 
           {/* WEIGHT */}
           <Card>

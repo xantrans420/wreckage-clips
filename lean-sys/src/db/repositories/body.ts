@@ -1,31 +1,32 @@
 import { getDb } from '../database';
 import { Photo, PhotoAngle, WeightLog } from '../../types';
 
-// --- Weight ---
+// --- Weight (per profile) ---
 
-export async function logWeight(date: string, kg: number): Promise<void> {
+export async function logWeight(profileId: number, date: string, kg: number): Promise<void> {
   const db = await getDb();
-  // One weigh-in per date; re-logging overwrites (same day, morning, empty).
+  // One weigh-in per date per profile; re-logging overwrites.
   await db.runAsync(
-    'INSERT INTO weight_log (date, kg) VALUES (?, ?) ON CONFLICT(date) DO UPDATE SET kg = excluded.kg',
+    'INSERT INTO weight_log (profile_id, date, kg) VALUES (?, ?, ?) ON CONFLICT(profile_id, date) DO UPDATE SET kg = excluded.kg',
+    profileId,
     date,
     kg,
   );
 }
 
-export async function getWeightHistory(): Promise<WeightLog[]> {
+export async function getWeightHistory(profileId: number): Promise<WeightLog[]> {
   const db = await getDb();
-  return db.getAllAsync<WeightLog>('SELECT * FROM weight_log ORDER BY date ASC');
+  return db.getAllAsync<WeightLog>('SELECT * FROM weight_log WHERE profile_id = ? ORDER BY date ASC', profileId);
 }
 
-export async function getLatestWeight(): Promise<WeightLog | null> {
+export async function getLatestWeight(profileId: number): Promise<WeightLog | null> {
   const db = await getDb();
-  return (await db.getFirstAsync<WeightLog>('SELECT * FROM weight_log ORDER BY date DESC LIMIT 1')) ?? null;
+  return (await db.getFirstAsync<WeightLog>('SELECT * FROM weight_log WHERE profile_id = ? ORDER BY date DESC LIMIT 1', profileId)) ?? null;
 }
 
-export async function getFirstWeight(): Promise<WeightLog | null> {
+export async function getFirstWeight(profileId: number): Promise<WeightLog | null> {
   const db = await getDb();
-  return (await db.getFirstAsync<WeightLog>('SELECT * FROM weight_log ORDER BY date ASC LIMIT 1')) ?? null;
+  return (await db.getFirstAsync<WeightLog>('SELECT * FROM weight_log WHERE profile_id = ? ORDER BY date ASC LIMIT 1', profileId)) ?? null;
 }
 
 export async function deleteWeight(id: number): Promise<void> {
@@ -33,12 +34,13 @@ export async function deleteWeight(id: number): Promise<void> {
   await db.runAsync('DELETE FROM weight_log WHERE id = ?', id);
 }
 
-// --- Photos ---
+// --- Photos (per profile) ---
 
-export async function savePhoto(entry: Omit<Photo, 'id'>): Promise<void> {
+export async function savePhoto(profileId: number, entry: Omit<Photo, 'id'>): Promise<void> {
   const db = await getDb();
   await db.runAsync(
-    'INSERT INTO photo (date, angle, file_uri, weight_kg) VALUES (?, ?, ?, ?)',
+    'INSERT INTO photo (profile_id, date, angle, file_uri, weight_kg) VALUES (?, ?, ?, ?, ?)',
+    profileId,
     entry.date,
     entry.angle,
     entry.file_uri,
@@ -46,27 +48,20 @@ export async function savePhoto(entry: Omit<Photo, 'id'>): Promise<void> {
   );
 }
 
-export async function getPhotos(): Promise<Photo[]> {
+export async function getPhotos(profileId: number): Promise<Photo[]> {
   const db = await getDb();
-  return db.getAllAsync<Photo>('SELECT * FROM photo ORDER BY date DESC, angle');
+  return db.getAllAsync<Photo>('SELECT * FROM photo WHERE profile_id = ? ORDER BY date DESC, angle', profileId);
 }
 
-export async function getPhotoDates(): Promise<string[]> {
-  const db = await getDb();
-  const rows = await db.getAllAsync<{ date: string }>('SELECT DISTINCT date FROM photo ORDER BY date DESC');
-  return rows.map((r) => r.date);
-}
-
-export async function getPhotosForDate(date: string): Promise<Photo[]> {
-  const db = await getDb();
-  return db.getAllAsync<Photo>('SELECT * FROM photo WHERE date = ?', date);
-}
-
-export async function getPhoto(date: string, angle: PhotoAngle): Promise<Photo | null> {
+export async function getPhoto(profileId: number, date: string, angle: PhotoAngle): Promise<Photo | null> {
   const db = await getDb();
   return (
-    (await db.getFirstAsync<Photo>('SELECT * FROM photo WHERE date = ? AND angle = ? ORDER BY id DESC LIMIT 1', date, angle)) ??
-    null
+    (await db.getFirstAsync<Photo>(
+      'SELECT * FROM photo WHERE profile_id = ? AND date = ? AND angle = ? ORDER BY id DESC LIMIT 1',
+      profileId,
+      date,
+      angle,
+    )) ?? null
   );
 }
 

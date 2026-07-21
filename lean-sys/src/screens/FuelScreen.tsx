@@ -5,6 +5,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { COLOR, FONT, SPACE } from '../theme';
 import { Button, Card, Divider, Field, Label, Screen, Stat, T } from '../components/ui';
 import { Bar } from '../components/Bar';
+import { ProfileBar } from '../components/ProfileBar';
 import { useApp } from '../context/AppContext';
 import { todayIso } from '../domain/dates';
 import {
@@ -21,7 +22,7 @@ import { FoodLog, SavedFood } from '../types';
 import { PLATE_FORMULA, BATCH_PREP } from '../domain/seed';
 
 export function FuelScreen() {
-  const { profile, targets } = useApp();
+  const { profile, targets, activeId } = useApp();
   const today = todayIso();
   const [totals, setTotals] = useState<DayTotals>({ kcal: 0, protein_g: 0, carbs_g: 0, fat_g: 0 });
   const [log, setLog] = useState<FoodLog[]>([]);
@@ -36,10 +37,11 @@ export function FuelScreen() {
   const [saveToQuick, setSaveToQuick] = useState(false);
 
   const load = useCallback(async () => {
-    setTotals(await getDayTotals(today));
-    setLog(await getFoodLog(today));
-    setSaved(await getSavedFoods());
-  }, [today]);
+    if (activeId == null) return;
+    setTotals(await getDayTotals(activeId, today));
+    setLog(await getFoodLog(activeId, today));
+    setSaved(await getSavedFoods(activeId));
+  }, [activeId, today]);
 
   useFocusEffect(
     useCallback(() => {
@@ -50,7 +52,7 @@ export function FuelScreen() {
   const canAdd = name.trim().length > 0 && protein.trim().length > 0;
 
   const add = async () => {
-    if (!canAdd) return;
+    if (!canAdd || activeId == null) return;
     const entry = {
       date: today,
       name: name.trim(),
@@ -59,8 +61,8 @@ export function FuelScreen() {
       carbs_g: carbs ? Number(carbs) : null,
       fat_g: fat ? Number(fat) : null,
     };
-    await logFood(entry);
-    if (saveToQuick) await addSavedFood({ name: entry.name, kcal: entry.kcal, protein_g: entry.protein_g });
+    await logFood(activeId, entry);
+    if (saveToQuick) await addSavedFood(activeId, { name: entry.name, kcal: entry.kcal, protein_g: entry.protein_g });
     setName('');
     setKcal('');
     setProtein('');
@@ -71,7 +73,8 @@ export function FuelScreen() {
   };
 
   const quickAdd = async (f: SavedFood) => {
-    await logSavedFood(f, today);
+    if (activeId == null) return;
+    await logSavedFood(activeId, f, today);
     await load();
   };
 
@@ -88,9 +91,7 @@ export function FuelScreen() {
     <Screen>
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          <T accent bold size={FONT.lg} style={{ letterSpacing: 2, marginBottom: SPACE.md }}>
-            FUEL
-          </T>
+          <ProfileBar title="FUEL" />
 
           {/* Protein hero + calories */}
           <Card style={{ borderColor: COLOR.accent }}>

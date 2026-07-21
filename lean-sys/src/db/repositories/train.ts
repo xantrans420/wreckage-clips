@@ -2,14 +2,14 @@ import { getDb } from '../database';
 import { Exercise, LiftSet, TrainingDay } from '../../types';
 import { shouldAddWeight } from '../../domain/progression';
 
-export async function getExercises(day: TrainingDay): Promise<Exercise[]> {
+export async function getExercises(profileId: number, day: TrainingDay): Promise<Exercise[]> {
   const db = await getDb();
-  return db.getAllAsync<Exercise>('SELECT * FROM exercise WHERE day = ? ORDER BY order_no', day);
+  return db.getAllAsync<Exercise>('SELECT * FROM exercise WHERE profile_id = ? AND day = ? ORDER BY order_no', profileId, day);
 }
 
-export async function getAllExercises(): Promise<Exercise[]> {
+export async function getAllExercises(profileId: number): Promise<Exercise[]> {
   const db = await getDb();
-  return db.getAllAsync<Exercise>('SELECT * FROM exercise ORDER BY day, order_no');
+  return db.getAllAsync<Exercise>('SELECT * FROM exercise WHERE profile_id = ? ORDER BY day, order_no', profileId);
 }
 
 export async function updateExercise(id: number, patch: Partial<Pick<Exercise, 'name' | 'scheme' | 'note'>>): Promise<void> {
@@ -25,7 +25,8 @@ export async function updateExercise(id: number, patch: Partial<Pick<Exercise, '
   );
 }
 
-/** The most recent date on which this exercise was logged (its "last session"). */
+/** The most recent date on which this exercise was logged (its "last session").
+ * Exercise ids are already per-profile, so no extra profile filter is needed. */
 export async function lastSessionDate(exerciseId: number, before?: string): Promise<string | null> {
   const db = await getDb();
   const row = before
@@ -65,6 +66,7 @@ export async function getLastSession(exercise: Exercise, before: string): Promis
 
 /** Replace the full set list for one exercise on one date (idempotent save). */
 export async function saveSets(
+  profileId: number,
   exerciseId: number,
   date: string,
   sets: { weight_kg: number; reps: number }[],
@@ -75,7 +77,8 @@ export async function saveSets(
     let n = 1;
     for (const s of sets) {
       await db.runAsync(
-        'INSERT INTO lift_log (date, exercise_id, set_no, weight_kg, reps) VALUES (?, ?, ?, ?, ?)',
+        'INSERT INTO lift_log (profile_id, date, exercise_id, set_no, weight_kg, reps) VALUES (?, ?, ?, ?, ?, ?)',
+        profileId,
         date,
         exerciseId,
         n++,
@@ -86,29 +89,46 @@ export async function saveSets(
   });
 }
 
-// --- Session completion / rotation ---
+// --- Session completion / rotation (per profile) ---
 
-export async function markSessionDone(date: string, day: TrainingDay, source: 'manual' | 'watch' = 'manual'): Promise<void> {
+export async function markSessionDone(
+  profileId: number,
+  date: string,
+  day: TrainingDay,
+  source: 'manual' | 'watch' = 'manual',
+): Promise<void> {
   const db = await getDb();
-  const existing = await db.getFirstAsync<{ id: number }>('SELECT id FROM session_log WHERE date = ? AND day = ?', date, day);
+  const existing = await db.getFirstAsync<{ id: number }>(
+    'SELECT id FROM session_log WHERE profile_id = ? AND date = ? AND day = ?',
+    profileId,
+    date,
+    day,
+  );
   if (existing) return;
-  await db.runAsync('INSERT INTO session_log (date, day, source) VALUES (?, ?, ?)', date, day, source);
+  await db.runAsync('INSERT INTO session_log (profile_id, date, day, source) VALUES (?, ?, ?, ?)', profileId, date, day, source);
 }
 
-export async function completedSessionCount(): Promise<number> {
+export async function completedSessionCount(profileId: number): Promise<number> {
   const db = await getDb();
-  const row = await db.getFirstAsync<{ c: number }>('SELECT COUNT(*) AS c FROM session_log');
+  const row = await db.getFirstAsync<{ c: number }>('SELECT COUNT(*) AS c FROM session_log WHERE profile_id = ?', profileId);
   return row?.c ?? 0;
 }
 
-export async function lastCompletedDay(): Promise<TrainingDay | null> {
+export async function lastCompletedDay(profileId: number): Promise<TrainingDay | null> {
   const db = await getDb();
-  const row = await db.getFirstAsync<{ day: string }>('SELECT day FROM session_log ORDER BY date DESC, id DESC LIMIT 1');
+  const row = await db.getFirstAsync<{ day: string }>(
+    'SELECT day FROM session_log WHERE profile_id = ? ORDER BY date DESC, id DESC LIMIT 1',
+    profileId,
+  );
   return (row?.day as TrainingDay) ?? null;
 }
 
-export async function isSessionDone(date: string): Promise<boolean> {
+export async function isSessionDone(profileId: number, date: string): Promise<boolean> {
   const db = await getDb();
-  const row = await db.getFirstAsync<{ c: number }>('SELECT COUNT(*) AS c FROM session_log WHERE date = ?', date);
+  const row = await db.getFirstAsync<{ c: number }>(
+    'SELECT COUNT(*) AS c FROM session_log WHERE profile_id = ? AND date = ?',
+    profileId,
+    date,
+  );
   return (row?.c ?? 0) > 0;
 }

@@ -50,7 +50,7 @@ export async function rescheduleAll(profile: Profile): Promise<void> {
   // Gym-day morning nudges. We can't compute the exact rotation letter for each
   // future date without the completion history, so we surface the *next* letter
   // as of now; the app corrects the label live on the home screen.
-  const nextLetter = dayFromCompletedCount(await completedSessionCount());
+  const nextLetter = dayFromCompletedCount(await completedSessionCount(profile.id));
   for (const wd of profile.gym_days) {
     await Notifications.scheduleNotificationAsync({
       content: {
