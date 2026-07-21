@@ -1,0 +1,711 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>LEAN.SYS</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#050505" />
+<style>
+  :root{
+    --bg:#050505; --surface:#0c0c0c; --surface2:#111; --line:#242424; --line2:#3a3a3a;
+    --text:#e8e8e8; --dim:#8a8a8a; --faint:#555; --accent:#ff5a00;
+    --good:#4bd66b; --warn:#e0b020; --bad:#e0432a;
+    --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,"DejaVu Sans Mono","Roboto Mono",monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--bg);color:var(--text);font-family:var(--mono);-webkit-font-smoothing:antialiased}
+  body{min-height:100dvh;display:flex;flex-direction:column}
+  input,textarea,select,button{font-family:var(--mono);color:var(--text)}
+  a{color:var(--accent)}
+
+  /* header */
+  header.app{flex:0 0 auto;padding:12px 14px 10px;border-bottom:1px solid var(--line);
+    display:flex;align-items:center;justify-content:space-between;gap:10px;position:sticky;top:0;background:var(--bg);z-index:5}
+  .title{color:var(--accent);font-size:18px;font-weight:700;letter-spacing:2px}
+  .pills{display:flex;gap:6px}
+  .pill{border:1px solid var(--line);background:var(--surface2);color:var(--dim);font-size:10px;font-weight:700;
+    letter-spacing:1px;padding:6px 11px;cursor:pointer}
+  .pill[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--bg)}
+
+  main.screen{flex:1 1 auto;overflow-y:auto;padding:14px;max-width:560px;width:100%;margin:0 auto}
+  .sub{color:var(--dim);font-size:11px;letter-spacing:.5px;margin:-2px 0 12px}
+
+  .label{color:var(--dim);font-size:10px;letter-spacing:1.6px;text-transform:uppercase}
+  .faint{color:var(--faint);font-size:10px;line-height:1.6}
+  .dim{color:var(--dim)}
+  .card{background:var(--surface);border:1px solid var(--line);padding:15px;margin-bottom:12px}
+  .card.accent{border-color:var(--accent)}
+  .divider{height:1px;background:var(--line);margin:14px 0}
+
+  .hero-num{display:flex;align-items:flex-end;gap:8px;margin-top:4px}
+  .hero-num b{color:var(--accent);font-size:58px;font-weight:700;line-height:.95;font-variant-numeric:tabular-nums}
+  .hero-num b.done{color:var(--good)}
+  .hero-num .u{color:var(--dim);font-size:20px;margin-bottom:8px}
+  .hero-sub{color:var(--dim);font-size:11px;letter-spacing:1px;margin-top:6px}
+
+  .bar{height:8px;background:var(--surface2);border:1px solid var(--line);margin-top:10px}
+  .bar>i{display:block;height:100%;background:var(--accent)}
+  .bar.muted>i{background:var(--dim)} .bar.over>i{background:var(--bad)}
+
+  .stats{display:flex;gap:12px} .stat{flex:1}
+  .stat .k{color:var(--dim);font-size:10px;letter-spacing:1.4px;text-transform:uppercase}
+  .stat .v{font-size:22px;font-weight:700;margin-top:2px;font-variant-numeric:tabular-nums}
+  .stat .v small{font-size:12px;color:var(--dim);font-weight:400}
+  .v.accent{color:var(--accent)} .v.good{color:var(--good)} .v.warn{color:var(--warn)} .v.bad{color:var(--bad)}
+
+  .rowline{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px;gap:8px}
+  .rowline:last-child{border-bottom:0}
+  .rowline .p{color:var(--accent);width:46px;text-align:right;font-variant-numeric:tabular-nums}
+  .del{color:var(--bad);font-size:10px;letter-spacing:1px;cursor:pointer;border:1px solid var(--bad);padding:3px 6px;background:transparent}
+
+  input,textarea,select{background:var(--surface2);border:1px solid var(--line);padding:9px 10px;font-size:14px;width:100%}
+  input::placeholder,textarea::placeholder{color:var(--faint)}
+  input:focus,textarea:focus,select:focus{outline:1px solid var(--accent)}
+  .field{flex:1} .field .label{display:block;margin-bottom:4px}
+  .row{display:flex;gap:8px;align-items:flex-end}
+
+  .btn{display:block;width:100%;text-align:center;border:1px solid var(--line2);background:var(--surface2);
+    font-size:12px;letter-spacing:1px;padding:12px;cursor:pointer;text-transform:uppercase}
+  .btn.accent{background:var(--accent);border-color:var(--accent);color:var(--bg);font-weight:700}
+  .btn.ghost{background:transparent;border-color:var(--line)}
+  .btn.danger{background:transparent;border-color:var(--bad);color:var(--bad)}
+  .btn:disabled{opacity:.35;cursor:default}
+
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+  .chip{border:1px solid var(--line2);background:var(--surface2);padding:8px 10px;cursor:pointer;text-align:left}
+  .chip b{font-size:12px;font-weight:400} .chip span{display:block;color:var(--dim);font-size:10px;margin-top:2px}
+
+  .tabs3{display:flex;gap:5px;margin:12px 0}
+  .tabs3 button{flex:1;border:1px solid var(--line);background:var(--surface2);color:var(--dim);font-size:10px;font-weight:700;
+    letter-spacing:1px;padding:9px 0;cursor:pointer}
+  .tabs3 button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--bg)}
+
+  .ex{border:1px solid var(--line);background:var(--surface);padding:12px;margin-bottom:10px}
+  .ex .top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+  .ex .name{font-weight:700;font-size:14px} .ex .scheme{color:var(--dim);font-size:10px;margin-top:2px}
+  .flag{background:var(--accent);color:var(--bg);font-size:9px;font-weight:700;letter-spacing:1px;padding:3px 7px;white-space:nowrap}
+  .ex .last{color:var(--faint);font-size:10px;margin-top:8px}
+  .setgrid{display:grid;grid-template-columns:20px 1fr 1fr;gap:6px;margin-top:10px;align-items:center}
+  .setgrid .h{color:var(--faint);font-size:9px;letter-spacing:1px;text-transform:uppercase}
+  .setgrid input{padding:6px;text-align:center;font-size:13px}
+  .setgrid input.hit{color:var(--good);border-color:var(--good)}
+  .setgrid .idx{color:var(--dim);font-size:12px}
+
+  .photos{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+  .frame{aspect-ratio:3/4;border:1px solid var(--line2);background:repeating-linear-gradient(135deg,#0a0a0a 0 8px,#0d0d0d 8px 16px);
+    display:flex;align-items:flex-end;overflow:hidden;position:relative;cursor:pointer}
+  .frame img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .frame span{font-size:9px;color:var(--dim);letter-spacing:1px;padding:6px;z-index:1;position:relative}
+
+  svg{display:block}
+
+  /* coach */
+  .chat{display:flex;flex-direction:column;gap:10px;margin-bottom:12px}
+  .msg{padding:10px 12px;border:1px solid var(--line);font-size:13px;line-height:1.5;white-space:pre-wrap;word-break:break-word}
+  .msg.user{border-color:var(--line2);background:var(--surface2);align-self:flex-end;max-width:88%}
+  .msg.assistant{border-left:2px solid var(--accent);background:var(--surface);align-self:flex-start;max-width:95%}
+  .msg.sys{border-color:var(--warn);color:var(--warn);font-size:11px}
+  .composer{display:flex;gap:8px;align-items:flex-end;position:sticky;bottom:0;background:var(--bg);padding-top:8px}
+  .composer textarea{resize:none;min-height:44px;max-height:140px}
+  .composer .btn{width:auto;padding:12px 16px}
+
+  /* bottom nav */
+  nav.tabbar{flex:0 0 auto;height:58px;border-top:1px solid var(--line);display:flex;position:sticky;bottom:0;background:var(--bg)}
+  nav.tabbar button{flex:1;background:none;border:0;color:var(--faint);display:flex;flex-direction:column;align-items:center;
+    justify-content:center;gap:4px;cursor:pointer}
+  nav.tabbar button .g{font-size:15px} nav.tabbar button .t{font-size:8px;letter-spacing:1.5px}
+  nav.tabbar button[aria-pressed="true"]{color:var(--accent)}
+
+  .op{display:flex;align-items:center;gap:12px;border:1px solid var(--line);background:var(--surface);padding:12px;margin-bottom:8px}
+  .op.active{border-color:var(--accent)} .op .nm{flex:1} .op.active .nm b{color:var(--accent)}
+  .op .nm span{display:block;color:var(--dim);font-size:10px;margin-top:2px}
+
+  .pillrow{display:flex;gap:8px} .pillrow .p2{flex:1;border:1px solid var(--line);background:var(--surface2);color:var(--dim);
+    font-size:11px;font-weight:700;padding:9px 0;text-align:center;cursor:pointer;letter-spacing:1px}
+  .pillrow .p2[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--bg)}
+  .dayrow{display:flex;gap:6px} .dayrow .d{flex:1;aspect-ratio:1;border:1px solid var(--line);background:var(--surface2);
+    display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--dim);cursor:pointer}
+  .dayrow .d.on{background:var(--accent);border-color:var(--accent);color:var(--bg)}
+  .check{width:14px;height:14px;border:1px solid var(--line2);display:inline-block;vertical-align:middle}
+  .check.on{background:var(--accent);border-color:var(--accent)}
+</style>
+</head>
+<body>
+  <header class="app">
+    <div class="title" id="scr-title">LEAN.SYS</div>
+    <div class="pills" id="pills"></div>
+  </header>
+  <main class="screen" id="screen" tabindex="-1"></main>
+  <nav class="tabbar" id="tabbar"></nav>
+
+<script>
+"use strict";
+/* ============================ LEAN.SYS — local-first web build ============================
+   Two operators. All data persists in this browser (localStorage; photos in IndexedDB).
+   COACH talks to Claude via the Anthropic API using YOUR api key (stored locally, sent only
+   to api.anthropic.com). No server, no accounts. This is the recomp protocol, not a platform.
+========================================================================================== */
+
+// ---------- domain ----------
+function targets(p){
+  const base = 10*p.w + 6.25*p.h - 5*p.age;
+  const bmr = p.sex==='male' ? base+5 : base-161;
+  const maint = bmr*p.act;
+  return { bmr:Math.round(bmr), maint:Math.round(maint), cut:Math.round(maint-p.def), protein:Math.round(p.w*1.9) };
+}
+const SPLIT_FREE = {
+  A:[['Goblet / leg press','3x8-10'],['DB bench press','3x8-10'],['Lat pulldown','3x10'],
+     ['Seated cable row','3x10','posture'],['DB shoulder press','3x10'],['Plank','3x40s']],
+  B:[['Romanian deadlift','3x8-10'],['One-arm DB row','3x10'],['Incline DB press','3x10'],
+     ['Face pulls','3x15','fixes rounded shoulders'],['Leg curl','3x12'],['Hanging knee raise','3x12']],
+  C:[['Deadlift / trap-bar','3x6-8'],['Pull-up / assisted','3xmax'],['Flat DB bench','3x10'],
+     ['Bulgarian split squat','3x10/leg'],['Lateral raise','3x15'],['Cable crunch','3x15']],
+};
+const SPLIT_MACH = {
+  A:[['Leg press','3x8-10'],['Chest press machine','3x8-10'],['Lat pulldown','3x10'],
+     ['Seated cable row','3x10','posture'],['Shoulder press machine','3x10'],['Plank','3x40s']],
+  B:[['Leg curl + back extension','3x10'],['Seated cable row','3x10'],['Incline chest press machine','3x10'],
+     ['Face pulls','3x15','fixes rounded shoulders'],['Leg curl','3x12'],['Captain’s chair knee raise','3x12']],
+  C:[['Leg press','3x8'],['Assisted pull-up / lat pulldown','3x10'],['Chest press machine','3x10'],
+     ['Leg press','3x12'],['Lateral raise machine','3x15'],['Cable crunch','3x15']],
+};
+const SEED_FOODS=[['Chicken thigh 150g',290,38],['Rice 200g',260,5],['3 eggs',210,18],['Quark 250g',170,30],['Protein shake',130,25]];
+const PLATE=['1 palm+ protein','1 fist carb (2 on train days)','2 handfuls veg','1 thumb fat'];
+const DAYS=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const STEP_GOAL=8000;
+
+// ---------- persistence ----------
+const KEY='leansys.v1';
+function blankData(){ return { food:{}, savedFoods:SEED_FOODS.map(f=>({name:f[0],kcal:f[1],protein:f[2]})),
+  weight:[], lifts:{}, sessions:[], coach:[] }; }
+function defaultState(){
+  return {
+    activeId:'op1',
+    apiKey:'', model:'claude-opus-4-8',
+    operators:{
+      op1:{id:'op1',name:'Operator 1',sex:'male',h:197,w:95,age:36,act:1.375,def:300,equip:'free_weights',gymDays:['Mon','Wed','Fri']},
+      op2:{id:'op2',name:'Operator 2',sex:'female',h:170,w:65,age:34,act:1.375,def:300,equip:'free_weights',gymDays:['Tue','Thu','Sat']},
+    },
+    data:{ op1:blankData(), op2:blankData() },
+  };
+}
+let S;
+function load(){
+  try{ const raw=localStorage.getItem(KEY); S = raw? JSON.parse(raw): defaultState(); }
+  catch(e){ S=defaultState(); }
+  // migrate-safety
+  if(!S.operators||!S.data){ S=defaultState(); }
+  for(const id of Object.keys(S.operators)){ if(!S.data[id]) S.data[id]=blankData(); }
+}
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){ alert('Storage full or blocked: '+e.message); } }
+function op(){ return S.operators[S.activeId]; }
+function d(){ return S.data[S.activeId]; }
+function iso(dt){ dt=dt||new Date(); const y=dt.getFullYear(),m=String(dt.getMonth()+1).padStart(2,'0'),da=String(dt.getDate()).padStart(2,'0'); return `${y}-${m}-${da}`; }
+function today(){ return iso(); }
+function shortDate(s){ const M=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; const [y,m,da]=s.split('-').map(Number); return `${da} ${M[m-1]}`; }
+function weekdayOf(s){ const [y,m,da]=s.split('-').map(Number); const js=new Date(y,m-1,da).getDay(); return DAYS[js===0?6:js-1]; }
+
+// ---------- IndexedDB (photos) ----------
+let _db=null;
+function db(){ return new Promise((res,rej)=>{ if(_db) return res(_db);
+  const r=indexedDB.open('leansys-photos',1);
+  r.onupgradeneeded=()=>{ const store=r.result.createObjectStore('photos',{keyPath:'id'}); store.createIndex('op','opId'); };
+  r.onsuccess=()=>{ _db=r.result; res(_db); }; r.onerror=()=>rej(r.error); }); }
+async function photoPut(rec){ const x=await db(); return new Promise((res,rej)=>{ const t=x.transaction('photos','readwrite'); t.objectStore('photos').put(rec); t.oncomplete=res; t.onerror=()=>rej(t.error); }); }
+async function photoDel(id){ const x=await db(); return new Promise((res,rej)=>{ const t=x.transaction('photos','readwrite'); t.objectStore('photos').delete(id); t.oncomplete=res; t.onerror=()=>rej(t.error); }); }
+async function photoAll(opId){ const x=await db(); return new Promise((res,rej)=>{ const out=[]; const t=x.transaction('photos','readonly');
+  const idx=t.objectStore('photos').index('op'); const rq=idx.openCursor(IDBKeyRange.only(opId));
+  rq.onsuccess=()=>{ const c=rq.result; if(c){ out.push(c.value); c.continue(); } else res(out); }; rq.onerror=()=>rej(rq.error); }); }
+
+// ---------- helpers ----------
+const el=(h)=>{const t=document.createElement('template');t.innerHTML=h.trim();return t.content.firstElementChild;};
+const esc=(s)=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const pct=(v,t)=>Math.max(0,Math.min(100,t>0?(v/t)*100:0));
+const num=(v)=>{const n=Number(v);return Number.isFinite(n)?n:0;};
+
+function dayTotals(dateStr){ const list=(d().food[dateStr]||[]); return list.reduce((a,f)=>{a.kcal+=f.kcal;a.protein+=f.protein;return a;},{kcal:0,protein:0}); }
+function completedCount(){ return d().sessions.length; }
+function nextDay(){ return ['A','B','C'][completedCount()%3]; }
+function sessionDone(dateStr){ return d().sessions.some(s=>s.date===dateStr); }
+function splitFor(o){ return o.equip==='machines_only'?SPLIT_MACH:SPLIT_FREE; }
+function parseTop(scheme){ if(/max|s$/i.test(scheme.split('x')[1]||'')) return null; const m=(scheme.split('x')[1]||'').match(/\d+/g); if(!m) return null; return Number(m[m.length-1]); }
+function lastSession(exId, beforeDate){ const dates=Object.keys(d().lifts).filter(dt=>dt<beforeDate && (d().lifts[dt][exId]||[]).length).sort(); const dt=dates[dates.length-1]; return dt?{date:dt,sets:d().lifts[dt][exId]}:null; }
+
+// ---------- state ----------
+let view={ tab:'home', trainDay:null };
+const TABS=[['home','▚','HOME'],['fuel','◇','FUEL'],['train','≡','TRAIN'],['body','◱','BODY'],['coach','◈','COACH'],['sys','※','SYS']];
+
+// ---------- charts ----------
+function trendSvg(data){
+  const w=520,h=140,pl=32,pr=8,pt=12,pb=18;
+  if(data.length<2) return `<svg viewBox="0 0 ${w} ${h}" width="100%" height="140"><text x="${w/2}" y="${h/2}" fill="var(--faint)" font-family="var(--mono)" font-size="12" text-anchor="middle">NEED 2+ WEIGH-INS FOR A TREND</text></svg>`;
+  const kg=data.map(p=>p.kg); const min=Math.min(...kg)-0.5,max=Math.max(...kg)+0.5,span=(max-min)||1;
+  const x=i=>pl+(i/(data.length-1))*(w-pl-pr); const y=v=>pt+(1-(v-min)/span)*(h-pt-pb);
+  const path=data.map((p,i)=>(i?'L':'M')+x(i).toFixed(1)+','+y(p.kg).toFixed(1)).join(' ');
+  const dots=data.map((p,i)=>`<circle cx="${x(i).toFixed(1)}" cy="${y(p.kg).toFixed(1)}" r="2.2" fill="var(--accent)"/>`).join('');
+  return `<svg viewBox="0 0 ${w} ${h}" width="100%" height="140">
+    <line x1="${pl}" y1="${h-pb}" x2="${w-pr}" y2="${h-pb}" stroke="var(--line)"/>
+    <text x="2" y="${(y(max)+4).toFixed(0)}" fill="var(--faint)" font-family="var(--mono)" font-size="9">${max.toFixed(0)}</text>
+    <text x="2" y="${(y(min)+4).toFixed(0)}" fill="var(--faint)" font-family="var(--mono)" font-size="9">${min.toFixed(0)}</text>
+    <path d="${path}" fill="none" stroke="var(--accent)" stroke-width="1.5"/>${dots}</svg>`;
+}
+
+// ============================ SCREENS ============================
+function homeScreen(){
+  const o=op(), t=targets(o), tot=dayTotals(today());
+  const remain=t.protein-tot.protein, done=remain<=0;
+  const kcalTarget=o.def>0?t.cut:t.maint, kcalRemain=kcalTarget-tot.kcal;
+  const gymToday=o.gymDays.includes(weekdayOf(today())), sd=sessionDone(today());
+  const lastW=d().weight[d().weight.length-1];
+  return `
+    <div class="sub">${esc(o.name)} · ${shortDate(today())}</div>
+    <div class="card accent">
+      <div class="label">Protein remaining today</div>
+      <div class="hero-num"><b class="${done?'done':''}">${Math.max(0,Math.round(remain))}</b><span class="u">g</span></div>
+      <div class="hero-sub">${done?'TARGET HIT':`${Math.round(tot.protein)} / ${t.protein} g logged`}</div>
+      <div class="bar"><i style="width:${pct(tot.protein,t.protein)}%"></i></div>
+    </div>
+    <div class="card">
+      <div class="stats">
+        <div class="stat"><div class="k">Cal remaining${o.def>0?' (cut)':''}</div><div class="v ${kcalRemain<0?'bad':''}">${Math.round(kcalRemain)}<small> kcal</small></div></div>
+        <div class="stat"><div class="k">Eaten</div><div class="v">${Math.round(tot.kcal)}<small> kcal</small></div></div>
+      </div>
+      <div class="bar ${tot.kcal>kcalTarget?'over':'muted'}"><i style="width:${pct(tot.kcal,kcalTarget)}%"></i></div>
+      <div class="faint" style="margin-top:8px">TARGET ${kcalTarget} kcal · MAINT ${t.maint} · NEVER PUSH A HARD DEFICIT</div>
+    </div>
+    <div class="card">
+      <div class="label">Today</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">
+        <div><div style="color:${(gymToday&&!sd)?'var(--accent)':'var(--text)'};font-size:30px;font-weight:700">${sd?'DONE':gymToday?('SESSION '+nextDay()):'REST'}</div>
+        <div class="dim" style="font-size:12px">${sd?'session logged':gymToday?'next in A/B/C rotation':'not a gym day'}</div></div>
+        <div style="color:var(--faint);font-size:52px;font-weight:700">${nextDay()}</div>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="label">Priority order</div>
+    <div class="dim" style="font-size:13px;letter-spacing:1px;margin-top:6px">protein → near target → lift hard → walk → sleep</div>
+    <div class="faint" style="margin-top:8px">Abs are built in training, revealed in the kitchen.</div>
+    ${lastW?`<div class="faint" style="margin-top:8px">LAST WEIGH-IN ${lastW.kg} kg · ${shortDate(lastW.date)}</div>`:''}
+    <div style="height:20px"></div>`;
+}
+
+function fuelScreen(){
+  const o=op(), t=targets(o), tot=dayTotals(today());
+  const remain=Math.max(0,t.protein-tot.protein), kcalTarget=o.def>0?t.cut:t.maint;
+  const log=(d().food[today()]||[]);
+  return `
+    <div class="sub">${esc(o.name)} · protein is the hero metric</div>
+    <div class="card accent">
+      <div class="label">Protein</div>
+      <div class="stats" style="margin-top:6px">
+        <div class="stat"><div class="k">Logged</div><div class="v accent">${Math.round(tot.protein)}<small> g</small></div></div>
+        <div class="stat"><div class="k">Remaining</div><div class="v">${Math.round(remain)}<small> g</small></div></div>
+        <div class="stat"><div class="k">Target</div><div class="v">${t.protein}<small> g</small></div></div>
+      </div>
+      <div class="bar"><i style="width:${pct(tot.protein,t.protein)}%"></i></div>
+    </div>
+    <div class="card">
+      <div class="stats"><div class="stat"><div class="k">Calories</div><div class="v ${tot.kcal>kcalTarget?'bad':''}">${Math.round(tot.kcal)}<small> / ${kcalTarget}</small></div></div></div>
+      <div class="bar ${tot.kcal>kcalTarget?'over':'muted'}"><i style="width:${pct(tot.kcal,kcalTarget)}%"></i></div>
+    </div>
+    <div class="label">My foods — tap to log</div>
+    <div class="chips" id="chips">
+      ${d().savedFoods.map((f,i)=>`<button class="chip" data-quick="${i}"><b>${esc(f.name)}</b><span>${f.kcal} · ${f.protein}p · hold=del</span></button>`).join('')}
+    </div>
+    <div class="divider"></div>
+    <div class="label">Log food (protein mandatory)</div>
+    <div style="height:8px"></div>
+    <input id="f-name" placeholder="food name" />
+    <div style="height:8px"></div>
+    <div class="row">
+      <div class="field"><span class="label">kcal</span><input id="f-kcal" inputmode="numeric" placeholder="0"/></div>
+      <div class="field"><span class="label">protein g</span><input id="f-prot" inputmode="numeric" placeholder="0"/></div>
+    </div>
+    <div style="height:8px"></div>
+    <label style="display:flex;gap:8px;align-items:center;margin:6px 0;cursor:pointer" class="dim">
+      <span class="check" id="f-savechk"></span> <span style="font-size:12px">also save to My Foods</span></label>
+    <button class="btn accent" id="f-add">Log it</button>
+    ${log.length?`<div class="divider"></div><div class="label">Today — ${log.length} entries</div><div style="height:6px"></div>
+      ${log.map((e,i)=>`<div class="rowline"><span style="flex:1">${esc(e.name)}</span><span class="dim">${Math.round(e.kcal)} kcal</span><span class="p">${Math.round(e.protein)}p</span><button class="del" data-delfood="${i}">DEL</button></div>`).join('')}`:''}
+    <div class="divider"></div>
+    <div class="label">Plate formula</div>
+    <div class="card" style="margin-top:8px">${PLATE.map(x=>`<div class="dim" style="font-size:12px;margin-bottom:3px">· ${x}</div>`).join('')}</div>
+    <div class="faint">Batch-prep: cook protein + carbs in bulk for 3 days, assemble a plate in 90s.</div>
+    <div style="height:24px"></div>`;
+}
+
+function trainScreen(){
+  const o=op(); const day=view.trainDay||nextDay(); const rows=splitFor(o)[day];
+  const sd=sessionDone(today());
+  const labels={A:'A · PUSH',B:'B · PULL',C:'C · STRENGTH'};
+  return `
+    <div class="sub">${esc(o.name)} · next up in rotation: ${nextDay()} · ${o.equip==='machines_only'?'machines':'free weights'}</div>
+    <div class="tabs3">${['A','B','C'].map(dd=>`<button data-day="${dd}" aria-pressed="${dd===day}">${labels[dd]}</button>`).join('')}</div>
+    <div class="card" style="padding:12px"><div style="display:flex;justify-content:space-between;align-items:center">
+      <div><div class="label">Day ${day} · ${shortDate(today())}</div><div class="dim" style="font-size:12px;margin-top:2px">6 exercises · log weight × reps</div></div>
+      ${sd?'<div style="color:var(--good);font-weight:700">✓ DONE</div>':''}</div></div>
+    ${rows.map((ex,i)=>{
+      const exId=day+'-'+i; const top=parseTop(ex[1]);
+      const prev=lastSession(exId,today());
+      const cur=(d().lifts[today()]&&d().lifts[today()][exId])||[];
+      const nSets=Math.max(3,cur.length); const seed=Array.from({length:nSets},(_,k)=>cur[k]||(prev&&prev.sets[k]?{w:prev.sets[k].w,reps:''}:{w:'',reps:''}));
+      const capped=prev&&top&&prev.sets.length&&prev.sets.every(s=>Number(s.reps)>=top);
+      const lastTxt=prev?`LAST ${shortDate(prev.date)}: ${prev.sets.map(s=>s.w+'×'+s.reps).join('  ')}`:'NO HISTORY — set the baseline';
+      return `<div class="ex" data-ex="${exId}">
+        <div class="top"><div><div class="name">${esc(ex[0])}</div><div class="scheme">${ex[1]}${ex[2]?('  · '+ex[2]):''}</div></div>${capped?'<div class="flag">ADD WEIGHT</div>':''}</div>
+        <div class="last">${lastTxt}</div>
+        <div class="setgrid">
+          <div class="h">#</div><div class="h">KG</div><div class="h">REPS${top?(' (top '+top+')'):''}</div>
+          ${seed.map((s,k)=>`<div class="idx">${k+1}</div>
+            <input data-w="${k}" inputmode="decimal" value="${esc(s.w)}" placeholder="—"/>
+            <input data-r="${k}" inputmode="numeric" value="${esc(s.reps)}" placeholder="—" class="${top&&s.reps!==''&&Number(s.reps)>=top?'hit':''}"/>`).join('')}
+        </div>
+        <div style="height:8px"></div>
+        <button class="btn ghost" data-savesets="${exId}" style="width:auto;padding:8px 14px;display:inline-block">Save sets</button>
+      </div>`;
+    }).join('')}
+    <div style="height:8px"></div>
+    ${sd?`<div class="dim" style="text-align:center;font-size:13px">Session logged. Rotation advances to ${nextDay()}.</div>`
+        :`<button class="btn accent" id="mark-done">Mark session ${day} done</button>`}
+    <div class="faint" style="text-align:center;margin-top:12px">All sets at the top of the rep range → “ADD WEIGHT” next time.</div>
+    <div style="height:24px"></div>`;
+}
+
+function bodyScreen(){
+  const o=op(); const hist=d().weight.slice().sort((a,b)=>a.date<b.date?-1:1);
+  const latest=hist[hist.length-1], first=hist[0];
+  const change=(latest&&first)?(latest.kg-first.kg):0;
+  return `
+    <div class="sub">${esc(o.name)} · the scale lies during a recomp</div>
+    <div class="card">
+      <div class="stats">
+        <div class="stat"><div class="k">Current</div><div class="v accent">${latest?latest.kg:'—'}<small> kg</small></div></div>
+        <div class="stat"><div class="k">Total change</div><div class="v ${change<0?'good':''}">${change>0?'+':''}${change.toFixed(1)}<small> kg</small></div></div>
+        <div class="stat"><div class="k">Weigh-ins</div><div class="v">${hist.length}</div></div>
+      </div>
+      <div style="margin-top:12px">${trendSvg(hist)}</div>
+      <div class="faint" style="margin-top:8px">WEEKLY · SAME DAY · MORNING · EMPTY. Trend, not daily noise — weight can sit flat while fat drops and muscle builds.</div>
+    </div>
+    <div class="row"><div class="field"><span class="label">Log weigh-in (kg)</span><input id="w-kg" inputmode="decimal" placeholder="0.0"/></div>
+      <button class="btn accent" id="w-save" style="width:auto;padding:12px 16px">Save</button></div>
+    <div class="divider"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div class="label">Progress photos · 3 angles</div><a id="compare-link" style="font-size:12px;cursor:pointer">COMPARE →</a></div>
+    <div class="faint" style="margin:4px 0 2px">Weekly. On-device only (this browser), never uploaded. Front / side / relaxed-front.</div>
+    <div class="photos" id="capture-row">
+      ${['front','side','relaxed'].map(a=>`<div class="frame" data-shoot="${a}"><span>${a.toUpperCase()}</span></div>`).join('')}
+    </div>
+    <div id="photo-hist"></div>
+    <input type="file" id="photo-input" accept="image/*" capture="user" style="display:none"/>
+    <div style="height:24px"></div>`;
+}
+
+function coachScreen(){
+  const o=op(); const chat=d().coach;
+  const hasKey=!!S.apiKey;
+  return `
+    <div class="sub">${esc(o.name)} · coach knows your protocol + today's numbers</div>
+    ${!hasKey?`<div class="card" style="border-color:var(--warn)">
+      <div class="label" style="color:var(--warn)">No API key</div>
+      <div class="dim" style="font-size:12px;margin-top:6px;line-height:1.5">The coach uses the Anthropic API with your own key. It's stored only in this browser and sent only to api.anthropic.com. Add it in SYS.</div>
+      <div style="height:8px"></div><button class="btn" id="go-sys">Go to SYS →</button></div>`:''}
+    <div class="chat" id="chat">
+      ${chat.length?chat.map(m=>`<div class="msg ${m.role}">${esc(m.content)}</div>`).join('')
+        :`<div class="msg assistant">Ask me anything about your training, food, or recovery. I know your targets, today's log, and your last weigh-in. Try: “what should I eat tonight to hit protein?” or “add weight on bench next session?”</div>`}
+    </div>
+    <div class="composer">
+      <textarea id="coach-input" placeholder="${hasKey?'message the coach…':'add API key in SYS first'}" ${hasKey?'':'disabled'}></textarea>
+      <button class="btn accent" id="coach-send" ${hasKey?'':'disabled'}>SEND</button>
+    </div>`;
+}
+
+function sysScreen(){
+  const o=op(), t=targets(o);
+  return `
+    <div class="sub">system · two operators, one device</div>
+    <div class="card accent">
+      <div class="label">Live targets (Mifflin-St Jeor)</div>
+      <div class="stats" style="margin-top:6px">
+        <div class="stat"><div class="k">Maint</div><div class="v">${t.maint}<small> kcal</small></div></div>
+        <div class="stat"><div class="k">Cut</div><div class="v accent">${t.cut}<small> kcal</small></div></div>
+        <div class="stat"><div class="k">Protein</div><div class="v">${t.protein}<small> g</small></div></div>
+      </div>
+      <div class="faint" style="margin-top:8px">BMR ${t.bmr} · recomputed whenever weight changes</div>
+    </div>
+
+    <div class="label">Operators</div>
+    <div style="margin-top:8px">
+      ${Object.values(S.operators).map(q=>`<div class="op ${q.id===S.activeId?'active':''}" data-op="${q.id}">
+        <div class="nm"><b>${esc(q.name)}${q.id===S.activeId?'  ·  ACTIVE':''}</b><span>${q.sex} · ${q.w}kg · ${q.equip==='machines_only'?'machines':'free weights'}</span></div>
+      </div>`).join('')}
+    </div>
+
+    <div class="divider"></div>
+    <div class="label">Edit: ${esc(o.name).toUpperCase()}</div>
+    <div style="height:8px"></div>
+    <input id="p-name" value="${esc(o.name)}" placeholder="name"/>
+    <div style="height:8px"></div>
+    <div class="pillrow">${['male','female'].map(s=>`<button class="p2" data-sex="${s}" aria-pressed="${o.sex===s}">${s.toUpperCase()}</button>`).join('')}</div>
+    <div style="height:8px"></div>
+    <div class="row">
+      <div class="field"><span class="label">height cm</span><input id="p-h" inputmode="decimal" value="${o.h}"/></div>
+      <div class="field"><span class="label">weight kg</span><input id="p-w" inputmode="decimal" value="${o.w}"/></div>
+      <div class="field"><span class="label">age</span><input id="p-age" inputmode="numeric" value="${o.age}"/></div>
+    </div>
+    <div style="height:8px"></div>
+    <div class="row">
+      <div class="field"><span class="label">activity ×</span><input id="p-act" inputmode="decimal" value="${o.act}"/></div>
+      <div class="field"><span class="label">deficit</span><input id="p-def" inputmode="numeric" value="${o.def}"/></div>
+    </div>
+    <div class="faint" style="margin-top:6px">Deficit stays easy (≈300). Never push an aggressive cut for the recomp profile — build muscle first.</div>
+    <div style="height:8px"></div>
+    <div class="label">Equipment</div>
+    <div class="pillrow" style="margin-top:6px">${['free_weights','machines_only'].map(eq=>`<button class="p2" data-equip="${eq}" aria-pressed="${o.equip===eq}">${eq==='free_weights'?'FREE WEIGHTS':'MACHINES'}</button>`).join('')}</div>
+    <div style="height:10px"></div>
+    <button class="btn accent" id="p-save">Save operator</button>
+
+    <div class="divider"></div>
+    <div class="label">Schedule · gym days</div>
+    <div class="dayrow" style="margin-top:8px">${DAYS.map(dd=>`<div class="d ${o.gymDays.includes(dd)?'on':''}" data-gday="${dd}">${dd[0]}</div>`).join('')}</div>
+    <div class="faint" style="margin-top:8px">${o.gymDays.join(' · ')||'none'} · A→B→C rotation</div>
+
+    <div class="divider"></div>
+    <div class="label">Coach · Anthropic API</div>
+    <div class="faint" style="margin:6px 0 8px;line-height:1.5">Your API key is stored only in this browser (localStorage) and sent only to api.anthropic.com. Get one at console.anthropic.com. Uses direct browser access.</div>
+    <input id="api-key" type="password" placeholder="sk-ant-…" value="${esc(S.apiKey)}"/>
+    <div style="height:8px"></div>
+    <span class="label">Model</span><div style="height:4px"></div>
+    <select id="api-model">
+      ${[['claude-opus-4-8','Opus 4.8 (best)'],['claude-sonnet-5','Sonnet 5 (balanced)'],['claude-haiku-4-5','Haiku 4.5 (cheapest)']].map(m=>`<option value="${m[0]}" ${S.model===m[0]?'selected':''}>${m[1]}</option>`).join('')}
+    </select>
+    <div style="height:8px"></div>
+    <button class="btn" id="api-save">Save API settings</button>
+
+    <div class="divider"></div>
+    <div class="label">Data</div>
+    <div class="faint" style="margin-top:6px;line-height:1.5">Local-only. No accounts, no server. Everything lives in this browser — clearing site data wipes it. Export a backup before you do.</div>
+    <div style="height:8px"></div>
+    <button class="btn" id="export">Export backup (JSON)</button>
+    <div style="height:8px"></div>
+    <button class="btn danger" id="reset-op">Reset ${esc(o.name)}’s log</button>
+    <div style="height:24px"></div>`;
+}
+
+const SCREENS={home:homeScreen,fuel:fuelScreen,train:trainScreen,body:bodyScreen,coach:coachScreen,sys:sysScreen};
+
+// ============================ RENDER ============================
+function render(){
+  document.getElementById('scr-title').textContent = view.tab==='home'?'LEAN.SYS':(TABS.find(t=>t[0]===view.tab)[2]);
+  document.getElementById('pills').innerHTML = Object.values(S.operators)
+    .map(q=>`<button class="pill" data-profile="${q.id}" aria-pressed="${q.id===S.activeId}">${esc(q.name).toUpperCase().slice(0,10)}</button>`).join('');
+  const scr=document.getElementById('screen');
+  scr.innerHTML=SCREENS[view.tab]();
+  scr.scrollTop=0;
+  document.getElementById('tabbar').innerHTML=TABS.map(([id,g,label])=>`<button data-tab="${id}" aria-pressed="${id===view.tab}"><span class="g">${g}</span><span class="t">${label}</span></button>`).join('');
+  if(view.tab==='body') renderPhotoHist();
+  if(view.tab==='coach'){ const c=document.getElementById('chat'); if(c) c.scrollTop=c.scrollHeight; }
+}
+
+async function renderPhotoHist(){
+  const wrap=document.getElementById('photo-hist'); if(!wrap) return;
+  const rows=await photoAll(S.activeId);
+  // fill capture row with today's shots
+  const t=today();
+  ['front','side','relaxed'].forEach(a=>{
+    const p=rows.find(r=>r.date===t&&r.angle===a);
+    const cell=document.querySelector(`[data-shoot="${a}"]`);
+    if(cell&&p) cell.innerHTML=`<img src="${p.dataUrl}"/><span>${a.toUpperCase()}</span>`;
+  });
+  const dates=[...new Set(rows.map(r=>r.date))].sort().reverse();
+  if(!dates.length){ wrap.innerHTML=''; return; }
+  wrap.innerHTML=`<div class="label" style="margin-top:16px">History (hold to delete)</div>`+dates.map(dt=>{
+    const w=rows.find(r=>r.date===dt&&r.kg);
+    return `<div style="margin-top:8px"><div class="dim" style="font-size:11px">${shortDate(dt)}${w&&w.kg?(' · '+w.kg+'kg'):''}</div>
+      <div class="photos">${['front','side','relaxed'].map(a=>{const p=rows.find(r=>r.date===dt&&r.angle===a);
+        return `<div class="frame" ${p?`data-delphoto="${p.id}"`:''}>${p?`<img src="${p.dataUrl}"/>`:`<span>${a[0].toUpperCase()}</span>`}</div>`;}).join('')}</div></div>`;
+  }).join('');
+}
+
+// ============================ COACH (LLM) ============================
+function buildCoachSystem(){
+  const o=op(), t=targets(o), tot=dayTotals(today());
+  const hist=d().weight.slice().sort((a,b)=>a.date<b.date?-1:1);
+  const latest=hist[hist.length-1], first=hist[0];
+  const change=(latest&&first)?(latest.kg-first.kg).toFixed(1):'n/a';
+  return [
+`You are the coach inside LEAN.SYS, a hard-coded personal recomp tracker. You advise ONE operator at a time and you speak plainly — terse, no cheerleading, no emoji, no hype. Dark HUD terminal tone.`,
+`THE PROTOCOL (do not deviate):`,
+`- Goal is body recomposition (build muscle, strip lower-belly fat slowly), NOT weight loss.`,
+`- Priority order, always: protein → stay near calorie target → lift hard → walk → sleep.`,
+`- Protein is the hero metric. Target = bodyweight_kg × 1.9.`,
+`- Deficit stays EASY (≈300 kcal) or maintenance. NEVER recommend an aggressive deficit for this profile.`,
+`- Training is a posture-biased A/B/C split, 3x/week. Progression: when all sets hit the top of the rep range, add weight next time.`,
+`- Abs are built in training, revealed in the kitchen. The scale lies during a recomp — trust the photos and the trend.`,
+`OPERATOR: ${o.name}, ${o.sex}, ${o.h}cm, ${o.w}kg, age ${o.age}, equipment ${o.equip}.`,
+`TARGETS: maintenance ${t.maint} kcal, cut ${t.cut} kcal, protein ${t.protein} g/day. Weight change so far: ${change} kg.`,
+`TODAY SO FAR: ${Math.round(tot.protein)}/${t.protein} g protein, ${Math.round(tot.kcal)} kcal eaten (target ${o.def>0?t.cut:t.maint}).`,
+`Give specific, numeric, actionable answers grounded in these numbers. Keep replies short unless asked to go deep.`
+  ].join('\n');
+}
+
+async function askCoach(userText){
+  const chatEl=document.getElementById('chat');
+  d().coach.push({role:'user',content:userText});
+  chatEl.appendChild(el(`<div class="msg user">${esc(userText)}</div>`));
+  const thinking=el(`<div class="msg assistant dim">…</div>`); chatEl.appendChild(thinking); chatEl.scrollTop=chatEl.scrollHeight;
+  save();
+  try{
+    const messages=d().coach.slice(-20).map(m=>({role:m.role,content:m.content}));
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'content-type':'application/json','x-api-key':S.apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:S.model,max_tokens:1024,system:buildCoachSystem(),messages})
+    });
+    const data=await res.json();
+    if(!res.ok){ throw new Error((data&&data.error&&data.error.message)||('HTTP '+res.status)); }
+    const text=(data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('').trim()||'(no response)';
+    d().coach.push({role:'assistant',content:text}); save();
+    thinking.remove(); chatEl.appendChild(el(`<div class="msg assistant">${esc(text)}</div>`));
+  }catch(err){
+    thinking.remove();
+    chatEl.appendChild(el(`<div class="msg sys">coach error: ${esc(err.message)}. Check your API key / model in SYS. (A 401 = bad key; a network/CORS error usually means the key or the direct-browser-access header was rejected.)</div>`));
+  }
+  chatEl.scrollTop=chatEl.scrollHeight;
+}
+
+// ============================ EVENTS ============================
+document.body.addEventListener('click', async (e)=>{
+  const T=e.target;
+  const closest=(a)=>T.closest(a);
+
+  // nav
+  const pill=closest('[data-profile]'); if(pill){ S.activeId=pill.dataset.profile; save(); view.trainDay=null; render(); return; }
+  const opRow=closest('[data-op]'); if(opRow){ S.activeId=opRow.dataset.op; save(); view.trainDay=null; render(); return; }
+  const tab=closest('[data-tab]'); if(tab){ view.tab=tab.dataset.tab; if(view.tab!=='train') view.trainDay=null; render(); return; }
+  if(T.id==='go-sys'){ view.tab='sys'; render(); return; }
+
+  // fuel
+  const quick=closest('[data-quick]'); if(quick){ const f=d().savedFoods[+quick.dataset.quick];
+    (d().food[today()]=d().food[today()]||[]).push({name:f.name,kcal:f.kcal,protein:f.protein}); save(); render(); return; }
+  const df=closest('[data-delfood]'); if(df){ d().food[today()].splice(+df.dataset.delfood,1); save(); render(); return; }
+  if(T.id==='f-savechk'){ T.classList.toggle('on'); return; }
+  if(T.id==='f-add'){
+    const name=document.getElementById('f-name').value.trim();
+    const prot=document.getElementById('f-prot').value.trim();
+    if(!name||prot===''){ alert('Name and protein are required.'); return; }
+    const kcal=num(document.getElementById('f-kcal').value), protein=num(prot);
+    (d().food[today()]=d().food[today()]||[]).push({name,kcal,protein});
+    if(document.getElementById('f-savechk').classList.contains('on')) d().savedFoods.push({name,kcal,protein});
+    save(); render(); return;
+  }
+
+  // train
+  const day=closest('[data-day]'); if(day){ view.trainDay=day.dataset.day; render(); return; }
+  const ss=closest('[data-savesets]'); if(ss){
+    const exId=ss.dataset.savesets; const box=closest('.ex');
+    const ws=[...box.querySelectorAll('[data-w]')], rs=[...box.querySelectorAll('[data-r]')];
+    const sets=[]; for(let k=0;k<ws.length;k++){ const w=ws[k].value.trim(),r=rs[k].value.trim(); if(w!==''||r!=='') sets.push({w:num(w),reps:num(r)}); }
+    (d().lifts[today()]=d().lifts[today()]||{})[exId]=sets; save(); render(); return;
+  }
+  if(T.id==='mark-done'){ const day=view.trainDay||nextDay(); if(!sessionDone(today())) d().sessions.push({date:today(),day}); save(); render(); return; }
+
+  // body
+  if(T.id==='w-save'){ const kg=num(document.getElementById('w-kg').value); if(kg<=0){alert('Enter a weight.');return;}
+    const t=today(); const ex=d().weight.find(w=>w.date===t); if(ex) ex.kg=kg; else d().weight.push({date:t,kg});
+    op().w=kg; save(); render(); return; }
+  const shoot=closest('[data-shoot]'); if(shoot){ window._shootAngle=shoot.dataset.shoot; document.getElementById('photo-input').click(); return; }
+  if(T.id==='compare-link'){ openCompare(); return; }
+
+  // sys
+  const sex=closest('[data-sex]'); if(sex){ op().sex=sex.dataset.sex; save(); render(); return; }
+  const eq=closest('[data-equip]'); if(eq){ op().equip=eq.dataset.equip; save(); render(); return; }
+  const gd=closest('[data-gday]'); if(gd){ const dd=gd.dataset.gday; const g=op().gymDays;
+    op().gymDays = g.includes(dd)? g.filter(x=>x!==dd) : DAYS.filter(x=>g.includes(x)||x===dd); save(); render(); return; }
+  if(T.id==='p-save'){ const o=op();
+    o.name=document.getElementById('p-name').value.trim()||o.name;
+    o.h=num(document.getElementById('p-h').value)||o.h; o.w=num(document.getElementById('p-w').value)||o.w;
+    o.age=num(document.getElementById('p-age').value)||o.age; o.act=num(document.getElementById('p-act').value)||o.act;
+    o.def=num(document.getElementById('p-def').value); save(); render(); return; }
+  if(T.id==='api-save'){ S.apiKey=document.getElementById('api-key').value.trim(); S.model=document.getElementById('api-model').value; save(); alert('Saved. Coach is ready.'); render(); return; }
+  if(T.id==='export'){ const blob=new Blob([JSON.stringify(S,null,2)],{type:'application/json'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='leansys-backup-'+today()+'.json'; a.click(); URL.revokeObjectURL(a.href); return; }
+  if(T.id==='reset-op'){ if(confirm('Clear '+op().name+'’s log (food, lifts, weigh-ins, sessions, chat)? Keeps the profile.')){ S.data[S.activeId]=blankData(); save(); render(); } return; }
+
+  // coach
+  if(T.id==='coach-send'){ const box=document.getElementById('coach-input'); const v=box.value.trim(); if(!v) return; box.value=''; askCoach(v); return; }
+
+  // delete photo (click after long-press flag)
+});
+
+// long-press to delete photo / saved food
+let _lp=null;
+document.body.addEventListener('pointerdown',(e)=>{
+  const p=e.target.closest('[data-delphoto]'); const q=e.target.closest('[data-quick]');
+  if(p){ _lp=setTimeout(async()=>{ if(confirm('Delete this photo?')){ await photoDel(p.dataset.delphoto); renderPhotoHist(); } },550); }
+  else if(q){ _lp=setTimeout(()=>{ if(confirm('Delete this saved food?')){ d().savedFoods.splice(+q.dataset.quick,1); save(); render(); } },550); }
+});
+document.body.addEventListener('pointerup',()=>{ if(_lp){ clearTimeout(_lp); _lp=null; } });
+document.body.addEventListener('pointerleave',()=>{ if(_lp){ clearTimeout(_lp); _lp=null; } });
+
+// coach: enter to send
+document.body.addEventListener('keydown',(e)=>{
+  if(e.target&&e.target.id==='coach-input'&&e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); const v=e.target.value.trim(); if(v){ e.target.value=''; askCoach(v); } }
+});
+
+// photo file input
+document.body.addEventListener('change', async (e)=>{
+  if(e.target.id!=='photo-input') return;
+  const file=e.target.files[0]; if(!file) return;
+  const angle=window._shootAngle||'front';
+  const reader=new FileReader();
+  reader.onload=async()=>{
+    // downscale to keep IndexedDB light
+    const img=new Image();
+    img.onload=async()=>{
+      const max=1000; let {width,height}=img; const sc=Math.min(1,max/Math.max(width,height));
+      const c=document.createElement('canvas'); c.width=Math.round(width*sc); c.height=Math.round(height*sc);
+      c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+      const dataUrl=c.toDataURL('image/jpeg',0.82);
+      const latest=d().weight[d().weight.length-1];
+      await photoPut({id:S.activeId+'-'+today()+'-'+angle+'-'+Date.now(),opId:S.activeId,date:today(),angle,dataUrl,kg:latest?latest.kg:null});
+      renderPhotoHist();
+    };
+    img.src=reader.result;
+  };
+  reader.readAsDataURL(file);
+  e.target.value='';
+});
+
+// ---------- compare overlay ----------
+async function openCompare(){
+  const rows=await photoAll(S.activeId);
+  if(!rows.length){ alert('No photos yet.'); return; }
+  const overlay=el(`<div style="position:fixed;inset:0;background:var(--bg);z-index:50;display:flex;flex-direction:column"></div>`);
+  const angles=['front','side','relaxed'];
+  let angle='front';
+  function datesFor(a){ return [...new Set(rows.filter(r=>r.angle===a).map(r=>r.date))].sort(); }
+  function draw(){
+    const ds=datesFor(angle);
+    const a=rows.find(r=>r.angle===angle&&r.date===ds[0]);
+    const b=rows.find(r=>r.angle===angle&&r.date===ds[ds.length-1]);
+    overlay.innerHTML=`
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:14px;border-bottom:1px solid var(--line)">
+        <div class="title" style="font-size:16px">COMPARE</div><div class="dim" id="c-close" style="cursor:pointer">CLOSE ✕</div></div>
+      <div style="display:flex;gap:5px;padding:10px 14px">${angles.map(x=>`<button class="p2" data-cang="${x}" aria-pressed="${x===angle}" style="border:1px solid ${x===angle?'var(--accent)':'var(--line)'};background:${x===angle?'var(--accent)':'var(--surface2)'};color:${x===angle?'var(--bg)':'var(--dim)'};flex:1;padding:8px 0;font-size:10px;font-weight:700;letter-spacing:1px;cursor:pointer">${x.toUpperCase()}</button>`).join('')}</div>
+      <div style="flex:1;display:flex;border-top:1px solid var(--line)">
+        ${[['A',a],['B',b]].map(([lbl,p])=>`<div style="flex:1;display:flex;flex-direction:column;border-right:${lbl==='A'?'1px solid var(--line)':'0'}">
+          <div style="display:flex;justify-content:space-between;padding:8px;border-bottom:1px solid var(--line)"><span class="faint">${lbl}</span><span class="dim" style="font-size:10px">${p?shortDate(p.date)+(p.kg?(' · '+p.kg+'kg'):''):'—'}</span></div>
+          <div style="flex:1;background:#000;position:relative">${p?`<img src="${p.dataUrl}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover"/>`:`<div class="faint" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">NO PHOTO</div>`}</div></div>`).join('')}
+      </div>
+      <div class="faint" style="padding:12px 14px">Earliest vs latest at this angle. The scale lies during a recomp — the photos tell the truth.</div>`;
+  }
+  overlay.addEventListener('click',(e)=>{ if(e.target.id==='c-close'||e.target.closest('#c-close')){ overlay.remove(); return; }
+    const ca=e.target.closest('[data-cang]'); if(ca){ angle=ca.dataset.cang; draw(); } });
+  draw(); document.body.appendChild(overlay);
+}
+
+// ---------- boot ----------
+load(); render();
+</script>
+</body>
+</html>

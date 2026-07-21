@@ -31,7 +31,26 @@ sleep`. Abs are built in training, revealed in the kitchen.
 - **HealthKit / Health Connect** — read-only, behind one `HealthProvider`
   interface (Phase 3). Optional — the app is fully usable on manual entry.
 
-## Run
+## Web build (open in a browser now — with an AI coach)
+
+`lean-sys/web/index.html` is a **single self-contained web app** — no toolchain, no
+phone. Double-click it (or host it anywhere static) and it runs: FUEL / TRAIN /
+BODY / HOME / SYS, the two-operator switcher, weight trend, and progress photos,
+all persisted in the browser (localStorage; photos in IndexedDB — nothing is
+uploaded).
+
+It adds a **COACH** tab wired to an LLM: the coach knows your protocol, targets,
+and today's log, and answers in the app's plain terminal voice. It calls the
+Anthropic API directly from the browser using **your own API key** (from
+console.anthropic.com), stored only on your device and sent only to
+`api.anthropic.com` — set it in **SYS**. Model defaults to Claude Opus 4.8; switch
+to Sonnet or Haiku there to cut cost. **SYS → Export** writes a JSON backup
+(clearing browser data wipes everything, so back up first).
+
+> The native Expo app below is the fuller build (health/watch sync, notifications).
+> The web build is the "use it today, with a coach" path. They don't share storage.
+
+## Run (native Expo app)
 
 ```bash
 cd lean-sys
