@@ -1,0 +1,510 @@
+<title>The Voice Agent Is a Loop, Not a Pipeline</title>
+
+<style>
+  :root {
+    --bg:      #E7EAEE;
+    --panel:   #F8F9FA;
+    --fg:      #101A21;
+    --muted:   #5C6B76;
+    --rule:    #C6CED5;
+    --rule-soft:#D8DEE3;
+    --signal:  #A8530A;
+    --signal-wash: #A8530A14;
+
+    --f-display: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    --f-mono: ui-monospace, "SF Mono", SFMono-Regular, "Cascadia Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    --f-body: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:     #0D1418;
+      --panel:  #151E23;
+      --fg:     #E2E8EB;
+      --muted:  #8B9AA4;
+      --rule:   #27343B;
+      --rule-soft:#1E2A30;
+      --signal: #EDA141;
+      --signal-wash: #EDA1411A;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg:#0D1418; --panel:#151E23; --fg:#E2E8EB; --muted:#8B9AA4;
+    --rule:#27343B; --rule-soft:#1E2A30; --signal:#EDA141; --signal-wash:#EDA1411A;
+  }
+  :root[data-theme="light"] {
+    --bg:#E7EAEE; --panel:#F8F9FA; --fg:#101A21; --muted:#5C6B76;
+    --rule:#C6CED5; --rule-soft:#D8DEE3; --signal:#A8530A; --signal-wash:#A8530A14;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--f-body);
+    font-size: 17px;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 1010px;
+    margin: 0 auto;
+    padding: clamp(2.5rem, 6vw, 5rem) clamp(1.1rem, 4vw, 2.5rem) 6rem;
+    display: flex;
+    flex-direction: column;
+    gap: 3.4rem;
+  }
+
+  .prose { max-width: 68ch; display: flex; flex-direction: column; gap: 1.05rem; }
+
+  .eyebrow {
+    font-family: var(--f-mono);
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0;
+  }
+  .eyebrow b { color: var(--signal); font-weight: 500; }
+
+  h1 {
+    font-family: var(--f-display);
+    font-size: clamp(2.1rem, 5.6vw, 3.35rem);
+    line-height: 1.02;
+    letter-spacing: -0.033em;
+    font-weight: 800;
+    margin: 0.7rem 0 0;
+    text-wrap: balance;
+    max-width: 16ch;
+  }
+  .standfirst {
+    font-size: clamp(1.06rem, 2vw, 1.2rem);
+    color: var(--muted);
+    max-width: 56ch;
+    margin: 1.1rem 0 0;
+  }
+
+  h2 {
+    font-family: var(--f-display);
+    font-size: clamp(1.35rem, 2.9vw, 1.72rem);
+    letter-spacing: -0.021em;
+    font-weight: 700;
+    line-height: 1.15;
+    margin: 0;
+    text-wrap: balance;
+  }
+  h3 {
+    font-family: var(--f-display);
+    font-size: 1.03rem;
+    letter-spacing: -0.008em;
+    font-weight: 700;
+    margin: 0;
+  }
+
+  section { display: flex; flex-direction: column; gap: 1.35rem; }
+
+  .sec-head { display: flex; flex-direction: column; gap: 0.5rem; border-top: 1px solid var(--rule); padding-top: 1.4rem; }
+
+  p { margin: 0; }
+  strong { font-weight: 600; }
+  em { font-style: italic; }
+
+  code, .m {
+    font-family: var(--f-mono);
+    font-size: 0.86em;
+    letter-spacing: -0.01em;
+  }
+
+  .figure-scroll { overflow-x: auto; }
+  figure { margin: 0; display: flex; flex-direction: column; gap: 0.85rem; }
+  figure svg { display: block; max-width: 100%; height: auto; min-width: 660px; }
+  figcaption {
+    font-family: var(--f-mono);
+    font-size: 11.5px;
+    line-height: 1.6;
+    color: var(--muted);
+    max-width: 76ch;
+  }
+
+  .loops { display: grid; gap: 1px; background: var(--rule-soft); border-block: 1px solid var(--rule-soft); }
+  @media (min-width: 760px) { .loops { grid-template-columns: repeat(2, 1fr); } }
+  .loop { background: var(--bg); padding: 1.15rem 1.3rem 1.3rem; display: flex; flex-direction: column; gap: 0.5rem; }
+  .loop-tag {
+    font-family: var(--f-mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--signal);
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+  .loop-tag span:last-child { color: var(--muted); }
+  .loop p { font-size: 15.5px; line-height: 1.55; color: var(--muted); }
+
+  .tbl-scroll { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; min-width: 560px; font-size: 15px; }
+  th, td { text-align: left; padding: 0.72rem 1rem 0.72rem 0; border-bottom: 1px solid var(--rule-soft); vertical-align: top; }
+  th {
+    font-family: var(--f-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 500;
+    border-bottom: 1px solid var(--rule);
+    padding-bottom: 0.5rem;
+  }
+  td:first-child { font-family: var(--f-mono); font-size: 13px; line-height: 1.5; padding-right: 1.6rem; }
+  tbody tr:last-child td { border-bottom: none; }
+  .num { font-variant-numeric: tabular-nums; }
+
+  .stats { display: flex; flex-wrap: wrap; gap: 1px; background: var(--rule-soft); border: 1px solid var(--rule-soft); }
+  .stat { background: var(--bg); padding: 0.95rem 1.3rem; flex: 1 1 150px; display: flex; flex-direction: column; gap: 0.25rem; }
+  .stat b { font-family: var(--f-display); font-size: 1.5rem; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+  .stat span { font-family: var(--f-mono); font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+  .stat.hot b { color: var(--signal); }
+
+  .callout {
+    border-left: 2px solid var(--signal);
+    background: var(--signal-wash);
+    padding: 1rem 1.3rem;
+    max-width: 68ch;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    font-size: 16px;
+  }
+
+  ol.steps { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 0.9rem; counter-reset: s; max-width: 68ch; }
+  ol.steps li { display: grid; grid-template-columns: 2.1rem 1fr; gap: 0.5rem; counter-increment: s; }
+  ol.steps li::before {
+    content: counter(s, decimal-leading-zero);
+    font-family: var(--f-mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    color: var(--signal);
+    padding-top: 0.34rem;
+  }
+
+  ul.plain { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 0.55rem; max-width: 68ch; }
+  ul.plain li { padding-left: 1.15rem; position: relative; }
+  ul.plain li::before { content: "—"; position: absolute; left: 0; color: var(--muted); font-family: var(--f-mono); font-size: 0.8em; top: 0.12em; }
+
+  footer { border-top: 1px solid var(--rule); padding-top: 1.3rem; font-family: var(--f-mono); font-size: 11.5px; line-height: 1.7; color: var(--muted); max-width: 76ch; }
+
+  a { color: var(--signal); text-underline-offset: 2px; }
+  a:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--signal); outline-offset: 3px; }
+</style>
+
+<div class="wrap">
+
+  <header>
+    <p class="eyebrow">System design · <b>rev 2</b> · supersedes the linear diagram</p>
+    <h1>It's a loop, not a pipeline</h1>
+    <p class="standfirst">Rev 1 drew a line: ad → lead → call → booked. A line has no way of finding out that the agent's answer was bad, or that it replied a second and a half too late. Four feedback paths turn it into a system that gets better instead of one that just runs.</p>
+  </header>
+
+  <section>
+    <div class="sec-head">
+      <p class="eyebrow">01 — The shape</p>
+      <h2>Four loops, running at four different clock speeds</h2>
+    </div>
+    <p class="prose">The forward path along the bottom is the pipeline from rev 1 — it still exists, it's just no longer the whole picture. Every return path is a decision the system makes about itself. They nest: the further left an arrow reaches back, the more fundamental the thing it changes.</p>
+
+    <div class="figure-scroll">
+      <figure>
+        <svg viewBox="0 0 900 410" role="img" aria-label="Four nested feedback loops returning from the Outcome stage: L1 the turn loop inside a conversation, L2 the contact loop back to Contact, L3 the tuning loop back to Conversation, L4 the targeting loop back to Lead.">
+          <defs>
+            <marker id="tipS" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--signal)"/>
+            </marker>
+            <marker id="tipN" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
+            </marker>
+          </defs>
+
+          <!-- L4 targeting -->
+          <polyline points="815,258 815,100 115,100 115,250" fill="none" stroke="var(--signal)" stroke-width="1.8" stroke-linejoin="round" marker-end="url(#tipS)"/>
+          <text x="125" y="92" font-family="ui-monospace, Menlo, monospace" font-size="12" fill="var(--signal)">L4 · booked meetings → Conversions API → who LinkedIn shows the ad to</text>
+          <text x="825" y="92" font-family="ui-monospace, Menlo, monospace" font-size="11" fill="var(--muted)">weekly</text>
+
+          <!-- L3 tuning -->
+          <polyline points="795,258 795,158 335,158 335,250" fill="none" stroke="var(--signal)" stroke-width="1.8" stroke-linejoin="round" marker-end="url(#tipS)"/>
+          <text x="345" y="150" font-family="ui-monospace, Menlo, monospace" font-size="12" fill="var(--signal)">L3 · transcripts → prompt, voice, latency, script</text>
+          <text x="805" y="150" font-family="ui-monospace, Menlo, monospace" font-size="11" fill="var(--muted)">weekly</text>
+
+          <!-- L2 contact -->
+          <polyline points="775,258 775,208 555,208 555,250" fill="none" stroke="var(--signal)" stroke-width="1.8" stroke-linejoin="round" marker-end="url(#tipS)"/>
+          <text x="565" y="200" font-family="ui-monospace, Menlo, monospace" font-size="12" fill="var(--signal)">L2 · no answer → retry, switch channel</text>
+          <text x="785" y="200" font-family="ui-monospace, Menlo, monospace" font-size="11" fill="var(--muted)">hours</text>
+
+          <!-- spine boxes -->
+          <g stroke="currentColor" stroke-width="1.4" fill="var(--panel)">
+            <rect x="30"  y="250" width="170" height="58"/>
+            <rect x="250" y="250" width="170" height="58"/>
+            <rect x="470" y="250" width="170" height="58"/>
+            <rect x="690" y="250" width="170" height="58"/>
+          </g>
+          <g font-family="ui-monospace, Menlo, monospace" fill="currentColor" text-anchor="middle">
+            <text x="115" y="274" font-size="13" letter-spacing="0.08em">LEAD</text>
+            <text x="335" y="274" font-size="13" letter-spacing="0.08em">CONTACT</text>
+            <text x="555" y="274" font-size="13" letter-spacing="0.08em">CONVERSATION</text>
+            <text x="775" y="274" font-size="13" letter-spacing="0.08em">OUTCOME</text>
+          </g>
+          <g font-family="ui-monospace, Menlo, monospace" font-size="10.5" fill="var(--muted)" text-anchor="middle">
+            <text x="115" y="293">form · validated · stored</text>
+            <text x="335" y="293">call or SMS, their pick</text>
+            <text x="555" y="293">agent qualifies, books</text>
+            <text x="775" y="293">booked · lost · logged</text>
+          </g>
+
+          <!-- forward arrows -->
+          <g stroke="currentColor" stroke-width="1.4" color="currentColor">
+            <line x1="200" y1="279" x2="243" y2="279" marker-end="url(#tipN)"/>
+            <line x1="420" y1="279" x2="463" y2="279" marker-end="url(#tipN)"/>
+            <line x1="640" y1="279" x2="683" y2="279" marker-end="url(#tipN)"/>
+          </g>
+
+          <!-- L1 turn loop -->
+          <polyline points="500,308 500,352 610,352 610,314" fill="none" stroke="var(--signal)" stroke-width="1.8" stroke-linejoin="round" marker-end="url(#tipS)"/>
+          <text x="622" y="356" font-family="ui-monospace, Menlo, monospace" font-size="12" fill="var(--signal)">L1 · listen → think → speak → get interrupted</text>
+          <text x="500" y="378" font-family="ui-monospace, Menlo, monospace" font-size="11" fill="var(--muted)">every 300–1500 ms, ~20× per call</text>
+
+          <!-- axis note -->
+          <text x="30" y="396" font-family="ui-monospace, Menlo, monospace" font-size="10.5" fill="var(--muted)" letter-spacing="0.08em">FORWARD PATH = REV 1 · RETURN PATHS = WHAT MAKES IT LEARN</text>
+        </svg>
+        <figcaption>The four return paths. Nesting is by scope, not speed: L2 changes how you reach one lead, L3 changes how the agent behaves for everyone, L4 changes who ever becomes a lead. L1 runs inside a single conversation and is the one the caller actually feels.</figcaption>
+      </figure>
+    </div>
+
+    <div class="loops">
+      <div class="loop">
+        <p class="loop-tag"><span>L1 — the turn</span><span>milliseconds</span></p>
+        <h3>Does it feel like talking to someone?</h3>
+        <p>Runs ~20 times per call. Governs whether the agent talks over people, leaves dead air, or answers before they've finished the sentence. This is where "laggy" lives, and it is almost entirely a configuration problem — see below.</p>
+      </div>
+      <div class="loop">
+        <p class="loop-tag"><span>L2 — the contact</span><span>hours to days</span></p>
+        <h3>Did we reach them at all?</h3>
+        <p>No answer at 2pm → retry at 3pm → still nothing → send the SMS instead → still nothing → stop. Already in rev 1 as the retry ladder. It's a loop, but a dumb one: it doesn't learn, it just persists. Fine. Not every loop needs to be clever.</p>
+      </div>
+      <div class="loop">
+        <p class="loop-tag"><span>L3 — the tuning</span><span>weekly</span></p>
+        <h3>Was the agent any good?</h3>
+        <p><strong>This is the loop you were asking for.</strong> Transcripts and recordings come back, you find where the agent lost the room, and you change the prompt, the voice, the model tier, or the script. Missing from rev 1 entirely.</p>
+      </div>
+      <div class="loop">
+        <p class="loop-tag"><span>L4 — the targeting</span><span>weekly</span></p>
+        <h3>Were these the right people?</h3>
+        <p>Booked meetings get pushed back to LinkedIn's Conversions API, so the ad optimises toward people who book rather than people who fill in forms. The slowest loop and the one with the largest financial swing, because it moves the ad spend.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <p class="eyebrow">02 — L1</p>
+      <h2>"Maybe it's laggy" — here's exactly where the delay comes from</h2>
+    </div>
+    <p class="prose">Response latency isn't one number, it's five stacked ones, and they are not equally fixable. A default setup lands near a full second of silence after the caller stops speaking, which reads as slow to a human ear. Under ~800 ms feels like conversation; over ~1200 ms feels broken, and people start saying "hello? hello?"</p>
+
+    <div class="figure-scroll">
+      <figure>
+        <svg viewBox="0 0 760 300" role="img" aria-label="Range chart of the five components of voice agent response latency. Endpointing 150 to 500 milliseconds, speech to text 80 to 200, language model first token 200 to 600, text to speech first audio 80 to 300, network and telephony 40 to 150. Typical values marked, totalling about one second.">
+          <!-- axis -->
+          <g stroke="var(--rule)" stroke-width="1">
+            <line x1="190" y1="46" x2="190" y2="252"/>
+            <line x1="333" y1="46" x2="333" y2="252" stroke-dasharray="2 4"/>
+            <line x1="476" y1="46" x2="476" y2="252" stroke-dasharray="2 4"/>
+            <line x1="619" y1="46" x2="619" y2="252" stroke-dasharray="2 4"/>
+          </g>
+          <g font-family="ui-monospace, Menlo, monospace" font-size="10.5" fill="var(--muted)" text-anchor="middle">
+            <text x="190" y="38">0</text>
+            <text x="333" y="38">200</text>
+            <text x="476" y="38">400</text>
+            <text x="619" y="38">600 ms</text>
+          </g>
+
+          <g font-family="ui-monospace, Menlo, monospace" font-size="12" fill="currentColor" text-anchor="end">
+            <text x="172" y="74">endpointing</text>
+            <text x="172" y="114">speech → text</text>
+            <text x="172" y="154">model reply</text>
+            <text x="172" y="194">text → speech</text>
+            <text x="172" y="234">network</text>
+          </g>
+
+          <!-- range bars -->
+          <g fill="var(--signal-wash)" stroke="var(--signal)" stroke-width="1.2">
+            <rect x="297" y="63"  width="250" height="15"/>
+            <rect x="247" y="103" width="86"  height="15"/>
+            <rect x="333" y="143" width="285" height="15"/>
+            <rect x="247" y="183" width="157" height="15"/>
+            <rect x="219" y="223" width="78"  height="15"/>
+          </g>
+          <!-- typical ticks -->
+          <g stroke="var(--signal)" stroke-width="3">
+            <line x1="404" y1="63"  x2="404" y2="78"/>
+            <line x1="276" y1="103" x2="276" y2="118"/>
+            <line x1="440" y1="143" x2="440" y2="158"/>
+            <line x1="297" y1="183" x2="297" y2="198"/>
+            <line x1="247" y1="223" x2="247" y2="238"/>
+          </g>
+          <!-- typical labels -->
+          <g font-family="ui-monospace, Menlo, monospace" font-size="11" fill="var(--muted)">
+            <text x="559" y="75">≈300 typical</text>
+            <text x="345" y="115">≈120</text>
+            <text x="630" y="155">≈350</text>
+            <text x="416" y="195">≈150</text>
+            <text x="309" y="235">≈80</text>
+          </g>
+
+          <line x1="190" y1="262" x2="700" y2="262" stroke="var(--rule)" stroke-width="1"/>
+          <text x="190" y="282" font-family="ui-monospace, Menlo, monospace" font-size="12" fill="currentColor">TYPICAL TOTAL ≈ 1000 ms</text>
+          <text x="410" y="282" font-family="ui-monospace, Menlo, monospace" font-size="12" fill="var(--signal)">TUNED ≈ 600 ms</text>
+        </svg>
+        <figcaption>Bars show the plausible range per component; the thick tick is what an untuned setup actually does. Endpointing and model reply are two thirds of the problem and both have direct fixes. Network is the only one you cannot argue with.</figcaption>
+      </figure>
+    </div>
+
+    <div class="tbl-scroll">
+      <table>
+        <thead>
+          <tr><th>Component</th><th>What it is</th><th>The fix</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>endpointing</td>
+            <td>Deciding the caller has actually finished speaking, rather than pausing mid-sentence.</td>
+            <td><strong>The single biggest win.</strong> Drop the silence threshold to 300–500 ms and enable barge-in so the caller can cut the agent off. Too aggressive and it interrupts people; tune it against real recordings, not in the abstract.</td>
+          </tr>
+          <tr>
+            <td>model reply</td>
+            <td>Time to the first token of the answer.</td>
+            <td>Shorten the system prompt — it is re-processed every turn. Turn on prompt caching. Move heavy lookups (CRM, calendar availability) into tools the agent calls only when needed, instead of stuffing them into context. Drop to a faster model tier for the qualifying turns and keep the smart one for objections.</td>
+          </tr>
+          <tr>
+            <td>text → speech</td>
+            <td>Time to the first audible syllable.</td>
+            <td>Stream audio rather than waiting for the full sentence. Most platforms do this by default; verify yours actually is.</td>
+          </tr>
+          <tr>
+            <td>speech → text</td>
+            <td>Finalising the transcript of what was said.</td>
+            <td>Little room to move, and not worth your attention. Accented or non-native speech costs you accuracy here, not milliseconds — that's an L3 problem.</td>
+          </tr>
+          <tr>
+            <td>network</td>
+            <td>Telephony hops between the caller, Twilio and the agent.</td>
+            <td>Host the agent in the region you're calling into. A US agent dialling Latvia pays for the Atlantic twice per turn.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout">
+      <p><strong>One caveat on "just make it faster."</strong> Sub-500 ms replies stop feeling human and start feeling like an IVR menu — real people take a beat before answering a question about budget. Latency is a range to land in, not a number to minimise.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <p class="eyebrow">03 — L3</p>
+      <h2>"Maybe the agent's reply is shit" — how you find out, and what you turn</h2>
+    </div>
+    <p class="prose">A bad reply is not one failure mode, it's five, and they have completely different fixes. Guessing which one you have is how teams end up rewriting a prompt for three weeks to solve a problem that was actually a wrong-language routing bug. Read ten transcripts a week and classify:</p>
+
+    <div class="tbl-scroll">
+      <table>
+        <thead>
+          <tr><th>Symptom in the transcript</th><th>Actual cause</th><th>What you change</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>doesn't&nbsp;know</td>
+            <td>Asked something true about your product that the agent had no information about.</td>
+            <td>Knowledge base, not prompt. Add the fact and a "if you don't know, say so and offer a human" fallback.</td>
+          </tr>
+          <tr>
+            <td>made&nbsp;it&nbsp;up</td>
+            <td>Answered confidently and wrongly — pricing, timelines, capabilities.</td>
+            <td>Most damaging failure on the list. Constrain hard: the agent quotes nothing that isn't in the knowledge base. Lower temperature. This is a trust problem, treat it as urgent.</td>
+          </tr>
+          <tr>
+            <td>missed&nbsp;the&nbsp;objection</td>
+            <td>Caller raised a real hesitation ("we already use X") and the agent ploughed on with the script.</td>
+            <td>Prompt. Collect the actual objections from real calls and write handling for the top five. This is the highest-yield weekly edit you'll make.</td>
+          </tr>
+          <tr>
+            <td>wrong&nbsp;language</td>
+            <td>Global targeting, and the agent opened in English to someone who wasn't comfortable in it.</td>
+            <td>Route by phone country code before dialling. If you can't serve that language well, send SMS instead — a bad call is worse than no call.</td>
+          </tr>
+          <tr>
+            <td>talked&nbsp;too&nbsp;much</td>
+            <td>Call ran 6 minutes when it should have run 45 seconds.</td>
+            <td>Prompt: cap the qualifying questions, book the meeting, get off the phone. Also cuts your per-minute bill, since you're billed on wall-clock conversation time.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 style="margin-top:0.6rem">The weekly review, as an actual procedure</h3>
+    <ol class="steps">
+      <li><strong>Pull the week's calls</strong> sorted by outcome. Read every lost one and three booked ones — you need to know what working sounds like, not just what broken sounds like.</li>
+      <li><strong>Tag each failure</strong> with one of the five rows above. Five minutes of tagging beats an hour of impressions.</li>
+      <li><strong>Change one thing.</strong> The temptation is to fix all five at once; then your booking rate moves and you have no idea which edit did it. One change per cycle.</li>
+      <li><strong>Keep the old version.</strong> Version the prompt in git alongside the workflow. Voice agent prompts regress in ways that are invisible until a call goes badly.</li>
+      <li><strong>Re-run the failures.</strong> Keep 15–20 transcripts of calls that went wrong and replay them against the new prompt before it goes near a real lead. This is the cheapest test in the whole system and almost nobody builds it.</li>
+    </ol>
+
+    <div class="callout">
+      <p><strong>At 50 leads a month you cannot A/B test.</strong> Roughly 30 calls a month means a booking-rate difference has to be enormous before it's distinguishable from luck. So don't pretend: judge changes by reading transcripts, not by watching the conversion number wobble. Statistical testing becomes real somewhere north of 300 leads a month.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <p class="eyebrow">04 — Instrumentation</p>
+      <h2>You can't loop on what you didn't log</h2>
+    </div>
+    <p class="prose">Every loop above is powered by fields on the Airtable row. If they aren't captured at the time, the loop silently degrades into guessing — and you won't notice, because guessing feels like reviewing. Rev 1 logged the transcript and the outcome. That is not enough.</p>
+
+    <div class="stats">
+      <div class="stat"><b class="num">4</b><span>loops</span></div>
+      <div class="stat hot"><b class="num">~400 ms</b><span>recoverable lag</span></div>
+      <div class="stat"><b class="num">10</b><span>transcripts / week</span></div>
+      <div class="stat"><b class="num">1</b><span>change per cycle</span></div>
+    </div>
+
+    <ul class="plain">
+      <li><span class="m">turn_latency_p50</span> / <span class="m">p90</span> — per call, not per month. Averages hide the one call that took four seconds.</li>
+      <li><span class="m">interruptions</span> — how often the caller cut the agent off. A rising count means it's talking too much or endpointing is too slow.</li>
+      <li><span class="m">agent_talk_ratio</span> — share of the call the agent was speaking. Above ~60% and it's lecturing, not qualifying.</li>
+      <li><span class="m">failure_tag</span> — the five-way classification above, filled in by hand during review. The one field you cannot automate and the one that drives everything.</li>
+      <li><span class="m">prompt_version</span> — stamped on every call. Without it you cannot tell whether last Tuesday's edit helped.</li>
+      <li><span class="m">detected_language</span> and <span class="m">dial_country</span> — the mismatch between them is your language routing bug.</li>
+      <li><span class="m">outcome</span> — booked / not qualified / hung up / asked for human / no answer. Not a boolean. "Asked for a human" and "hung up" mean opposite things.</li>
+    </ul>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <p class="eyebrow">05 — Consequences</p>
+      <h2>What this changes in the build plan</h2>
+    </div>
+    <p class="prose">The loops aren't a phase 6 you get to later. Two of them change work already scheduled, and one adds a week:</p>
+    <ul class="plain">
+      <li><strong>Phase 2 grows.</strong> The post-call webhook has to write the full instrument panel above, not just a transcript. Cheap to do now, expensive to backfill — you cannot recover latency data from calls that already happened.</li>
+      <li><strong>New: a replay harness.</strong> Half a day of work. A script that runs saved transcripts against a candidate prompt so you can see regressions before a real lead does. This is the single highest-leverage thing in the revision.</li>
+      <li><strong>The weekly review is a standing commitment,</strong> roughly an hour, indefinitely. If nobody owns it, L3 doesn't exist and you've built the pipeline from rev 1 with extra logging. Worth being honest about that before starting: the loop is a person plus a system, not a system.</li>
+      <li><strong>L4 moves earlier.</strong> Pushing booked meetings back to LinkedIn was phase 4 in rev 1. It should be phase 2 — it needs weeks of data before it influences anything, so the clock should start as early as possible.</li>
+    </ul>
+  </section>
+
+  <footer>
+    Rev 2 · supersedes the linear architecture in <span class="m">docs/linkedin-lead-voice-sms-workflow.md</span> §2.<br>
+    Latency ranges are typical figures for a Twilio + hosted-agent stack and should be measured against your own deployment, not assumed.<br>
+    The linked video could not be retrieved — YouTube returned a bot-check page instead of the content — so nothing from it is reflected here.
+  </footer>
+
+</div>

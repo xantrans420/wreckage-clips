@@ -297,6 +297,48 @@ Build it in the order above, on **Make.com + ElevenLabs Agents + Twilio + Airtab
 
 ---
 
+## 10. Rev 2 — the feedback loops
+
+The architecture in §2 is a pipeline, and a pipeline cannot discover that the agent's answer was poor or that it replied a second and a half late. Rev 2 adds four feedback paths, all returning from **Outcome**, nested by scope of change:
+
+| | Loop | Clock | Changes |
+|---|---|---|---|
+| **L1** | the turn | 300–1500 ms, ~20× per call | Turn-taking inside one conversation. Where "laggy" lives. |
+| **L2** | the contact | hours | The retry ladder from §6 Phase 3. A loop, but a dumb one — it persists, it doesn't learn. |
+| **L3** | the tuning | weekly | **The missing one.** Transcripts → prompt, voice, model tier, script. |
+| **L4** | the targeting | weekly | Booked meetings → LinkedIn Conversions API → who ever becomes a lead. |
+
+**Latency (L1).** Response delay is five stacked components, not one. An untuned setup lands near **1000 ms** of silence after the caller stops speaking; tuned, ~600 ms. Under 800 ms feels conversational, over 1200 ms feels broken — but under 500 ms stops sounding human and starts sounding like an IVR. Two thirds of the recoverable time is endpointing (~300 ms typical; drop the silence threshold to 300–500 ms and enable barge-in) and model reply (~350 ms; shorten the system prompt, which is reprocessed every turn, enable prompt caching, and move lookups into tools).
+
+**Quality (L3).** A bad reply is five distinct failures with different fixes: *doesn't know* (knowledge base), *made it up* (constrain hard — the trust-destroying one), *missed the objection* (prompt, highest yield), *wrong language* (route by country code before dialling), *talked too much* (also inflates the bill, since billing is wall-clock). Tag ten transcripts a week, change **one** thing per cycle, version the prompt in git, and replay saved failures against the candidate before it meets a real lead.
+
+**At 50 leads/month you cannot A/B test.** ~30 calls means a booking-rate difference must be enormous to beat noise. Judge changes by reading transcripts. Statistical testing becomes real north of 300 leads/month.
+
+**Consequences for §6:** the post-call webhook must log the full instrument panel from day one (`turn_latency_p50/p90`, `interruptions`, `agent_talk_ratio`, `failure_tag`, `prompt_version`, `detected_language` vs `dial_country`, and a multi-valued `outcome`) — latency data cannot be backfilled. Add ~4 hours for a replay harness. Move the Conversions API push from Phase 4 to Phase 2, since L4 needs weeks of data before it influences anything.
+
+---
+
+## 11. Considered and rejected: voice emotion analysis
+
+Cogito (MIT Media Lab, 2007, now Verint), Beyond Verbal, Behavioral Signals and — currently — Hume AI's EVI all read vocal prosody and adapt the conversation. Rejected on three counts:
+
+1. **Legal weight class.** Under the EU AI Act, emotion recognition systems are **Annex III high-risk** (the outright Article 5 ban covers workplace and education only). That means conformity assessment, risk management system, data governance, logging, human oversight and EU database registration — plus an Article 50(3) obligation to tell the person. That is a certification regime, not the one-sentence disclosure in §5. Illinois BIPA and equivalents also treat voiceprints as biometric identifiers, an active litigation area for call-centre voice analytics.
+2. **It degrades in the wrong direction.** Cross-cultural meta-analysis finds vocal emotion recognised above chance, but with a consistent **in-group advantage** — accuracy falls as cultural distance from the training data grows. For global/mixed targeting that means highest confidence on the people it already understands, quietly wrong on everyone else, with no signal telling you which.
+3. **Volume.** ~30 calls/month. Emotion analytics needs thousands of calls to find a pattern; a person reading transcripts outperforms it here.
+
+**Instead, measure behaviour, not inferred inner state** — objective, legally unremarkable, and answering the same question: interruption count and who interrupted, agent talk ratio, dead-air length, speech-rate change, the actual objections raised, and **where in the call they hung up**. Hang-up timestamp is the single strongest signal at this volume: if eight of thirty calls die at the same beat, rewrite that line.
+
+**One piece worth testing:** Hume EVI as the *voice layer* in place of ElevenLabs — prosody internal to the model rather than a scored output acted upon, which is a materially different legal posture, at comparable cost (~$0.06/min past the included minutes). Twenty test calls in Phase 2, judged by ear.
+
+---
+
+## 12. Presentation versions
+
+- `docs/roadmap.html` — showable build plan: architecture, stack with costs, six-week timeline, compliance, rejected options.
+- `docs/loops.html` — technical rev 2 note: the four loops, the latency breakdown, the weekly tuning procedure.
+
+---
+
 ## Sources
 
 Pricing and capability figures are vendor list prices as of August 2026 and should be re-checked before committing spend.
@@ -323,3 +365,9 @@ Pricing and capability figures are vendor list prices as of August 2026 and shou
 - [Make.com pricing 2026](https://trackstack.tech/en/make-com-pricing-2026/)
 - [Airtable pricing 2026](https://www.usecarly.com/blog/airtable-pricing/)
 - [HubSpot free plan limits 2026](https://www.usecarly.com/blog/hubspot-free-plan-limits/)
+- [Cogito — real-time voice analysis for contact centres](https://www.builtinboston.com/articles/cogito-using-real-time-emotional-intelligence-improve-call-centers)
+- [Hume AI Empathic Voice Interface](https://www.hume.ai/empathic-voice-interface)
+- [Hume AI pricing 2026](https://autogpt.net/hume-ai-pricing-every-plan-explained/)
+- [EU AI Act Annex III — high-risk systems](https://artificialintelligenceact.eu/annex/3/)
+- [Emotion recognition under the EU AI Act](https://fpf.org/blog/red-lines-under-eu-ai-act-unpacking-the-prohibition-of-emotion-recognition-in-the-workplace-and-education-institutions/)
+- [Cross-cultural emotion recognition in vocal expression — meta-analysis](https://journals.sagepub.com/doi/10.1177/1754073919897295)

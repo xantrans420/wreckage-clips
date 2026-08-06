@@ -1,0 +1,414 @@
+<title>LinkedIn Ads → AI Voice & SMS Follow-up — Build Plan</title>
+
+<style>
+  :root {
+    --bg:#E7EAEE; --panel:#F8F9FA; --fg:#101A21; --muted:#5C6B76;
+    --rule:#C6CED5; --rule-soft:#D8DEE3; --signal:#A8530A; --signal-wash:#A8530A14;
+    --f-display:-apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    --f-mono:ui-monospace, "SF Mono", SFMono-Regular, "Cascadia Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    --f-body:"Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#0D1418; --panel:#151E23; --fg:#E2E8EB; --muted:#8B9AA4;
+            --rule:#27343B; --rule-soft:#1E2A30; --signal:#EDA141; --signal-wash:#EDA1411A; }
+  }
+  :root[data-theme="dark"] { --bg:#0D1418; --panel:#151E23; --fg:#E2E8EB; --muted:#8B9AA4;
+    --rule:#27343B; --rule-soft:#1E2A30; --signal:#EDA141; --signal-wash:#EDA1411A; }
+  :root[data-theme="light"] { --bg:#E7EAEE; --panel:#F8F9FA; --fg:#101A21; --muted:#5C6B76;
+    --rule:#C6CED5; --rule-soft:#D8DEE3; --signal:#A8530A; --signal-wash:#A8530A14; }
+
+  body { background:var(--bg); color:var(--fg); font-family:var(--f-body); font-size:17px; line-height:1.6; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:1040px; margin:0 auto; padding:clamp(2.4rem,6vw,4.5rem) clamp(1.1rem,4vw,2.5rem) 6rem; display:flex; flex-direction:column; gap:3.6rem; }
+  .prose { max-width:68ch; display:flex; flex-direction:column; gap:1rem; }
+  p { margin:0; }
+  strong { font-weight:600; }
+
+  .eyebrow { font-family:var(--f-mono); font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--muted); margin:0; }
+  .eyebrow b { color:var(--signal); font-weight:500; }
+
+  h1 { font-family:var(--f-display); font-size:clamp(2rem,5.2vw,3.2rem); line-height:1.03; letter-spacing:-0.033em; font-weight:800; margin:0.7rem 0 0; text-wrap:balance; max-width:17ch; }
+  .standfirst { font-size:clamp(1.04rem,2vw,1.18rem); color:var(--muted); max-width:58ch; margin:1.1rem 0 0; }
+  h2 { font-family:var(--f-display); font-size:clamp(1.32rem,2.8vw,1.68rem); letter-spacing:-0.021em; font-weight:700; line-height:1.15; margin:0; text-wrap:balance; }
+  h3 { font-family:var(--f-display); font-size:1.02rem; letter-spacing:-0.008em; font-weight:700; margin:0; }
+
+  section { display:flex; flex-direction:column; gap:1.35rem; }
+  .sec-head { display:flex; flex-direction:column; gap:0.5rem; border-top:1px solid var(--rule); padding-top:1.4rem; }
+
+  code, .m { font-family:var(--f-mono); font-size:0.86em; letter-spacing:-0.01em; }
+
+  .stats { display:flex; flex-wrap:wrap; gap:1px; background:var(--rule-soft); border:1px solid var(--rule-soft); margin-top:2.2rem; }
+  .stat { background:var(--bg); padding:1rem 1.3rem; flex:1 1 160px; display:flex; flex-direction:column; gap:0.2rem; }
+  .stat b { font-family:var(--f-display); font-size:1.55rem; font-weight:700; letter-spacing:-0.022em; font-variant-numeric:tabular-nums; }
+  .stat span { font-family:var(--f-mono); font-size:10.5px; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); }
+  .stat.hot b { color:var(--signal); }
+
+  .figure-scroll { overflow-x:auto; }
+  figure { margin:0; display:flex; flex-direction:column; gap:0.85rem; }
+  figure svg { display:block; max-width:100%; height:auto; min-width:660px; }
+  figcaption { font-family:var(--f-mono); font-size:11.5px; line-height:1.6; color:var(--muted); max-width:76ch; }
+
+  .tbl-scroll { overflow-x:auto; }
+  table { border-collapse:collapse; width:100%; min-width:600px; font-size:15px; }
+  th, td { text-align:left; padding:0.7rem 1rem 0.7rem 0; border-bottom:1px solid var(--rule-soft); vertical-align:top; }
+  th { font-family:var(--f-mono); font-size:10.5px; letter-spacing:0.13em; text-transform:uppercase; color:var(--muted); font-weight:500; border-bottom:1px solid var(--rule); padding-bottom:0.5rem; }
+  td.k { font-family:var(--f-mono); font-size:12.5px; line-height:1.5; padding-right:1.4rem; white-space:nowrap; }
+  td.n { font-family:var(--f-mono); font-size:13px; font-variant-numeric:tabular-nums; text-align:right; padding-right:0; white-space:nowrap; }
+  th.n { text-align:right; padding-right:0; }
+  tbody tr:last-child td { border-bottom:none; }
+  tr.total td { border-top:1px solid var(--rule); border-bottom:none; font-weight:600; padding-top:0.8rem; }
+  tr.total td.n { color:var(--signal); }
+
+  .cards { display:grid; gap:1px; background:var(--rule-soft); border-block:1px solid var(--rule-soft); }
+  @media (min-width:820px) { .cards { grid-template-columns:repeat(3,1fr); } }
+  @media (min-width:520px) and (max-width:819px) { .cards { grid-template-columns:repeat(2,1fr); } }
+  .card { background:var(--bg); padding:1.15rem 1.3rem 1.35rem; display:flex; flex-direction:column; gap:0.5rem; }
+  .card-tag { font-family:var(--f-mono); font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:var(--signal); display:flex; justify-content:space-between; gap:0.8rem; }
+  .card-tag span:last-child { color:var(--muted); }
+  .card p { font-size:15px; line-height:1.54; color:var(--muted); }
+  .card ul { margin:0; padding:0; list-style:none; display:flex; flex-direction:column; gap:0.34rem; font-size:14.5px; line-height:1.45; color:var(--muted); }
+  .card li { padding-left:0.95rem; position:relative; }
+  .card li::before { content:"·"; position:absolute; left:0.15rem; color:var(--signal); }
+
+  .callout { border-left:2px solid var(--signal); background:var(--signal-wash); padding:1rem 1.3rem; max-width:68ch; display:flex; flex-direction:column; gap:0.6rem; font-size:16px; }
+
+  ul.plain { margin:0; padding:0; list-style:none; display:flex; flex-direction:column; gap:0.55rem; max-width:68ch; }
+  ul.plain li { padding-left:1.15rem; position:relative; }
+  ul.plain li::before { content:"—"; position:absolute; left:0; color:var(--muted); font-family:var(--f-mono); font-size:0.8em; top:0.1em; }
+
+  footer { border-top:1px solid var(--rule); padding-top:1.3rem; font-family:var(--f-mono); font-size:11.5px; line-height:1.7; color:var(--muted); max-width:78ch; }
+  a { color:var(--signal); text-underline-offset:2px; }
+  a:focus-visible { outline:2px solid var(--signal); outline-offset:3px; }
+</style>
+
+<div class="wrap">
+
+  <header>
+    <p class="eyebrow">Build plan · <b>v2</b> · August 2026</p>
+    <h1>LinkedIn ads to a booked meeting, without anyone picking up the phone</h1>
+    <p class="standfirst">A lead fills in the ad form and picks how they want to hear back. Within two minutes they get a call from an AI agent that qualifies them and books the meeting, or a text with a link. Everything lands in one place, and the system reads its own transcripts every week to get better.</p>
+    <div class="stats">
+      <div class="stat hot"><b>~$95</b><span>per month to run</span></div>
+      <div class="stat"><b>6 weeks</b><span>to fully live</span></div>
+      <div class="stat"><b>50–70 h</b><span>build effort</span></div>
+      <div class="stat"><b>Week 1</b><span>first value shipped</span></div>
+    </div>
+  </header>
+
+  <section>
+    <div class="sec-head">
+      <p class="eyebrow">01 — The system</p>
+      <h2>A loop, not a pipeline</h2>
+    </div>
+    <p class="prose">The bottom row is the path a lead takes. The arcs above are the system correcting itself: retrying a contact, retuning the agent, and teaching LinkedIn who to show the ad to. Without them you have an expensive answering machine that never improves.</p>
+
+    <div class="figure-scroll">
+      <figure>
+        <svg viewBox="0 0 900 400" role="img" aria-label="The lead pipeline from Lead to Contact to Conversation to Outcome, with four feedback loops returning: the turn loop inside a conversation, the retry loop back to Contact, the tuning loop back to Conversation, and the targeting loop back to Lead.">
+          <defs>
+            <marker id="tS" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="var(--signal)"/></marker>
+            <marker id="tN" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="currentColor"/></marker>
+          </defs>
+
+          <polyline points="815,258 815,100 115,100 115,250" fill="none" stroke="var(--signal)" stroke-width="1.8" stroke-linejoin="round" marker-end="url(#tS)"/>
+          <text x="125" y="92" font-family="ui-monospace, Menlo, monospace" font-size="12" fill="var(--signal)">L4 · booked meetings → Conversions API → who LinkedIn shows the ad to</text>
+          <text x="825" y="92" font-family="ui-monospace, Menlo, monospace" font-size="11" fill="var(--muted)">weekly</text>
+
+          <polyline points="795,258 795,158 335,158 335,250" fill="none" stroke="var(--signal)" stroke-width="1.8" stroke-linejoin="round" marker-end="url(#tS)"/>
+          <text x="345" y="150" font-family="ui-monospace, Menlo, monospace" font-size="12" fill="var(--signal)">L3 · transcripts → prompt, voice, latency, script</text>
+          <text x="805" y="150" font-family="ui-monospace, Menlo, monospace" font-size="11" fill="var(--muted)">weekly</text>
+
+          <polyline points="775,258 775,208 555,208 555,250" fill="none" stroke="var(--signal)" stroke-width="1.8" stroke-linejoin="round" marker-end="url(#tS)"/>
+          <text x="565" y="200" font-family="ui-monospace, Menlo, monospace" font-size="12" fill="var(--signal)">L2 · no answer → retry, switch channel</text>
+          <text x="785" y="200" font-family="ui-monospace, Menlo, monospace" font-size="11" fill="var(--muted)">hours</text>
+
+          <g stroke="currentColor" stroke-width="1.4" fill="var(--panel)">
+            <rect x="30" y="250" width="170" height="58"/><rect x="250" y="250" width="170" height="58"/>
+            <rect x="470" y="250" width="170" height="58"/><rect x="690" y="250" width="170" height="58"/>
+          </g>
+          <g font-family="ui-monospace, Menlo, monospace" fill="currentColor" text-anchor="middle">
+            <text x="115" y="274" font-size="13" letter-spacing="0.08em">LEAD</text>
+            <text x="335" y="274" font-size="13" letter-spacing="0.08em">CONTACT</text>
+            <text x="555" y="274" font-size="13" letter-spacing="0.08em">CONVERSATION</text>
+            <text x="775" y="274" font-size="13" letter-spacing="0.08em">OUTCOME</text>
+          </g>
+          <g font-family="ui-monospace, Menlo, monospace" font-size="10.5" fill="var(--muted)" text-anchor="middle">
+            <text x="115" y="293">LinkedIn form · validated</text>
+            <text x="335" y="293">call or SMS, their pick</text>
+            <text x="555" y="293">agent qualifies, books</text>
+            <text x="775" y="293">booked · lost · logged</text>
+          </g>
+          <g stroke="currentColor" stroke-width="1.4">
+            <line x1="200" y1="279" x2="243" y2="279" marker-end="url(#tN)"/>
+            <line x1="420" y1="279" x2="463" y2="279" marker-end="url(#tN)"/>
+            <line x1="640" y1="279" x2="683" y2="279" marker-end="url(#tN)"/>
+          </g>
+
+          <polyline points="500,308 500,352 610,352 610,314" fill="none" stroke="var(--signal)" stroke-width="1.8" stroke-linejoin="round" marker-end="url(#tS)"/>
+          <text x="622" y="356" font-family="ui-monospace, Menlo, monospace" font-size="12" fill="var(--signal)">L1 · listen → think → speak → get interrupted</text>
+          <text x="500" y="378" font-family="ui-monospace, Menlo, monospace" font-size="11" fill="var(--muted)">~20× per call, 600 ms target</text>
+          <text x="30" y="396" font-family="ui-monospace, Menlo, monospace" font-size="10.5" fill="var(--muted)" letter-spacing="0.08em">FORWARD PATH = THE LEAD'S JOURNEY · RETURN PATHS = HOW IT IMPROVES</text>
+        </svg>
+        <figcaption>Nesting is by scope, not speed: L2 changes how we reach one lead, L3 changes how the agent behaves for everyone, L4 changes who ever becomes a lead.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <p class="eyebrow">02 — The stack</p>
+      <h2>Nine components, one of them non-negotiable</h2>
+    </div>
+    <p class="prose">Everything here is off-the-shelf and pay-as-you-go — no annual contracts, no seats to commit to. Make.com is the one piece with no real substitute, for a reason worth understanding: LinkedIn's lead API sits behind a partner approval queue that runs four weeks at best and four months typically, so we rent access rather than wait for it.</p>
+
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr><th>Layer</th><th>Tool</th><th>Why this one</th><th class="n">Per month</th></tr></thead>
+        <tbody>
+          <tr><td class="k">ads</td><td>LinkedIn Lead Gen Form</td><td>Already running. Needs a phone field, a call-or-text question and a consent checkbox added.</td><td class="n">ad spend</td></tr>
+          <tr><td class="k">lead delivery</td><td><strong>Make.com</strong></td><td>The only affordable route to an <strong>instant</strong> LinkedIn lead trigger. Zapier polls and charges ~$49; n8n has no LinkedIn node at all.</td><td class="n">$9–16</td></tr>
+          <tr><td class="k">voice agent</td><td>ElevenLabs Agents</td><td>Best voice quality, strong multilingual coverage, and post-call webhooks that hand back transcript, recording and analysis without extra work.</td><td class="n">$34–40</td></tr>
+          <tr><td class="k">telephony</td><td>Twilio</td><td>Numbers, SMS and voice in every market, with a native ElevenLabs integration — no glue code.</td><td class="n">$8–39</td></tr>
+          <tr><td class="k">the record</td><td>Airtable + Google Drive</td><td>One row per lead; recordings in Drive, linked from the row. Free tier holds over a year at this volume.</td><td class="n">$0</td></tr>
+          <tr><td class="k">booking</td><td>Cal.com → Google Calendar</td><td>The agent books the meeting <em>during</em> the call. Highest-value feature in the build.</td><td class="n">$0</td></tr>
+          <tr><td class="k">alerts</td><td>Slack</td><td>Humans know within seconds when something is hot.</td><td class="n">$0</td></tr>
+          <tr><td class="k">attribution</td><td>LinkedIn Conversions API</td><td>Pushes booked meetings back so the ad optimises toward people who book, not people who fill in forms.</td><td class="n">$0</td></tr>
+          <tr><td class="k">sms replies</td><td>Claude or GPT</td><td>Handles two-way texts, escalates to a human on request.</td><td class="n">$2–5</td></tr>
+          <tr class="total"><td class="k">total</td><td colspan="2">Everything above, at 50 leads / month</td><td class="n">$66–124</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout">
+      <p><strong>For scale.</strong> LinkedIn B2B leads typically cost $50–150 each, so 50 leads a month is roughly $3,000–7,500 of ad spend. This entire stack is about <strong>2% of that</strong>. It is not where the money is, and it should not be where the deliberation goes.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <p class="eyebrow">03 — Timeline</p>
+      <h2>Six weeks, with something useful live in week one</h2>
+    </div>
+    <p class="prose">The sequence is chosen so each phase is worth having on its own. Carrier registration is the only thing we cannot speed up, so it starts on day one and runs in the background while the build proceeds around it.</p>
+
+    <div class="figure-scroll">
+      <figure>
+        <svg viewBox="0 0 900 350" role="img" aria-label="Six-week Gantt chart. Foundations in week 0, carrier registration waiting from week 0 to 2, capture and instant SMS weeks 0.5 to 1.5, inbound voice agent weeks 1.5 to 3, outbound calling weeks 3 to 4, two-way SMS and dashboard weeks 4 to 5.5, and the weekly tuning loop running from week 3 onward indefinitely.">
+          <defs>
+            <marker id="tG" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="var(--signal)"/></marker>
+            <pattern id="wait" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+              <line x1="0" y1="0" x2="0" y2="7" stroke="var(--signal)" stroke-width="2" opacity="0.45"/>
+            </pattern>
+          </defs>
+
+          <!-- week grid -->
+          <g stroke="var(--rule)" stroke-width="1">
+            <line x1="210" y1="46" x2="210" y2="300"/>
+            <line x1="320" y1="46" x2="320" y2="300" stroke-dasharray="2 4"/>
+            <line x1="430" y1="46" x2="430" y2="300" stroke-dasharray="2 4"/>
+            <line x1="540" y1="46" x2="540" y2="300" stroke-dasharray="2 4"/>
+            <line x1="650" y1="46" x2="650" y2="300" stroke-dasharray="2 4"/>
+            <line x1="760" y1="46" x2="760" y2="300" stroke-dasharray="2 4"/>
+            <line x1="870" y1="46" x2="870" y2="300" stroke-dasharray="2 4"/>
+          </g>
+          <g font-family="ui-monospace, Menlo, monospace" font-size="10.5" fill="var(--muted)" text-anchor="middle">
+            <text x="210" y="38">W0</text><text x="320" y="38">W1</text><text x="430" y="38">W2</text>
+            <text x="540" y="38">W3</text><text x="650" y="38">W4</text><text x="760" y="38">W5</text><text x="870" y="38">W6</text>
+          </g>
+
+          <!-- row labels -->
+          <g font-family="ui-monospace, Menlo, monospace" font-size="12" fill="currentColor" text-anchor="end">
+            <text x="196" y="72">P0 foundations</text>
+            <text x="196" y="108">carrier registration</text>
+            <text x="196" y="144">P1 capture + SMS</text>
+            <text x="196" y="180">P2 inbound agent</text>
+            <text x="196" y="216">P3 outbound calling</text>
+            <text x="196" y="252">P4 two-way + reporting</text>
+            <text x="196" y="288">P5 weekly tuning</text>
+          </g>
+
+          <!-- bars -->
+          <rect x="210" y="60" width="55" height="17" fill="var(--panel)" stroke="currentColor" stroke-width="1.3"/>
+          <rect x="210" y="96" width="220" height="17" fill="url(#wait)" stroke="var(--signal)" stroke-width="1.3"/>
+          <rect x="265" y="132" width="110" height="17" fill="var(--signal)" stroke="none"/>
+          <rect x="375" y="168" width="165" height="17" fill="var(--panel)" stroke="currentColor" stroke-width="1.3"/>
+          <rect x="540" y="204" width="110" height="17" fill="var(--panel)" stroke="currentColor" stroke-width="1.3"/>
+          <rect x="650" y="240" width="165" height="17" fill="var(--panel)" stroke="currentColor" stroke-width="1.3"/>
+          <rect x="540" y="276" width="330" height="17" fill="none" stroke="var(--signal)" stroke-width="1.3" stroke-dasharray="5 4"/>
+          <line x1="870" y1="284.5" x2="892" y2="284.5" stroke="var(--signal)" stroke-width="1.3" marker-end="url(#tG)"/>
+
+          <!-- annotations -->
+          <text x="272" y="90" font-family="ui-monospace, Menlo, monospace" font-size="10.5" fill="var(--muted)">waiting on carriers — not our work, cannot be shortened</text>
+          <text x="383" y="145" font-family="ui-monospace, Menlo, monospace" font-size="11" fill="var(--signal)">◀ pays for itself alone</text>
+          <text x="548" y="181" font-family="ui-monospace, Menlo, monospace" font-size="10.5" fill="var(--muted)">+ instrumentation, replay harness</text>
+          <text x="658" y="217" font-family="ui-monospace, Menlo, monospace" font-size="10.5" fill="var(--muted)">+ latency tuning</text>
+          <text x="822" y="253" font-family="ui-monospace, Menlo, monospace" font-size="10.5" fill="var(--muted)">go-live</text>
+          <text x="548" y="271" font-family="ui-monospace, Menlo, monospace" font-size="10.5" fill="var(--muted)">~1 h / week, indefinitely</text>
+
+          <!-- unblock marker -->
+          <line x1="430" y1="120" x2="430" y2="132" stroke="var(--signal)" stroke-width="1.3" stroke-dasharray="3 3"/>
+          <circle cx="430" cy="140.5" r="4.5" fill="var(--bg)" stroke="var(--signal)" stroke-width="2"/>
+          <text x="443" y="128" font-family="ui-monospace, Menlo, monospace" font-size="10.5" fill="var(--signal)">US texting unblocked</text>
+
+          <text x="210" y="326" font-family="ui-monospace, Menlo, monospace" font-size="10.5" fill="var(--muted)" letter-spacing="0.08em">SOLID = BUILD · HATCHED = WAITING ON A THIRD PARTY · DASHED = ONGOING</text>
+        </svg>
+        <figcaption>Carrier registration for US texting takes one to two weeks and is not work we can do faster — it just has to start on day one. Everything else builds around it.</figcaption>
+      </figure>
+    </div>
+
+    <div class="cards">
+      <div class="card">
+        <p class="card-tag"><span>P0 · foundations</span><span>2–3 days</span></p>
+        <ul>
+          <li>Start carrier registration — the long pole</li>
+          <li>Buy phone numbers for the first 2–3 markets</li>
+          <li>Rewrite the LinkedIn form: phone, call-or-text, consent</li>
+          <li>Write the qualification criteria in plain English</li>
+        </ul>
+      </div>
+      <div class="card">
+        <p class="card-tag"><span>P1 · capture + SMS</span><span>week 1</span></p>
+        <p>A lead gets a personal text 90 seconds after they submit, and lands as a row we can read. No AI involved.</p>
+        <ul>
+          <li>Lead → validated → stored → team alerted</li>
+          <li>Instant acknowledgement text to everyone</li>
+          <li>Junk numbers filtered at intake</li>
+        </ul>
+      </div>
+      <div class="card">
+        <p class="card-tag"><span>P2 · inbound agent</span><span>weeks 2–3</span></p>
+        <p>The agent goes live on a number people choose to call — lower stakes than dialling strangers.</p>
+        <ul>
+          <li>Qualification script, objection handling, booking</li>
+          <li>Full instrumentation from day one</li>
+          <li>Replay harness: test prompt changes offline</li>
+          <li>Conversions API starts collecting</li>
+        </ul>
+      </div>
+      <div class="card">
+        <p class="card-tag"><span>P3 · outbound</span><span>week 4</span></p>
+        <p>The agent now dials, targeting under two minutes from form submission.</p>
+        <ul>
+          <li>Retry ladder, capped at 3–4 attempts</li>
+          <li>Local calling-hours guard</li>
+          <li>Voicemail detection → falls back to text</li>
+          <li>Latency tuned from ~1000 ms to ~600 ms</li>
+        </ul>
+      </div>
+      <div class="card">
+        <p class="card-tag"><span>P4 · two-way + reporting</span><span>weeks 5–6</span></p>
+        <ul>
+          <li>Texts get real replies, escalating to a human on request</li>
+          <li>Opt-outs honoured everywhere, instantly</li>
+          <li>Meeting reminders</li>
+          <li>Dashboard: contact rate, connect rate, booking rate, cost per meeting</li>
+        </ul>
+      </div>
+      <div class="card">
+        <p class="card-tag"><span>P5 · weekly tuning</span><span>ongoing</span></p>
+        <p>The loop that makes it improve. Roughly an hour a week, forever.</p>
+        <ul>
+          <li>Read ten transcripts, tag what went wrong</li>
+          <li>Change one thing, version it</li>
+          <li>Replay the old failures before shipping</li>
+          <li>Review what the ads are actually buying</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <p class="eyebrow">04 — Money</p>
+      <h2>What it costs to build and to run</h2>
+    </div>
+
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr><th>Leads per month</th><th>What changes</th><th class="n">Running cost</th></tr></thead>
+        <tbody>
+          <tr><td class="k">50 — today</td><td>Everything above, free tiers holding.</td><td class="n">~$95</td></tr>
+          <tr><td class="k">300</td><td>Airtable moves to a paid seat; Make moves up a tier or becomes a thin adapter into our own code.</td><td class="n">~$215</td></tr>
+          <tr><td class="k">1,000</td><td>Volume pricing negotiable with ElevenLabs and Twilio; a real CRM starts to earn its keep. A/B testing becomes statistically meaningful here.</td><td class="n">~$600–800</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p class="prose">The curve is flat — there is no cliff between 50 and 1,000 leads a month. That is the main argument for building it properly now rather than assembling something disposable and replacing it in a year.</p>
+
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr><th>Build</th><th>Notes</th><th class="n">Hours</th></tr></thead>
+        <tbody>
+          <tr><td class="k">P0 foundations</td><td>Admin, numbers, registration, form rewrite</td><td class="n">4–6</td></tr>
+          <tr><td class="k">P1 capture + SMS</td><td>Validation, dedupe, storage, acknowledgement</td><td class="n">8–12</td></tr>
+          <tr><td class="k">P2 agent</td><td>Prompt iteration is the bulk of it; budget generously</td><td class="n">12–20</td></tr>
+          <tr><td class="k">P2 replay harness</td><td>Half a day, highest leverage item on the list</td><td class="n">4</td></tr>
+          <tr><td class="k">P3 outbound</td><td>Retries, hours guard, voicemail, latency work</td><td class="n">8–12</td></tr>
+          <tr><td class="k">P4 two-way + reporting</td><td>SMS handler, booking, attribution, dashboard</td><td class="n">8–14</td></tr>
+          <tr><td class="k">contingency</td><td>Something always breaks in telephony</td><td class="n">6–10</td></tr>
+          <tr class="total"><td class="k">total</td><td>Roughly 4–6 calendar weeks part-time</td><td class="n">50–78</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <p class="eyebrow">05 — Non-negotiables</p>
+      <h2>Four compliance items, built in from the start</h2>
+    </div>
+    <p class="prose">Cheap to do up front, expensive to retrofit, and the fastest way to turn a working system into a liability if skipped. Targeting is global, which means the strictest rule in any market we touch applies everywhere.</p>
+    <ul class="plain">
+      <li><strong>The agent says it's an AI, in the first breath of every call.</strong> The EU AI Act's transparency obligations took effect on 2 August 2026, and several US states have parallel rules. It goes in the opening line, not in a setting someone can switch off.</li>
+      <li><strong>Consent is captured on the form, not assumed.</strong> A checkbox covering calls, texts and recording — and we store the wording, timestamp and IP next to the lead. If a complaint arrives eighteen months later, that row is the entire defence.</li>
+      <li><strong>Carrier registration before any US texting.</strong> Mandatory, one to two weeks, roughly $6–14. Nothing sends until it clears.</li>
+      <li><strong>One opt-out field, checked everywhere.</strong> A "stop contacting me" flag honoured at the top of every branch — text, call and retry alike. One field checked consistently beats any amount of policy documentation.</li>
+    </ul>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <p class="eyebrow">06 — Roads not taken</p>
+      <h2>Considered and rejected</h2>
+    </div>
+    <p class="prose">Worth recording, because in six months someone will ask why we didn't do one of these.</p>
+
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr><th>Option</th><th>Why not</th></tr></thead>
+        <tbody>
+          <tr><td class="k">n8n</td><td>No LinkedIn lead trigger exists — an open feature request since 2025. Better billing model and far better code support, but it cannot receive the lead, which ends the conversation.</td></tr>
+          <tr><td class="k">Zapier</td><td>LinkedIn Ads is a premium app, so ~$49/month minimum, and its trigger polls rather than pushes — a known source of duplicated and dropped leads.</td></tr>
+          <tr><td class="k">Direct LinkedIn API</td><td>Free and instant, but behind a partner approval queue of four weeks at best and three to four months typically. Worth applying for in parallel; not worth waiting on.</td></tr>
+          <tr><td class="k">OpenAI Realtime</td><td>Cheapest per minute on paper, but it is an API rather than a platform — telephony, retries, recording and transcript storage all become our problem, and cost triples if prompt caching isn't working. That is the four-to-eight weeks of engineering we are avoiding.</td></tr>
+          <tr><td class="k">Vapi / Retell</td><td>Both perfectly good. At this volume the per-minute difference between every option is under $10/month, so the decision goes to voice quality and multilingual coverage instead.</td></tr>
+          <tr><td class="k">Voice emotion analysis<br><span style="opacity:0.7">Cogito, Hume, et al.</span></td><td>Genuinely interesting technology, and the wrong call here on three counts. Emotion recognition is classified high-risk under the EU AI Act — a certification regime, not a disclosure sentence. Accuracy degrades with cultural distance from the training data, which is precisely backwards for global targeting. And at ~30 calls a month, a person reading the transcripts outperforms it. We measure <em>behaviour</em> instead — interruptions, talk ratio, dead air, where they hung up — which answers the same question and is objectively measurable.</td></tr>
+          <tr><td class="k">HubSpot free as the record</td><td>Caps at 1,000 contacts, two users and single-step automations, and pushes to paid within six to twelve months.</td></tr>
+          <tr><td class="k">Our own landing page</td><td>Sidesteps LinkedIn's API entirely and is instant, but native lead forms convert much better because they pre-fill and the lead types nothing. Kept in reserve for retargeting audiences.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <p class="eyebrow">07 — To start</p>
+      <h2>What's needed from your side</h2>
+    </div>
+    <ul class="plain">
+      <li><strong>Admin access to the LinkedIn Ads account</strong> — to edit the lead form and authorise the connection.</li>
+      <li><strong>Company registration details</strong> — legal entity name and tax ID, for carrier registration. This blocks US texting, so it's the first thing to hand over.</li>
+      <li><strong>A payment method</strong> on Twilio, ElevenLabs and Make. Roughly $95/month, all pay-as-you-go, no contracts.</li>
+      <li><strong>Your qualification criteria, in plain English</strong> — what makes a lead worth a meeting. Everything the agent says is downstream of this, so it has to exist before the build starts.</li>
+      <li><strong>The first two or three markets.</strong> "Global" is a targeting setting, not a state of readiness — we start where we understand the rules and the language, then expand deliberately.</li>
+      <li><strong>A named owner for the weekly hour.</strong> The tuning loop is a person plus a system, not a system. Without someone reading transcripts on a Friday, this is a pipeline with good logging.</li>
+    </ul>
+  </section>
+
+  <footer>
+    Build plan v2 · supersedes the linear architecture in v1.<br>
+    Costs are vendor list prices as of August 2026 and should be re-checked before committing spend. Latency and conversion figures are typical for this stack, to be measured against our own deployment rather than assumed.<br>
+    Compliance notes flag categories to address, not legal advice — the emotion-recognition and consent items in particular warrant a lawyer before any EU market goes live.
+  </footer>
+
+</div>
