@@ -1,0 +1,45 @@
+{
+  "_comment": "Business data for the Twilio compliance profile. Everything under `business` and `address` is already filled from the Latvian company register. Fill in `representative` — those are the only values nobody but you has. Nothing in this file is secret; credentials come from environment variables and are never written here.",
+
+  "business": {
+    "legalName": "RIZZ GROUP, SIA",
+    "businessType": "Limited Liability Corporation",
+    "registrationIdentifier": "Other",
+    "registrationNumber": "40203589324",
+    "businessIdentity": "direct_customer",
+    "businessRegionsOfOperation": "Europe",
+    "websiteUrl": "https://autostaff.app",
+    "socialMediaProfileUrls": "",
+    "businessIndustry": "PROFESSIONAL_SERVICES"
+  },
+
+  "address": {
+    "customerName": "RIZZ GROUP, SIA",
+    "street": "Alberta iela 1-13",
+    "city": "Riga",
+    "region": "Riga",
+    "postalCode": "LV-1010",
+    "isoCountry": "LV"
+  },
+
+  "representative": {
+    "_fill_these_in": "Only you have these. Twilio requires a named human who attests to the profile.",
+    "firstName": "",
+    "lastName": "",
+    "email": "",
+    "phoneNumber": "",
+    "businessTitle": "",
+    "jobPosition": "Director"
+  },
+
+  "profile": {
+    "friendlyName": "RIZZ Group primary compliance profile",
+    "notificationEmail": ""
+  },
+
+  "_notes": {
+    "websiteUrl": "Deliberately autostaff.app. rizzgroup.com is a parked domain and rizzailabs.com fails TLS — a reviewer opening either would see a dead site, which is a common rejection reason.",
+    "entity": "This is RIZZ GROUP, SIA. If the number should belong to RIZZ AI Labs instead, replace legalName, registrationNumber and address with that entity's details. Name and registration number must match the register exactly or the profile bounces.",
+    "jobPosition": "One of: Director, GM, VP, CEO, CFO, General Counsel, Other"
+  }
+}
