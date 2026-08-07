@@ -1,0 +1,23 @@
+{
+  "name": "lead-enrichment",
+  "version": "1.0.0",
+  "description": "Enriches a LinkedIn lead with grounded facts about their company, and builds the voice agent's opening line.",
+  "main": "src/enrich.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test test/*.test.js",
+    "enrich": "node src/cli.js"
+  },
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.115.0"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "private": true
+}
