@@ -1,0 +1,1219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WRECKAGE.TV — INFINITE CHANNEL</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Bebas+Neue&family=Inter:wght@300;400;500&display=swap');
+
+  :root {
+    --bg: #0a0a0a; --bg2: #111; --bg3: #1a1a1a; --bg4: #222;
+    --border: #2a2a2a; --border2: #333;
+    --text: #e0e0e0; --text2: #888; --text3: #555;
+    --accent: #ff3c00; --accent2: #ff7a00; --accent3: #ffcc00;
+    --green: #00ff88; --blue: #00aaff; --purple: #aa44ff; --red: #ff2244;
+    --mono: 'Space Mono', monospace; --display: 'Bebas Neue', sans-serif; --body: 'Inter', sans-serif;
+    --side: 380px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    background: var(--bg); color: var(--text); font-family: var(--body);
+    font-size: 13px; line-height: 1.5; overflow: hidden;
+  }
+  button, input, select, textarea { font-family: inherit; font-size: inherit; color: inherit; }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: var(--bg2); }
+  ::-webkit-scrollbar-thumb { background: var(--border2); }
+  ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+  /* ===== SHELL ===== */
+  .app {
+    display: grid; grid-template-columns: 1fr var(--side); grid-template-rows: 46px 1fr;
+    grid-template-areas: 'head head' 'stage side';
+    height: 100vh;
+  }
+
+  .head {
+    grid-area: head; display: flex; align-items: center; gap: 14px;
+    padding: 0 16px; border-bottom: 1px solid var(--border); background: var(--bg2);
+  }
+  .head .mark { font-family: var(--display); font-size: 24px; letter-spacing: 2px; color: var(--accent); line-height: 1; }
+  .head .sub { font-family: var(--mono); font-size: 9px; color: var(--text3); letter-spacing: 1px; text-transform: uppercase; }
+  .head .spacer { flex: 1; }
+  .onair {
+    font-family: var(--mono); font-size: 10px; font-weight: 700; letter-spacing: 1px;
+    padding: 4px 9px; border: 1px solid var(--border2); background: var(--bg3); color: var(--text2);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .onair .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text3); }
+  .onair.live { color: var(--red); border-color: var(--red); }
+  .onair.live .dot { background: var(--red); animation: pulse 1.4s infinite; }
+  .onair.gen { color: var(--accent3); border-color: var(--accent3); }
+  .onair.gen .dot { background: var(--accent3); animation: pulse .8s infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .25; } }
+
+  .mode-pill {
+    font-family: var(--mono); font-size: 9px; letter-spacing: 1px; padding: 4px 8px;
+    border: 1px solid var(--border2); color: var(--text2); background: var(--bg3);
+  }
+  .mode-pill.live { color: var(--green); border-color: var(--green); }
+
+  /* ===== STAGE ===== */
+  .stage { grid-area: stage; display: flex; flex-direction: column; min-width: 0; background: #000; }
+  .screen { position: relative; flex: 1; min-height: 0; background: #000; overflow: hidden; }
+  .feed {
+    position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain;
+    background: #000; opacity: 0; transition: opacity .18s linear; pointer-events: none;
+  }
+  .feed.on { opacity: 1; }
+
+  .screen::after { /* scanlines — same texture as the SYS app */
+    content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 6;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,.16) 2px, rgba(0,0,0,.16) 4px);
+  }
+  .screen.glitch { animation: glitchcut .18s steps(2); }
+  @keyframes glitchcut {
+    0% { filter: invert(1) hue-rotate(90deg); transform: translateX(-6px) scaleY(1.02); }
+    50% { filter: brightness(2.2) saturate(0); transform: translateX(5px); }
+    100% { filter: none; transform: none; }
+  }
+
+  /* --- on-screen furniture --- */
+  .bug {
+    position: absolute; top: 14px; left: 16px; z-index: 8; display: flex; align-items: center; gap: 8px;
+    font-family: var(--mono); font-size: 10px; font-weight: 700; letter-spacing: 2px;
+    padding: 5px 10px; background: rgba(0,0,0,.55); border-left: 2px solid var(--accent);
+    text-shadow: 0 1px 3px #000;
+  }
+  .bug .rec { width: 8px; height: 8px; border-radius: 50%; background: var(--red); animation: pulse 1.4s infinite; }
+  .bug .ch { color: var(--accent); font-family: var(--display); font-size: 16px; letter-spacing: 2px; }
+
+  .clock { position: absolute; top: 14px; right: 16px; z-index: 8; font-family: var(--mono); font-size: 10px;
+    color: var(--text2); background: rgba(0,0,0,.55); padding: 5px 10px; letter-spacing: 1px; text-shadow: 0 1px 3px #000; }
+
+  .lower3 {
+    position: absolute; left: 0; right: 0; bottom: 0; z-index: 8; padding: 40px 18px 14px;
+    background: linear-gradient(0deg, rgba(0,0,0,.9) 0%, rgba(0,0,0,.6) 50%, transparent 100%);
+    pointer-events: none; transition: opacity .5s, transform .5s;
+  }
+  .lower3.rest { opacity: 0; transform: translateY(10px); }
+  .screen:hover .lower3 { opacity: 1; transform: none; }
+  .l3-tag {
+    display: inline-block; font-family: var(--mono); font-size: 9px; font-weight: 700; letter-spacing: 2px;
+    padding: 2px 7px; margin-bottom: 6px; background: var(--accent); color: #000;
+  }
+  .l3-tag.lib { background: var(--blue); }
+  .l3-tag.match { background: var(--purple); }
+  .l3-title { font-family: var(--display); font-size: 30px; letter-spacing: 2px; line-height: 1; color: #fff; text-shadow: 0 2px 8px #000; }
+  .l3-sub { font-family: var(--mono); font-size: 10px; color: var(--text2); letter-spacing: 1px; margin-top: 5px; }
+  .l3-sub b { color: var(--accent3); font-weight: 700; }
+
+  .ticker {
+    position: absolute; left: 0; right: 0; bottom: 0; z-index: 9; height: 26px; overflow: hidden;
+    background: rgba(0,0,0,.75); border-top: 1px solid var(--border); display: none;
+  }
+  body.broadcast .ticker { display: block; }
+  .ticker-rail { display: inline-block; white-space: nowrap; padding-left: 100%; animation: roll 34s linear infinite;
+    font-family: var(--mono); font-size: 11px; line-height: 26px; letter-spacing: 1px; }
+  .ticker-rail span { margin-right: 42px; color: var(--text2); }
+  .ticker-rail b { color: var(--accent); font-weight: 700; }
+  @keyframes roll { from { transform: translateX(0); } to { transform: translateX(-100%); } }
+
+  .toast-rail { position: absolute; top: 50px; left: 16px; z-index: 9; display: flex; flex-direction: column; gap: 5px; }
+  .toast {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 1px; padding: 4px 9px;
+    background: rgba(0,0,0,.7); border-left: 2px solid var(--text3); color: var(--text2);
+    animation: slidein .2s ease-out;
+  }
+  .toast.ok { border-color: var(--green); color: var(--green); }
+  .toast.warn { border-color: var(--accent3); color: var(--accent3); }
+  .toast.err { border-color: var(--red); color: var(--red); }
+  @keyframes slidein { from { transform: translateX(-14px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+  /* --- transport bar under the screen --- */
+  .transport {
+    flex: 0 0 auto; border-top: 1px solid var(--border); background: var(--bg2);
+    padding: 8px 12px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  }
+  body.broadcast .transport, body.broadcast .head, body.broadcast .side, body.broadcast .upnext { display: none; }
+  body.broadcast .lower3 { padding-bottom: 36px; }  /* clear the request ticker */
+  body.broadcast .app { grid-template-columns: 1fr; grid-template-rows: 1fr; grid-template-areas: 'stage'; }
+
+  .tbtn {
+    font-family: var(--mono); font-size: 10px; font-weight: 700; letter-spacing: 1px;
+    padding: 6px 11px; background: var(--bg3); border: 1px solid var(--border2); color: var(--text2);
+    cursor: pointer; transition: all .12s;
+  }
+  .tbtn:hover { border-color: var(--accent); color: var(--accent); }
+  .tbtn.on { background: var(--accent); border-color: var(--accent); color: #000; }
+  .tbtn.ghost { background: transparent; }
+
+  .stats { display: flex; gap: 14px; margin-left: auto; font-family: var(--mono); font-size: 9px; color: var(--text3); letter-spacing: 1px; }
+  .stats b { color: var(--text); font-weight: 700; }
+  .stats .hot { color: var(--accent3); }
+
+  .upnext {
+    flex: 0 0 auto; border-top: 1px solid var(--border); background: var(--bg);
+    padding: 7px 12px; display: flex; align-items: center; gap: 8px; overflow-x: auto; min-height: 34px;
+  }
+  .upnext .lbl { font-family: var(--mono); font-size: 9px; color: var(--text3); letter-spacing: 1px; flex: 0 0 auto; }
+  .chip {
+    flex: 0 0 auto; font-family: var(--mono); font-size: 9px; letter-spacing: 1px; padding: 4px 8px;
+    border: 1px solid var(--border2); background: var(--bg3); color: var(--text2); max-width: 260px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .chip.live { border-color: var(--accent); color: var(--accent); }
+  .chip.job { border-color: var(--accent3); color: var(--accent3); }
+  .chip.req { border-color: var(--purple); color: var(--purple); }
+
+  /* ===== SIDE (chat + director) ===== */
+  .side { grid-area: side; display: flex; flex-direction: column; border-left: 1px solid var(--border); background: var(--bg2); min-height: 0; }
+  .side-tabs { display: flex; border-bottom: 1px solid var(--border); flex: 0 0 auto; }
+  .side-tab {
+    flex: 1; padding: 10px 6px; background: none; border: none; border-bottom: 2px solid transparent;
+    font-family: var(--mono); font-size: 10px; font-weight: 700; letter-spacing: 1px; color: var(--text3); cursor: pointer;
+  }
+  .side-tab:hover { color: var(--text2); }
+  .side-tab.active { color: var(--accent); border-bottom-color: var(--accent); background: var(--bg3); }
+  .pane { display: none; flex: 1; min-height: 0; flex-direction: column; }
+  .pane.active { display: flex; }
+
+  .chatlog { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 7px; }
+  .msg { font-size: 12px; line-height: 1.45; word-wrap: break-word; }
+  .msg .who { font-family: var(--mono); font-size: 10px; font-weight: 700; letter-spacing: .5px; }
+  .msg .txt { color: var(--text); }
+  .msg.sys { font-family: var(--mono); font-size: 10px; color: var(--text3); letter-spacing: .5px; border-left: 2px solid var(--border2); padding-left: 7px; }
+  .msg.sys.ok { color: var(--green); border-color: var(--green); }
+  .msg.sys.warn { color: var(--accent3); border-color: var(--accent3); }
+  .msg.sys.err { color: var(--red); border-color: var(--red); }
+  .msg.queued .who { color: var(--accent); }
+  .msg.idle .who { color: var(--text3); }
+  .msg.idle .txt { color: var(--text3); }
+  .msg .src { font-family: var(--mono); font-size: 8px; color: var(--text3); letter-spacing: 1px; margin-left: 5px; }
+  .msg .badge { font-family: var(--mono); font-size: 8px; letter-spacing: 1px; padding: 1px 4px; margin-left: 5px; background: var(--bg4); color: var(--text3); }
+  .msg .badge.on { background: var(--accent); color: #000; }
+
+  .chatbar { flex: 0 0 auto; border-top: 1px solid var(--border); padding: 9px; background: var(--bg); }
+  .chatbar .row { display: flex; gap: 6px; }
+  .chatbar input[type=text] {
+    flex: 1; padding: 9px 10px; background: var(--bg3); border: 1px solid var(--border2); color: var(--text);
+    font-family: var(--mono); font-size: 11px; outline: none;
+  }
+  .chatbar input[type=text]:focus { border-color: var(--accent); }
+  .chatbar .hint { font-family: var(--mono); font-size: 9px; color: var(--text3); margin-top: 6px; letter-spacing: .5px; }
+
+  /* --- director / settings pane --- */
+  .cfg { flex: 1; overflow-y: auto; padding: 12px; }
+  .cfg-group { margin-bottom: 16px; }
+  .cfg-h {
+    font-family: var(--mono); font-size: 9px; font-weight: 700; letter-spacing: 2px; color: var(--accent);
+    padding-bottom: 5px; margin-bottom: 9px; border-bottom: 1px solid var(--border);
+  }
+  .fld { margin-bottom: 9px; }
+  .fld label { display: block; font-family: var(--mono); font-size: 9px; color: var(--text3); letter-spacing: 1px; margin-bottom: 4px; }
+  .fld input[type=text], .fld input[type=password], .fld input[type=number], .fld select {
+    width: 100%; padding: 7px 9px; background: var(--bg3); border: 1px solid var(--border2);
+    color: var(--text); font-family: var(--mono); font-size: 11px; outline: none;
+  }
+  .fld input:focus, .fld select:focus { border-color: var(--accent); }
+  .fld .note { font-family: var(--mono); font-size: 9px; color: var(--text3); margin-top: 4px; line-height: 1.4; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .toggle { display: flex; align-items: center; gap: 8px; padding: 6px 0; cursor: pointer; }
+  .toggle input { accent-color: var(--accent); width: 14px; height: 14px; cursor: pointer; }
+  .toggle span { font-family: var(--mono); font-size: 10px; color: var(--text2); letter-spacing: .5px; }
+  .toggle .sub { display: block; font-size: 9px; color: var(--text3); letter-spacing: 0; }
+  .cfg-btn {
+    width: 100%; padding: 9px; margin-top: 4px; background: var(--accent); border: none; color: #000;
+    font-family: var(--mono); font-size: 10px; font-weight: 700; letter-spacing: 1px; cursor: pointer;
+  }
+  .cfg-btn:hover { background: var(--accent2); }
+  .cfg-btn.sec { background: var(--bg3); border: 1px solid var(--border2); color: var(--text2); }
+  .cfg-btn.sec:hover { border-color: var(--accent); color: var(--accent); }
+  .wire { font-family: var(--mono); font-size: 9px; color: var(--text3); line-height: 1.5; }
+  .wire b { color: var(--text2); }
+
+  /* ===== GATE ===== */
+  .gate {
+    position: fixed; inset: 0; z-index: 9999; background: rgba(5,5,5,.94);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; cursor: pointer;
+  }
+  .gate .g-mark { font-family: var(--display); font-size: 72px; letter-spacing: 6px; color: var(--accent); line-height: .9; }
+  .gate .g-sub { font-family: var(--mono); font-size: 11px; color: var(--text2); letter-spacing: 3px; text-align: center; }
+  .gate .g-cta {
+    margin-top: 10px; font-family: var(--mono); font-size: 12px; font-weight: 700; letter-spacing: 2px;
+    padding: 12px 26px; border: 1px solid var(--accent); color: var(--accent); animation: pulse 2s infinite;
+  }
+  .gate.off { display: none; }
+
+  @media (max-width: 900px) {
+    .app { grid-template-columns: 1fr; grid-template-rows: 46px 1fr 300px; grid-template-areas: 'head' 'stage' 'side'; }
+    .side { border-left: none; border-top: 1px solid var(--border); }
+  }
+</style>
+</head>
+<body>
+
+<!-- click-to-enter: the feed is already rolling muted behind this; the click is
+     only there to buy us the gesture browsers demand before we can unmute. -->
+<div class="gate" id="gate">
+  <div class="g-mark">WRECKAGE.TV</div>
+  <div class="g-sub">AN INFINITE AI CHANNEL &nbsp;·&nbsp; THE CHAT DECIDES WHAT AIRS NEXT</div>
+  <div class="g-cta" id="gateCta">CLICK TO ENTER — SOUND ON</div>
+</div>
+
+<div class="app">
+
+  <div class="head">
+    <div class="mark">WRECKAGE.TV</div>
+    <div class="sub">INFINITE CHANNEL — VIEWERS PROMPT, THE CHANNEL GENERATES</div>
+    <div class="spacer"></div>
+    <div class="mode-pill" id="modePill">LIBRARY MODE</div>
+    <div class="onair live" id="onAir"><span class="dot"></span><span id="onAirTxt">ON AIR</span></div>
+  </div>
+
+  <div class="stage">
+    <div class="screen" id="screen">
+      <video id="vA" class="feed" playsinline preload="auto"></video>
+      <video id="vB" class="feed" playsinline preload="auto"></video>
+
+      <div class="bug"><span class="rec"></span><span class="ch">WRECKAGE.TV</span><span id="bugMode">LIBRARY</span></div>
+      <div class="clock" id="clock">00:00:00</div>
+      <div class="toast-rail" id="toastRail"></div>
+
+      <div class="lower3">
+        <div class="l3-tag" id="l3Tag">STANDBY</div>
+        <div class="l3-title" id="l3Title">SIGNAL ACQUIRING</div>
+        <div class="l3-sub" id="l3Sub">booting the deck…</div>
+      </div>
+
+      <div class="ticker" id="ticker"><div class="ticker-rail" id="tickerRail"><span>WRECKAGE.TV — type in chat to direct the channel</span></div></div>
+    </div>
+
+    <div class="transport">
+      <button class="tbtn on" id="btnAir" title="Space">■ ON AIR</button>
+      <button class="tbtn" id="btnSkip" title="N">▶▶ CUT TO NEXT</button>
+      <button class="tbtn" id="btnMute" title="M">🔇 MUTED</button>
+      <button class="tbtn ghost" id="btnBroadcast" title="B">⛶ BROADCAST</button>
+      <div class="stats">
+        <span>AIRED <b id="stAired">0</b></span>
+        <span>GENERATED <b id="stGen">0</b></span>
+        <span>RENDERING <b class="hot" id="stJobs">0</b></span>
+        <span>BUFFER <b id="stBuf">0</b></span>
+        <span>REQUESTS <b id="stReq">0</b></span>
+      </div>
+    </div>
+
+    <div class="upnext"><span class="lbl">UP NEXT ▸</span><div id="upnextRail" style="display:flex;gap:8px;"></div></div>
+  </div>
+
+  <div class="side">
+    <div class="side-tabs">
+      <button class="side-tab active" data-pane="chat">💬 LIVE CHAT</button>
+      <button class="side-tab" data-pane="cfg">⚙ DIRECTOR</button>
+    </div>
+
+    <!-- ===== CHAT ===== -->
+    <div class="pane active" id="pane-chat">
+      <div class="chatlog" id="chatlog"></div>
+      <div class="chatbar">
+        <div class="row">
+          <input type="text" id="chatInput" placeholder="direct the channel…" autocomplete="off" maxlength="240">
+          <button class="tbtn on" id="chatSend">SEND</button>
+        </div>
+        <div class="hint" id="chatHint">anything you type gets generated next and connected to the shot before it.</div>
+      </div>
+    </div>
+
+    <!-- ===== DIRECTOR / SETTINGS ===== -->
+    <div class="pane" id="pane-cfg">
+      <div class="cfg">
+
+        <div class="cfg-group">
+          <div class="cfg-h">RENDER BACKEND</div>
+          <div class="fld">
+            <label>WRECKAGE /api BASE URL</label>
+            <input type="text" id="cfgBackend" placeholder="https://your-wreckage.vercel.app">
+            <div class="note">Blank = <b>library mode</b>: the channel runs forever off the 58-clip reference library and chat steers which clip airs. Point this at the WRECKAGE backend (the one the SYS app renders through) to switch to <b>live generation</b> — chat prompts become new Seedance clips.</div>
+          </div>
+          <div class="fld">
+            <label>ANTHROPIC API KEY — optional story director</label>
+            <input type="password" id="cfgKey" placeholder="sk-ant-…">
+            <div class="note">With a key, Claude writes each next shot so it continues the last one. Without it, a local composer glues the request to a camera move — still chained, just blunter.</div>
+          </div>
+          <div class="grid2">
+            <div class="fld"><label>DIRECTOR MODEL</label><input type="text" id="cfgModel" value="claude-opus-5"></div>
+            <div class="fld"><label>REMEMBER KEY</label>
+              <label class="toggle"><input type="checkbox" id="cfgRemember"><span>store in this browser</span></label>
+            </div>
+          </div>
+        </div>
+
+        <div class="cfg-group">
+          <div class="cfg-h">VIEWER INPUT</div>
+          <div class="fld">
+            <label>TWITCH CHANNEL — read viewer chat live</label>
+            <div style="display:flex;gap:6px;">
+              <input type="text" id="cfgTwitch" placeholder="channelname" style="flex:1;">
+              <button class="tbtn" id="btnTwitch">CONNECT</button>
+            </div>
+            <div class="note" id="twStatus">Anonymous read-only IRC — no login, no token. Every message a viewer sends becomes a scene request.</div>
+          </div>
+          <div class="fld">
+            <label>COMMAND PREFIX</label>
+            <input type="text" id="cfgPrefix" placeholder="blank = every message counts" value="!">
+            <div class="note">With <b>!</b> set, only <b>!a cat detective visits kazakhstan</b> gets queued — ordinary chatter just scrolls past. Blank means every line is a request.</div>
+          </div>
+          <label class="toggle"><input type="checkbox" id="cfgBridge" checked><span>ACCEPT EXTERNAL BRIDGE<span class="sub">window.WRECKAGE.submit() + postMessage — for chat bots and OBS parents</span></span></label>
+        </div>
+
+        <div class="cfg-group">
+          <div class="cfg-h">CHANNEL LOGIC</div>
+          <label class="toggle"><input type="checkbox" id="cfgChain" checked><span>CHAIN THE STORY<span class="sub">feed the last frame + last beat into the next shot</span></span></label>
+          <label class="toggle"><input type="checkbox" id="cfgAuto"><span>AUTOPILOT<span class="sub">keep generating when nobody is prompting (costs money on idle)</span></span></label>
+          <label class="toggle"><input type="checkbox" id="cfgFiller" checked><span>LIBRARY FILLER<span class="sub">air reference clips while renders are in flight — never dead air</span></span></label>
+          <div class="grid2" style="margin-top:8px;">
+            <div class="fld"><label>BUFFER AHEAD</label><input type="number" id="cfgBuffer" value="2" min="1" max="6"></div>
+            <div class="fld"><label>RENDER CAP / SESSION</label><input type="number" id="cfgCap" value="40" min="1" max="500"></div>
+          </div>
+          <div class="grid2">
+            <div class="fld"><label>SHOT LENGTH</label>
+              <select id="cfgDuration"><option value="4">4s</option><option value="5" selected>5s</option><option value="8">8s</option><option value="10">10s</option></select>
+            </div>
+            <div class="fld"><label>ASPECT</label>
+              <select id="cfgAspect"><option value="16:9" selected>16:9</option><option value="21:9">21:9</option><option value="9:16">9:16</option><option value="1:1">1:1</option></select>
+            </div>
+          </div>
+          <div class="fld"><label>RESOLUTION</label>
+            <select id="cfgRes"><option value="480p">480p — cheapest, fastest</option><option value="720p" selected>720p</option><option value="1080p">1080p — slowest</option></select>
+            <div class="note">A channel eats a clip every few seconds. Lower resolution buys you buffer.</div>
+          </div>
+          <button class="cfg-btn" id="btnSaveCfg">SAVE SETTINGS</button>
+          <button class="cfg-btn sec" id="btnResetCfg">RESET</button>
+        </div>
+
+        <div class="cfg-group">
+          <div class="cfg-h">WIRING</div>
+          <div class="wire">
+            <b>OBS / streaming:</b> add this page as a Browser Source, hit <b>BROADCAST</b> (or press B) — chrome disappears, the ticker of viewer requests comes up over the feed.<br><br>
+            <b>Bot bridge:</b> <code>window.WRECKAGE.submit('viewer','a cat detective in kazakhstan')</code>, or <code>postMessage({type:'wreckage:prompt',user,text})</code> from the parent frame.<br><br>
+            <b>URL params:</b> <code>?backend=…&amp;twitch=…&amp;broadcast=1&amp;autopilot=1&amp;prefix=!</code><br><br>
+            <b>Keys:</b> SPACE on/off air · N cut to next · M mute · B broadcast · / focus chat.
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* =============================================================================
+   WRECKAGE.TV — an infinite AI TV channel.
+
+   Two modes, same loop:
+     LIBRARY MODE (no backend)  — airs the 58-clip reference library forever;
+                                  chat requests get keyword-matched to a clip.
+     LIVE MODE    (backend set) — chat requests become new Seedance renders via
+                                  the same /api/video the SYS app uses, each one
+                                  chained off the previous shot's last frame so
+                                  the channel actually tells a story.
+
+   The one rule: never dead air. Renders take a minute, clips take seconds, so
+   the player always has something loaded and falls back to the library rather
+   than showing black.
+   ========================================================================== */
+
+// the effect vocabulary — same names/prompt fragments as WRECKAGE.SYS, and every
+// slug here has a matching 4s reference clip in /clips (that's the filler deck).
+const MOVES = [
+  { label: "INFINITE PUSH-IN", name: "RECURSIVE DOLLY IMPLOSION", slug: "recursive-dolly-implosion", fam: "push", prompt: "recursive dolly push-in that folds camera space into itself, geometry collapsing inward recursively, each frame containing the previous frame shrinking at exponential rate" },
+  { label: "UPSIDE-DOWN ORBIT", name: "INVERTED GRAVITY ORBIT", slug: "inverted-gravity-orbit", fam: "spin", prompt: "camera orbiting subject while gravity vector rotates 180 degrees mid-move, surfaces becoming ceilings, spatial relationships inverting as orbit completes" },
+  { label: "GHOST THROUGH WALLS", name: "PHASE-SHIFT TRACKING SHOT", slug: "phase-shift-tracking-shot", fam: "break", prompt: "tracking shot where camera phases through solid geometry, passing through walls and objects as intangible observer, subject remaining solid while environment becomes permeable" },
+  { label: "IMPOSSIBLE SPIRAL PULL-BACK", name: "EIGENSPACE SPIRAL PULL", slug: "eigenspace-spiral-pull", fam: "push", prompt: "spiral pullback along undefined axis that curves through higher-dimensional space, subject remaining stationary while surrounding space warps into spiral vortex topology" },
+  { label: "PUNCH THROUGH THE IMAGE", name: "MEMBRANE COLLAPSE ZOOM", slug: "membrane-collapse-zoom", fam: "push", prompt: "zoom into surface that behaves as elastic membrane, camera pressure causing visible deformation of reality plane, surface tension visually breaking as camera breaches" },
+  { label: "EDGE-OF-THE-WORLD PAN", name: "VOID-EDGE CRAWL", slug: "void-edge-crawl", fam: "break", prompt: "slow lateral crawl along the perceived edge of visible space, camera approaching the boundary where rendered geometry ends and void begins, edge artifacts as aesthetic" },
+  { label: "WHIP PAN THROUGH TIME", name: "TIME-FRACTURED WHIP PAN", slug: "time-fractured-whip-pan", fam: "time", prompt: "whip pan where motion blur fragments into discrete temporal slices, each slice showing different moment in time, pan reveals timeline of same space across multiple moments simultaneously" },
+  { label: "STOP-MOTION ORBIT", name: "STROBOSCOPIC ORBIT", slug: "stroboscopic-orbit", fam: "spin", prompt: "orbit shot with stroboscopic temporal sampling, movement advancing in discontinuous jumps of 30 degree intervals, negative space between frames visible as model artifact" },
+  { label: "GHOST-TRAIL FOLLOW", name: "ECHO-TRAIL TRACKING", slug: "echo-trail-tracking", fam: "time", prompt: "tracking shot leaving visible ghost echoes of previous camera positions, each echo frame slightly desaturated and offset, creating infinite temporal trail behind camera movement" },
+  { label: "PAN THAT NEVER LANDS", name: "TEMPORAL SMEAR PAN", slug: "temporal-smear-pan", fam: "time", prompt: "pan shot where motion smear refuses to resolve, entire frame existing in perpetual blur state suggesting simultaneous occupancy of all pan positions at once, subject ghosted across full pan range" },
+  { label: "INSIDE-OUT ZOOM", name: "HYPERBOLIC ZOOM THROUGH SELF", slug: "hyperbolic-zoom-through-self", fam: "break", prompt: "zoom that passes through subject and camera simultaneously, hyperbolic geometry allowing inside and outside to exchange positions, interior space becoming exterior without spatial discontinuity" },
+  { label: "ONE-SIDED ORBIT", name: "MÖBIUS STRIP ORBIT", slug: "m-bius-strip-orbit", fam: "spin", prompt: "orbital camera path following Möbius topology, camera traversing single continuous surface that is both inside and outside subject simultaneously, orientation flipping exactly once per revolution" },
+  { label: "INSIDE-OUT FLYTHROUGH", name: "KLEIN BOTTLE TRAVERSE", slug: "klein-bottle-traverse", fam: "break", prompt: "camera path following Klein bottle topology through scene, self-intersecting without boundary, four-dimensional surface rendered in three-dimensional space creating visual paradox" },
+  { label: "WORLD-FOLD PUSH-IN", name: "TOPOLOGICAL FOLD PUSH-IN", slug: "topological-fold-push-in", fam: "push", prompt: "push-in that compresses scene through topological fold operation, distant objects brought adjacent to near objects through space bending, foreground and background occupying same screen space" },
+  { label: "FLAT-WORLD SLIDE", name: "ANTI-PARALLAX SLIDE", slug: "anti-parallax-slide", fam: "break", prompt: "lateral slide where near and far objects move in identical directions at identical speeds, parallax completely absent, depth cues removed, scene flattened to impossible 2D card" },
+  { label: "FORWARD + REVERSE AT ONCE", name: "RETROGRADE PUSH", slug: "retrograde-push", fam: "time", prompt: "push-in shot that simultaneously runs in reverse, camera advancing and retreating at identical speed, net motion zero but temporal artifacts accumulating with each contradictory frame" },
+  { label: "BACKWARDS-DETAIL ZOOM", name: "ENTROPY ZOOM", slug: "entropy-zoom", fam: "push", prompt: "zoom where image detail increases with distance rather than proximity, zooming out reveals progressively more complex geometry, zooming in approaches featureless void" },
+  { label: "DIRECTIONLESS DRIFT", name: "NULL VECTOR DRIFT", slug: "null-vector-drift", fam: "break", prompt: "camera drift with undefined direction vector, movement suggestion without spatial commitment, frame content shifting as if camera moves but no consistent axis or direction maintained" },
+  { label: "FROZEN MOMENT", name: "TEMPORAL STASIS TRAVERSAL", slug: "temporal-stasis-traversal", fam: "time", prompt: "time arrests to a dead stop, every particle of dust and every spark and the subject caught mid-motion all lock rigid and hang suspended in the air, while the camera alone keeps moving, gliding and arcing through the frozen instant as the only thing still in motion, frozen debris petrified mid-streak" },
+  { label: "FLY THROUGH EVERYTHING", name: "CONTINUOUS SPATIAL TRAVERSAL", slug: "continuous-spatial-traversal", fam: "break", prompt: "one relentless unbroken forward flight threading through the entire space, the camera driving straight into and through the subject then punching through the wall behind, racing down the length of the environment and spearing through obstacle after obstacle without slowing, solid matter parting around the lens as it breaches out the far side into open dark" },
+  { label: "THE FOCUS WALL", name: "FOCAL PLANE TRAVERSAL DOLLY", slug: "focal-plane-traversal-dolly", fam: "lens", prompt: "camera body locked and motionless while the plane of focus itself travels forward through the scene like a physical membrane, a razor-thin slice of harsh sharpness sweeping front to back, everything ahead of it molten bokeh soup and everything behind it decaying into deeper blur than before, depth interrogated one slice at a time" },
+  { label: "WORLD GOES MINIATURE", name: "TILT-SHIFT SCALE COLLAPSE", slug: "tilt-shift-scale-collapse", fam: "lens", prompt: "crane upward while depth of field crushes to a millimeter, the whole scene curdling into a miniature tabletop diorama, toy-scale and hobbyist-model wrong, the subject shrinking into a painted figurine without moving while the environment becomes plastic scenery with visible seams" },
+  { label: "LENS GOES LIQUID", name: "OPTICAL MELTDOWN REFRACTION", slug: "optical-meltdown-refraction", fam: "lens", prompt: "the lens itself melting mid-push, the image bulging convex then sagging, refraction indexes hemorrhaging, lens flares dripping off light sources like molten solder while the frame edges liquefy and run downward and the center keeps advancing forward" },
+  { label: "SOMETHING HITS THE CAMERA", name: "BLUNT IMPACT DISPLACEMENT", slug: "blunt-impact-displacement", fam: "body", prompt: "tracking forward until an unseen mass strikes the camera from off-frame, the image wrenching violently sideways with tearing diagonal motion blur, the horizon snapping loose and spinning, the camera hitting the floor and staying there canted at a dead angle filming ankle-height dust with no recovery" },
+  { label: "CAMERA GETS HEAVY", name: "DEADWEIGHT OPERATOR SAG", slug: "deadweight-operator-sag", fam: "body", prompt: "the frame sagging floorward mid-move as if the lens gained enormous weight, hauling itself back to eye-line with a sick lurch then sagging deeper, each recovery weaker than the last, the tilt drifting and the horizon listing, gravity negotiating with the shot and winning" },
+  { label: "SHOT ON A HEARTBEAT", name: "SYSTOLIC PRESSURE ZOOM", slug: "systolic-pressure-zoom", fam: "body", prompt: "the zoom advancing only on the beat, a systolic clench inward then release then clench, each contraction gaining ground it never gives back, frame edges blooming dark and vascular red on every pulse and the vignette throbbing like pressure behind an eye, everything holding dead-still between beats" },
+  { label: "HARD WHIP PAN", name: "AGGRESSIVE WHIP PAN", slug: "aggressive-whip-pan", fam: "speed", prompt: "violent whip pan with extreme motion blur, frame whipping left to right in under 3 frames, blur trail dominating majority of shot, aggressive kinetic energy" },
+  { label: "CRASH ZOOM IMPACT", name: "SMASH CUT CRASH ZOOM", slug: "smash-cut-crash-zoom", fam: "speed", prompt: "crash zoom with smash cut timing, lens compressing space at maximum speed, subject slamming toward camera in single violent compression, no ease" },
+  { label: "DRIFTING ARC", name: "KINETIC DRIFT ARC", slug: "kinetic-drift-arc", fam: "speed", prompt: "sweeping arc with drift physics, camera overcorrecting mid-arc creating controlled slide, kinetic energy transferred from pan to vertical axis" },
+  { label: "SPRINTING HANDHELD", name: "HYPERACTIVE HANDHELD THRUST", slug: "hyperactive-handheld-thrust", fam: "speed", prompt: "handheld forward thrust with micro-tremor amplification, aggressive focal plane pushing, unstable frame enhancing raw kinetic energy of forward movement" },
+  { label: "GLITCH-STUTTER PAN", name: "STROBING GLITCH PAN", slug: "strobing-glitch-pan", fam: "speed", prompt: "pan interrupted by stroboscopic glitch frames, movement advancing in jittered increments, each stutter revealing alternate frame composition, temporal displacement every 5-7 frames" },
+  { label: "SNAP ORBIT", name: "SNAP ORBIT", slug: "snap-orbit", fam: "spin", prompt: "rapid orbit snapping to beat-aligned positions, no smooth interpolation, camera jumping 45-90 degree increments per beat, subject constantly recentered" },
+  { label: "TRAPDOOR DROP", name: "VERTICAL GRAVITY DROP", slug: "vertical-gravity-drop", fam: "speed", prompt: "straight vertical drop accelerating with gravity physics, horizon line dropping out of frame bottom in under 10 frames, sense of freefall" },
+  { label: "DOUBLE WHIP", name: "DOUBLE WHIP REVERSE", slug: "double-whip-reverse", fam: "speed", prompt: "whip pan followed immediately by opposite-direction whip pan in same shot, brief clear frame between whips, double blur bookending a single composed beat" },
+  { label: "BARREL-ROLL SPIN", name: "CENTRIFUGE SPIN", slug: "centrifuge-spin", fam: "spin", prompt: "rotation around z-axis at high speed, horizon spinning past 360 degrees, subject holding center while frame rolls with centrifuge physics" },
+  { label: "SHOCKWAVE PUSH", name: "SHOCKWAVE PUSH", slug: "shockwave-push", fam: "push", prompt: "push-in triggered by invisible shockwave, camera thrust forward by pressure wave, environment compressing ahead of camera, distortion ring propagating outward from point of impact" },
+  { label: "STUTTER TRACK", name: "STUTTER TRACK", slug: "stutter-track", fam: "time", prompt: "tracking shot with rhythmic stutter pattern, smooth movement interrupted by quarter-frame holds, micro-stutter creating percussive visual rhythm against continuous motion" },
+  { label: "RUBBER-BAND ZOOM", name: "ELASTIC ZOOM SNAP", slug: "elastic-zoom-snap", fam: "speed", prompt: "zoom that overshoots target focal point and snaps back with elastic physics, overshoot visible as brief moment of over-compression before settling" },
+];
+
+const WARPS = [
+  { label: "CITY FOLDS OVERHEAD", name: "INCEPTION WORLD FOLD", slug: "inception-world-fold", fam: "warp", prompt: "world folding along horizon axis like Inception city bend, ground plane rotating upward to become vertical wall then ceiling, buildings and streets curling overhead forming enclosed tunnel of architecture, gravity vector rotating 90 degrees per section of scene, far end of folded world visible above while original ground remains below, impossible enclosed cityscape with buildings pointing inward from all sides" },
+  { label: "SKY TEARS OPEN", name: "REALITY MEMBRANE TEARING", slug: "reality-membrane-tearing", fam: "warp", prompt: "visible tear propagating across reality plane, edges of tear revealing void or alternate space, fabric of rendered geometry splitting under tension, tear expanding with each frame" },
+  { label: "BLACK-HOLE WARP", name: "GRAVITATIONAL LENS DISTORTION", slug: "gravitational-lens-distortion", fam: "warp", prompt: "gravitational lensing effect bending light around invisible mass in scene center, background stretching into Einstein ring topology, foreground elements compressed toward lens point" },
+  { label: "RGB SPLIT SHOCKWAVE", name: "CHROMATIC ABERRATION SHOCKWAVE", slug: "chromatic-aberration-shockwave", fam: "warp", prompt: "chromatic aberration radiating outward from impact point, RGB channels separating in expanding rings, color fringing increasing with distance from origin, maximum separation at frame edges" },
+  { label: "WORLD TURNS TO PARTICLES", name: "PIXEL DISSOLUTION CASCADE", slug: "pixel-dissolution-cascade", fam: "warp", prompt: "progressive pixel dissolution advancing from one edge of frame, solid geometry converting to particles and scattering, dissolution frontier advancing steadily, undissolved half contrasting with particle chaos" },
+  { label: "PORTAL INSIDE PORTAL", name: "RECURSIVE PORTAL COLLAPSE", slug: "recursive-portal-collapse", fam: "warp", prompt: "circular portal opening to identical scene, portal containing portal containing portal ad infinitum, each nested portal slightly rotated and scaled, recursive depth limited only by model resolution" },
+  { label: "SPACE RIPPLES LIKE WATER", name: "SPACETIME RIPPLE PROPAGATION", slug: "spacetime-ripple-propagation", fam: "warp", prompt: "visible spacetime ripple propagating from point source, geometry oscillating like disturbed water surface, ripple passing through solid objects as if they were liquid, wavefront visible and measurable" },
+  { label: "SOLIDS GO GHOST", name: "MATTER PHASING THROUGH SURFACES", slug: "matter-phasing-through-surfaces", fam: "warp", prompt: "solid matter becoming semi-transparent and interpenetrating other objects, phasing effect advancing through multiple layers of geometry, brief full transparency before resolidifying in impossible position" },
+  { label: "WORLD DE-RENDERS", name: "GEOMETRIC REALITY BREAKDOWN", slug: "geometric-reality-breakdown", fam: "warp", prompt: "organic scene geometry converting to low-poly mesh visible breakdown, vertex count decreasing each second, Platonic solid approximations replacing curves, final frame pure geometry primitive" },
+  { label: "ALL MOMENTS AT ONCE", name: "TEMPORAL ECHO SMEAR", slug: "temporal-echo-smear", fam: "warp", prompt: "object positions smeared across multiple temporal positions simultaneously, motion blur extended to full shot duration, every position occupied at once, present moment indistinguishable from past" },
+  { label: "CUBE-STORM EXPLOSION", name: "VOXEL FRAGMENTATION STORM", slug: "voxel-fragmentation-storm", fam: "warp", prompt: "scene converting to cubic voxel structure then voxels detaching and scattering in storm pattern, voxel size progressively decreasing as fragmentation accelerates, empty space where solid geometry was" },
+  { label: "NEAR / FAR SWAP", name: "INVERSE DEPTH FOLD", slug: "inverse-depth-fold", fam: "warp", prompt: "depth map inverting mid-shot, near objects becoming far and vice versa without changing position, foreground receding impossibly while background advances, spatial hierarchy reversing completely" },
+  { label: "STATIC EATS THE FRAME", name: "NOISE FIELD CONSUMPTION", slug: "noise-field-consumption", fam: "warp", prompt: "Perlin noise field advancing through scene consuming geometric detail, structured information replaced by turbulent noise pattern, noise density increasing until original content unrecognizable" },
+  { label: "GRAVITY GOES SIDEWAYS", name: "AXIS GRAVITY INVERSION", slug: "axis-gravity-inversion", fam: "warp", prompt: "gravity axis rotating 90 degrees mid-shot, all physics objects reorienting to new down vector, liquid and particles adjusting to new floor which was previously a wall, scene re-settling under rotated physics" },
+  { label: "2D INVADES 3D", name: "DIMENSION BLEED", slug: "dimension-bleed", fam: "warp", prompt: "second spatial dimension bleeding through from behind the scene, flat plane geometry intruding from depth axis, 2D silhouettes of objects appearing as physical objects in 3D space, depth and flatness coexisting simultaneously" },
+];
+
+const DECK = MOVES.concat(WARPS);
+
+// filler + library-mode footage: the public clip library on jsDelivr. served
+// same-origin when this page sits next to /clips (local dev, gh-pages checkout).
+const CLIP_CDN = 'https://cdn.jsdelivr.net/gh/xantrans420/wreckage-clips@main/clips/';
+function clipBase() {
+  const h = location.hostname;
+  return (h === 'localhost' || h === '127.0.0.1' || h === '') ? 'clips/' : CLIP_CDN;
+}
+
+// house style — every generated shot carries it so the channel looks like one
+// channel and not 40 unrelated renders.
+const STYLE_SPINE = 'shot on damaged optics, heavy grain, aggressive contrast, no smooth stabilization, the camera is a physical object under stress';
+
+// ---------- state ----------
+const S = {
+  onAir: true,
+  muted: true,
+  queue: [],          // items waiting to air: { kind, src, title, sub, user, prompt }
+  requests: [],       // viewer prompts waiting to be rendered
+  jobs: new Map(),    // taskId -> { title, user, started }
+  story: [],          // beats already committed, in generation order
+  lastFrame: null,    // dataURL of the previous shot's final frame (visual chaining)
+  aired: 0, generated: 0, failed: 0, renders: 0,
+  deck: [], recent: [],
+  tw: null,
+  cfg: {}
+};
+
+const DEFAULTS = {
+  backend: '', key: '', model: 'claude-opus-5', remember: false,
+  twitch: '', prefix: '!', bridge: true,
+  chain: true, autopilot: false, filler: true,
+  buffer: 2, cap: 40, duration: 5, aspect: '16:9', res: '720p'
+};
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+// ---------- config ----------
+function readCfg() {
+  return {
+    backend: $('cfgBackend').value.trim().replace(/\/+$/, ''),
+    key: $('cfgKey').value.trim(),
+    model: $('cfgModel').value.trim() || DEFAULTS.model,
+    remember: $('cfgRemember').checked,
+    twitch: $('cfgTwitch').value.trim(),
+    prefix: $('cfgPrefix').value.trim(),
+    bridge: $('cfgBridge').checked,
+    chain: $('cfgChain').checked,
+    autopilot: $('cfgAuto').checked,
+    filler: $('cfgFiller').checked,
+    buffer: Math.max(1, Math.min(6, parseInt($('cfgBuffer').value) || 2)),
+    cap: Math.max(1, parseInt($('cfgCap').value) || 40),
+    duration: parseInt($('cfgDuration').value) || 5,
+    aspect: $('cfgAspect').value,
+    res: $('cfgRes').value
+  };
+}
+function applyCfg(c) {
+  $('cfgBackend').value = c.backend || ''; $('cfgKey').value = c.key || '';
+  $('cfgModel').value = c.model || DEFAULTS.model; $('cfgRemember').checked = !!c.remember;
+  $('cfgTwitch').value = c.twitch || ''; $('cfgPrefix').value = c.prefix == null ? '!' : c.prefix;
+  $('cfgBridge').checked = c.bridge !== false; $('cfgChain').checked = c.chain !== false;
+  $('cfgAuto').checked = !!c.autopilot; $('cfgFiller').checked = c.filler !== false;
+  $('cfgBuffer').value = c.buffer || 2; $('cfgCap').value = c.cap || 40;
+  $('cfgDuration').value = String(c.duration || 5); $('cfgAspect').value = c.aspect || '16:9'; $('cfgRes').value = c.res || '720p';
+  syncCfg();
+}
+function syncCfg() {
+  S.cfg = readCfg();
+  const live = !!S.cfg.backend;
+  $('modePill').textContent = live ? 'LIVE GENERATION' : 'LIBRARY MODE';
+  $('modePill').classList.toggle('live', live);
+  $('bugMode').textContent = live ? 'LIVE' : 'LIBRARY';
+  $('chatHint').textContent = live
+    ? 'anything you type is generated next and connected to the shot before it.'
+    : 'library mode — your prompt picks the closest clip in the deck. add a backend in DIRECTOR to generate new footage.';
+  paintStats();
+}
+function saveCfg() {
+  const c = readCfg();
+  const store = Object.assign({}, c); delete store.key;
+  try {
+    localStorage.setItem('wreckage.tv.cfg', JSON.stringify(store));
+    if (c.remember && c.key) localStorage.setItem('wreckage.tv.key', c.key);
+    else localStorage.removeItem('wreckage.tv.key');
+  } catch (e) {}
+  syncCfg(); toast('SETTINGS SAVED', 'ok');
+}
+function loadCfg() {
+  let c = Object.assign({}, DEFAULTS);
+  try {
+    const raw = localStorage.getItem('wreckage.tv.cfg');
+    if (raw) c = Object.assign(c, JSON.parse(raw));
+    const k = localStorage.getItem('wreckage.tv.key');
+    if (k) { c.key = k; c.remember = true; }
+  } catch (e) {}
+  // URL params win — that's how an OBS source or a launcher link is configured
+  const q = new URLSearchParams(location.search);
+  if (q.has('backend')) c.backend = q.get('backend');
+  if (q.has('twitch')) c.twitch = q.get('twitch');
+  if (q.has('prefix')) c.prefix = q.get('prefix');
+  if (q.has('autopilot')) c.autopilot = q.get('autopilot') !== '0';
+  if (q.has('chain')) c.chain = q.get('chain') !== '0';
+  if (q.has('buffer')) c.buffer = parseInt(q.get('buffer')) || c.buffer;
+  if (q.has('duration')) c.duration = parseInt(q.get('duration')) || c.duration;
+  if (q.has('aspect')) c.aspect = q.get('aspect');
+  if (q.has('res')) c.res = q.get('res');
+  applyCfg(c);
+  if (q.get('broadcast') === '1') document.body.classList.add('broadcast');
+}
+
+// ---------- chrome ----------
+function toast(txt, cls) {
+  const rail = $('toastRail');
+  const d = document.createElement('div');
+  d.className = 'toast ' + (cls || ''); d.textContent = txt;
+  rail.appendChild(d);
+  setTimeout(() => d.remove(), 4200);
+  while (rail.children.length > 4) rail.firstChild.remove();
+}
+function chatLine(user, text, cls, srcLabel) {
+  const d = document.createElement('div');
+  d.className = 'msg ' + (cls || '');
+  d.innerHTML = `<span class="who">${esc(user)}</span>${srcLabel ? `<span class="src">${esc(srcLabel)}</span>` : ''}<span class="badge${cls === 'queued' ? ' on' : ''}">${cls === 'queued' ? 'QUEUED' : 'CHAT'}</span><br><span class="txt">${esc(text)}</span>`;
+  pushLog(d);
+}
+function sysLine(text, cls) {
+  const d = document.createElement('div');
+  d.className = 'msg sys ' + (cls || ''); d.textContent = text;
+  pushLog(d);
+}
+function pushLog(node) {
+  const log = $('chatlog');
+  const stuck = log.scrollTop + log.clientHeight > log.scrollHeight - 60;
+  log.appendChild(node);
+  while (log.children.length > 220) log.firstChild.remove();
+  if (stuck) log.scrollTop = log.scrollHeight;
+}
+function paintStats() {
+  $('stAired').textContent = S.aired;
+  $('stGen').textContent = S.generated;
+  $('stJobs').textContent = S.jobs.size;
+  $('stBuf').textContent = S.queue.filter(i => i.kind === 'live').length;
+  $('stReq').textContent = S.requests.length;
+  const air = $('onAir');
+  air.className = 'onair ' + (!S.onAir ? '' : (S.jobs.size ? 'gen' : 'live'));
+  $('onAirTxt').textContent = !S.onAir ? 'OFF AIR' : (S.jobs.size ? 'RENDERING ' + S.jobs.size : 'ON AIR');
+}
+function paintUpNext() {
+  const rail = $('upnextRail'); rail.innerHTML = '';
+  const chips = [];
+  if (standby) chips.push(['live', standby.title]);
+  S.queue.slice(0, 4).forEach(i => chips.push([i.kind === 'live' ? 'live' : '', i.title]));
+  S.jobs.forEach(j => chips.push(['job', 'RENDERING · ' + j.title]));
+  S.requests.slice(0, 4).forEach(r => chips.push(['req', r.user + ' · ' + r.text]));
+  if (!chips.length) chips.push(['', 'library shuffle']);
+  chips.slice(0, 12).forEach(([c, t]) => {
+    const d = document.createElement('div');
+    d.className = 'chip ' + c; d.textContent = t; rail.appendChild(d);
+  });
+}
+function tickerPush(user, text) {
+  const rail = $('tickerRail');
+  const s = document.createElement('span');
+  s.innerHTML = `<b>${esc(user)}</b> ${esc(text)}`;
+  rail.appendChild(s);
+  while (rail.children.length > 14) rail.firstChild.remove();
+}
+
+// ---------- the deck (library filler) ----------
+function reshuffle() {
+  S.deck = DECK.slice();
+  for (let i = S.deck.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1));[S.deck[i], S.deck[j]] = [S.deck[j], S.deck[i]]; }
+}
+function fillerItem() {
+  if (!S.deck.length) reshuffle();
+  let obj = S.deck.pop();
+  // don't repeat anything from the last handful of slots
+  let guard = 0;
+  while (obj && S.recent.includes(obj.slug) && S.deck.length && guard++ < 8) { S.deck.unshift(obj); obj = S.deck.pop(); }
+  return libraryItem(obj, 'filler');
+}
+function libraryItem(obj, kind, user) {
+  if (!obj) obj = DECK[Math.floor(Math.random() * DECK.length)];
+  S.recent.push(obj.slug); if (S.recent.length > 10) S.recent.shift();
+  return {
+    kind: kind || 'filler', src: clipBase() + obj.slug + '.mp4',
+    title: obj.label, sub: obj.name, user: user || '', prompt: obj.prompt, loop: false
+  };
+}
+// library mode's answer to a viewer prompt: score every effect against the words
+// they typed and air the closest one. crude, instant, and it makes the channel
+// visibly obey the chat with no backend at all.
+function matchLibrary(text) {
+  const words = String(text).toLowerCase().match(/[a-z]{3,}/g) || [];
+  if (!words.length) return null;
+  let best = null, bestScore = 0;
+  DECK.forEach(o => {
+    const hay = (o.label + ' ' + o.name + ' ' + o.fam + ' ' + o.prompt).toLowerCase();
+    let sc = 0;
+    words.forEach(w => {
+      if (hay.includes(w)) sc += 2;
+      else if (w.length > 4 && hay.includes(w.slice(0, Math.max(4, w.length - 2)))) sc += 1;
+    });
+    if (S.recent.includes(o.slug)) sc -= 1;
+    if (sc > bestScore) { bestScore = sc; best = o; }
+  });
+  return bestScore >= 2 ? best : null;
+}
+
+// =============================================================================
+// PLAYER — two <video> elements, A/B rolled like a broadcast deck. One is on
+// screen, the other is already loaded with the next item. On 'ended' we flip.
+// Nothing here ever waits on the network: if the queue is empty it pulls from
+// the library deck, so the channel cannot go black.
+// =============================================================================
+let front = 'a', playing = null, standby = null, lastProgress = 0, lastTime = -1, errStreak = 0;
+const feedEl = k => (k === 'a' ? $('vA') : $('vB'));
+const backKey = () => (front === 'a' ? 'b' : 'a');
+
+function nextItem() {
+  if (S.queue.length) return S.queue.shift();
+  if (!S.cfg.filler && S.jobs.size) return null;   // filler off + something coming: hold the frame
+  return fillerItem();
+}
+
+function preloadStandby() {
+  if (standby) return;
+  const item = nextItem();
+  if (!item) return;
+  standby = item;
+  const v = feedEl(backKey());
+  v.src = item.src;
+  try { v.load(); } catch (e) {}
+  paintUpNext();
+}
+
+let retryTimer = null;
+function cutToNext() {
+  if (!standby) preloadStandby();
+  if (!standby) {                             // nothing loadable yet — hold the frame and keep trying
+    clearTimeout(retryTimer);
+    retryTimer = setTimeout(() => { if (S.onAir) cutToNext(); }, 1000);
+    return;
+  }
+  clearTimeout(retryTimer); retryTimer = null;
+  const nk = backKey(), ok = front;
+  const nv = feedEl(nk), ov = feedEl(ok);
+  playing = standby; standby = null; front = nk;
+
+  nv.muted = S.muted; nv.classList.add('on');
+  try { nv.currentTime = 0; } catch (e) {}
+  nv.play().catch(() => { nv.muted = true; nv.play().catch(() => {}); });
+  ov.classList.remove('on');
+  setTimeout(() => { try { ov.pause(); } catch (e) {} }, 260);
+
+  const scr = $('screen');
+  scr.classList.remove('glitch'); void scr.offsetWidth; scr.classList.add('glitch');
+
+  lastProgress = Date.now(); lastTime = -1;
+  paintNowPlaying(playing); paintStats();
+  setTimeout(preloadStandby, 200);            // start loading the one after this
+}
+
+let l3Timer = null;
+function paintNowPlaying(item) {
+  const tag = $('l3Tag');
+  const l3 = document.querySelector('.lower3');
+  l3.classList.remove('rest');
+  clearTimeout(l3Timer);
+  l3Timer = setTimeout(() => l3.classList.add('rest'), 6000);
+  const kindLabel = item.kind === 'live' ? 'GENERATED LIVE' : (item.kind === 'match' ? 'CHAT PICK' : 'LIBRARY');
+  tag.textContent = kindLabel;
+  tag.className = 'l3-tag' + (item.kind === 'filler' ? ' lib' : (item.kind === 'match' ? ' match' : ''));
+  $('l3Title').textContent = item.title || '—';
+  $('l3Sub').innerHTML = item.user
+    ? `REQUESTED BY <b>${esc(item.user)}</b> &nbsp;·&nbsp; ${esc(item.sub || '')}`
+    : esc(item.sub || '');
+}
+
+function wireFeed(k) {
+  const v = feedEl(k);
+  v.addEventListener('ended', () => { if (k === front && S.onAir) cutToNext(); });
+  v.addEventListener('playing', () => {
+    if (k === front) { S.aired++; paintStats(); }   // count frames that actually reached air
+    errStreak = 0; lastProgress = Date.now();
+  });
+  v.addEventListener('timeupdate', () => { if (k === front) lastProgress = Date.now(); });
+  v.addEventListener('error', () => {
+    // an aborted load (we swapped this element's src out from under it) fires
+    // 'error' too — ignore anything that isn't the item this element still holds.
+    const src = v.getAttribute('src');
+    const mine = k === front ? playing : standby;
+    if (!src || !mine || mine.src !== src) return;
+    errStreak++;
+    if (errStreak === 4) { toast('SOURCE UNREACHABLE — CHECK THE FEED', 'err'); sysLine('four clips in a row failed to load — clip host or render output unreachable', 'err'); }
+    if (k === front) { if (S.onAir) setTimeout(cutToNext, errStreak > 4 ? 2500 : 120); }
+    else { standby = null; setTimeout(preloadStandby, errStreak > 4 ? 2500 : 120); }
+  });
+}
+
+// stall watchdog — a CDN hiccup or a dead provider URL must not freeze the channel
+setInterval(() => {
+  if (!S.onAir || !playing) return;
+  const v = feedEl(front);
+  if (v.paused || v.ended) return;
+  if (v.currentTime !== lastTime) { lastTime = v.currentTime; lastProgress = Date.now(); return; }
+  if (Date.now() - lastProgress > 12000) { toast('FEED STALLED — CUTTING', 'warn'); cutToNext(); }
+}, 2000);
+
+function setAir(on) {
+  S.onAir = on;
+  const b = $('btnAir');
+  b.classList.toggle('on', on);
+  b.textContent = on ? '■ ON AIR' : '▶ OFF AIR';
+  const v = feedEl(front);
+  if (!on) { try { v.pause(); } catch (e) {} }
+  else if (!playing || v.ended) cutToNext();
+  else v.play().catch(() => {});
+  paintStats();
+}
+function setMuted(m) {
+  S.muted = m;
+  feedEl('a').muted = m; feedEl('b').muted = m;
+  $('btnMute').textContent = m ? '🔇 MUTED' : '🔊 SOUND';
+  $('btnMute').classList.toggle('on', !m);
+}
+
+// =============================================================================
+// CONTINUITY — grab the last frame of a finished shot so the next one can start
+// exactly where it ended. Done in a throwaway element with crossOrigin set: if
+// the provider serves no CORS headers the canvas taints, we get null, and the
+// channel simply chains by text instead. Playback is never put at risk by this.
+// =============================================================================
+function captureLastFrame(url) {
+  return new Promise(resolve => {
+    const v = document.createElement('video');
+    let done = false;
+    const fin = out => { if (done) return; done = true; try { v.src = ''; v.remove(); } catch (e) {} resolve(out); };
+    const bail = setTimeout(() => fin(null), 20000);
+    v.crossOrigin = 'anonymous'; v.muted = true; v.preload = 'auto'; v.playsInline = true;
+    v.onloadedmetadata = () => { try { v.currentTime = Math.max(0, (v.duration || 1) - 0.08); } catch (e) { clearTimeout(bail); fin(null); } };
+    v.onseeked = () => {
+      try {
+        const c = document.createElement('canvas');
+        const sc = Math.min(1, 1280 / Math.max(v.videoWidth || 1, v.videoHeight || 1));
+        c.width = Math.round((v.videoWidth || 1280) * sc); c.height = Math.round((v.videoHeight || 720) * sc);
+        c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
+        // same budget the SYS app uses — both frames must fit the serverless body cap
+        let q = 0.82, out = c.toDataURL('image/jpeg', q);
+        while (out.length > 1.5 * 1024 * 1024 && q > 0.4) { q -= 0.1; out = c.toDataURL('image/jpeg', q); }
+        clearTimeout(bail); fin(out);
+      } catch (e) { clearTimeout(bail); fin(null); }  // tainted canvas → text-only chaining
+    };
+    v.onerror = () => { clearTimeout(bail); fin(null); };
+    v.src = url;
+  });
+}
+
+// =============================================================================
+// DIRECTOR — turns a line of viewer chat into the next shot. With an API key
+// Claude writes it against the story so far; without one a local composer glues
+// the request to a camera move. Either way the result is the same shape and the
+// channel never blocks on it.
+// =============================================================================
+const SEEDS = [
+  'a cat detective works a case in a rain-flooded parking garage',
+  'a lone operator walks a corridor of dead server racks',
+  'a street market at 3am, everything slightly wrong',
+  'a diner at the edge of a highway that has no other end',
+  'a control room where every screen shows the same empty room',
+  'a figure in a hazard suit crossing a frozen reservoir',
+  'a maintenance crawlspace behind a shopping mall that keeps going'
+];
+const pickFrom = a => a[Math.floor(Math.random() * a.length)];
+function pickMove() {
+  let m, guard = 0;
+  do { m = pickFrom(MOVES); } while (S.recent.includes(m.slug) && guard++ < 6);
+  return m;
+}
+
+function localBeat(req, move, warp, prev) {
+  const bits = [];
+  if (prev && S.cfg.chain) bits.push(`picks up exactly where the last shot ended (${prev.title.toLowerCase()}), same world, same light, unbroken continuity`);
+  bits.push(req.text || (prev ? 'the scene escalates, something in it has changed since the last shot' : pickFrom(SEEDS)));
+  bits.push(move.prompt);
+  if (warp) bits.push(warp.prompt);
+  bits.push(STYLE_SPINE);
+  const head = (req.text || (prev ? 'ESCALATION' : 'COLD OPEN')).toUpperCase();
+  return { title: head.slice(0, 46), sub: move.label + (warp ? ' + ' + warp.label : ''), prompt: bits.join(', ') };
+}
+
+async function claudeBeat(req, move, warp, prev) {
+  const sys = `You are the director of WRECKAGE.TV, an infinite AI television channel. Viewers type requests in chat and you write the single next shot.
+
+Rules:
+- Output ONE continuous shot, 5 seconds, describable to a video model.
+- It MUST continue the previous shot: same world, same characters, same time of day, picking up where the last one ended. Escalate — never restate.
+- Fold the viewer's request in as the thing that happens next, however absurd. Never refuse a request for being strange; bend the story to accommodate it.
+- Build the camera move into the description as one integrated system with the world.
+- 60-110 words. Present tense, physical, specific. Never use: smooth, stable, steady, controlled, natural, gentle, balanced, clean, cinematic quality.
+
+Respond with ONLY a JSON object, no prose, no code fence:
+{"title":"SHORT ALL-CAPS CHYRON, MAX 6 WORDS","sub":"one short line naming the camera move","prompt":"the shot description"}`;
+
+  const beats = S.story.slice(-5).map((b, i) => `${i + 1}. ${b.title} — ${b.prompt}`).join('\n') || '(nothing has aired yet — this is the cold open)';
+  const user = `STORY SO FAR:\n${beats}\n\nVIEWER REQUEST${req.user ? ' from ' + req.user : ''}: ${req.text || '(no request — continue the story on your own and push it somewhere new)'}\n\nCAMERA MOVE TO USE: ${move.name} — ${move.prompt}${warp ? `\nWORLD WARP TO USE: ${warp.name} — ${warp.prompt}` : ''}\n\nWrite the next shot.`;
+
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': S.cfg.key,
+      'anthropic-version': '2023-06-01',
+      'anthropic-beta': 'server-side-fallback-2026-07-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify({
+      model: S.cfg.model,
+      max_tokens: 2000,
+      output_config: { effort: 'low' },   // it's a real-time loop — depth costs airtime
+      fallbacks: 'default',               // a declined request must not stall the channel
+      system: sys,
+      messages: [{ role: 'user', content: user }]
+    })
+  });
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message || 'director error');
+  if (data.stop_reason === 'refusal') throw new Error('director declined this request');
+  const txt = (data.content || []).map(c => c.text || '').join('').trim();
+  const raw = txt.startsWith('{') ? txt : (txt.match(/\{[\s\S]*\}/) || [''])[0];
+  let out = null;
+  try { out = JSON.parse(raw); } catch (e) {}
+  if (!out || !out.prompt) throw new Error('director returned no usable shot');
+  return {
+    title: String(out.title || req.text || 'UNTITLED').toUpperCase().slice(0, 46),
+    sub: String(out.sub || move.label).slice(0, 80),
+    prompt: String(out.prompt).slice(0, 2000)
+  };
+}
+
+async function composeBeat(req) {
+  const move = pickMove();
+  const warp = Math.random() < 0.3 ? pickFrom(WARPS) : null;
+  const prev = S.story[S.story.length - 1] || null;
+  if (S.cfg.key) {
+    try { return await claudeBeat(req, move, warp, prev); }
+    catch (e) { sysLine('director fell back to local composer — ' + e.message, 'warn'); }
+  }
+  return localBeat(req, move, warp, prev);
+}
+
+// =============================================================================
+// GENERATOR — keeps the buffer full. Chained mode runs strictly one at a time,
+// because a story that renders in parallel isn't a story.
+// =============================================================================
+let jobSeq = 0, capWarned = false, taintWarned = false;
+
+function pollJob(base, taskId) {
+  return new Promise((resolve, reject) => {
+    let tries = 0;
+    const tick = async () => {
+      if (tries++ > 90) return reject(new Error('render timed out'));   // ~6 min ceiling
+      try {
+        const r = await fetch(`${base}/api/video/${taskId}`);
+        const d = await r.json().catch(() => ({}));
+        if (d.status === 'succeeded' && d.videoUrl) return resolve(d);
+        if (d.status === 'failed') return reject(new Error(d.error || 'generation failed'));
+      } catch (e) { /* transient — keep polling */ }
+      setTimeout(tick, 4000);
+    };
+    setTimeout(tick, 3000);
+  });
+}
+
+async function startJob(req) {
+  const id = ++jobSeq;
+  S.jobs.set(id, { title: 'COMPOSING…', user: req.user });
+  paintStats(); paintUpNext();
+  const base = S.cfg.backend;
+  try {
+    const beat = await composeBeat(req);
+    const job = S.jobs.get(id); if (job) job.title = beat.title;
+    S.story.push(beat); if (S.story.length > 12) S.story.shift();
+    sysLine('▸ ' + beat.title + '  ·  ' + (req.user || 'AUTOPILOT'));
+    paintUpNext();
+
+    const frames = (S.cfg.chain && S.lastFrame) ? [S.lastFrame] : [];
+    const res = await fetch(base + '/api/video', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt: beat.prompt, frames,
+        durationSec: S.cfg.duration, aspect: S.cfg.aspect, resolution: S.cfg.res,
+        seed: Math.floor(Math.random() * 1e9)
+      })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.taskId) throw new Error(data.error || ('submit ' + res.status));
+    S.renders++;
+
+    const out = await pollJob(base, data.taskId);
+    S.generated++;
+    S.queue.push({ kind: 'live', src: out.videoUrl, title: beat.title, sub: beat.sub, user: req.user, prompt: beat.prompt });
+    preemptFiller();
+    sysLine('✓ ON DECK — ' + beat.title, 'ok');
+
+    if (S.cfg.chain) {
+      // chain the NEXT shot off this one's final frame (generation order, not airing
+      // order — we're rendering ahead of the broadcast).
+      captureLastFrame(out.videoUrl).then(f => {
+        if (f) S.lastFrame = f;
+        else if (!taintWarned) { taintWarned = true; sysLine('last frame not readable (no CORS on the video host) — chaining by story text only', 'warn'); }
+      });
+    }
+  } catch (e) {
+    S.failed++;
+    sysLine('✗ ' + (e.message || 'render failed'), 'err');
+    toast('RENDER FAILED', 'err');
+  } finally {
+    S.jobs.delete(id); paintStats(); paintUpNext();
+  }
+}
+
+// a freshly landed live clip should not sit behind a filler clip that hasn't aired
+function preemptFiller() {
+  if (standby && standby.kind === 'filler') { standby = null; preloadStandby(); }
+  paintStats(); paintUpNext();
+}
+
+setInterval(() => {
+  if (!S.cfg.backend) return;                                   // library mode renders nothing
+  const conc = S.cfg.chain ? 1 : 2;                             // chained = strictly sequential
+  if (S.jobs.size >= conc) return;
+  if (S.queue.filter(i => i.kind === 'live').length + S.jobs.size >= S.cfg.buffer) return;
+  if (S.renders >= S.cfg.cap) {
+    if (!capWarned) { capWarned = true; sysLine('render cap reached (' + S.cfg.cap + ') — raise it in DIRECTOR to keep generating', 'warn'); }
+    return;
+  }
+  const req = S.requests.shift() || (S.cfg.autopilot ? { user: 'AUTOPILOT', text: '' } : null);
+  if (!req) return;
+  paintStats(); startJob(req);
+}, 1500);
+
+// =============================================================================
+// VIEWER INPUT — local chat, Twitch IRC, and an external bridge all land here.
+// =============================================================================
+function submitRequest(user, text, source) {
+  user = String(user || 'viewer').slice(0, 24);
+  text = String(text || '').replace(/\s+/g, ' ').trim();
+  if (!text) return false;
+
+  const pfx = S.cfg.prefix;
+  if (pfx) {
+    if (text.toLowerCase().indexOf(pfx.toLowerCase()) !== 0) { chatLine(user, text, 'idle', source); return false; }
+    text = text.slice(pfx.length).trim();
+    if (!text) return false;
+  }
+  if (text.length > 240) text = text.slice(0, 240);
+
+  chatLine(user, text, 'queued', source);
+  tickerPush(user, text);
+
+  if (!S.cfg.backend) {
+    // library mode — the chat still steers the channel, it just picks from the deck
+    const m = matchLibrary(text);
+    S.queue.unshift(libraryItem(m, 'match', user));
+    if (!m) sysLine('no clip matches that — airing a wildcard', 'warn');
+    preemptFiller();
+    return true;
+  }
+  if (S.requests.length >= 40) S.requests.shift();          // a flooded queue is a stale queue
+  S.requests.push({ user, text, source, t: Date.now() });
+  paintStats(); paintUpNext();
+  return true;
+}
+
+// --- Twitch: anonymous read-only IRC over WebSocket. No token, no login, no
+// backend — justinfan is Twitch's own guest account convention. ---
+function setTw(msg, cls) {
+  const n = $('twStatus'); n.textContent = msg;
+  n.style.color = cls === 'ok' ? 'var(--green)' : cls === 'err' ? 'var(--red)' : '';
+}
+function twitchClose() {
+  if (S.tw) { try { S.tw.ws.onclose = null; S.tw.ws.close(); } catch (e) {} clearTimeout(S.tw.retry); S.tw = null; }
+  $('btnTwitch').textContent = 'CONNECT';
+}
+function twitchConnect(chan) {
+  chan = String(chan || '').trim().replace(/^#/, '').toLowerCase();
+  if (!chan) { twitchClose(); setTw('no channel set'); return; }
+  twitchClose();
+  setTw('connecting to #' + chan + '…');
+  let ws;
+  try { ws = new WebSocket('wss://irc-ws.chat.twitch.tv:443'); }
+  catch (e) { setTw('websocket blocked: ' + e.message, 'err'); return; }
+  const st = S.tw = { ws, chan, retry: null };
+  $('btnTwitch').textContent = 'DISCONNECT';
+
+  ws.onopen = () => {
+    ws.send('CAP REQ :twitch.tv/tags');
+    ws.send('PASS SCHMOOPIIE');
+    ws.send('NICK justinfan' + Math.floor(10000 + Math.random() * 89999));
+    ws.send('JOIN #' + chan);
+    setTw('reading #' + chan + ' — viewer messages are live', 'ok');
+    sysLine('twitch: joined #' + chan, 'ok');
+  };
+  ws.onmessage = e => {
+    String(e.data).split('\r\n').forEach(line => {
+      if (!line) return;
+      if (line.indexOf('PING') === 0) { ws.send('PONG :tmi.twitch.tv'); return; }
+      const m = line.match(/^(?:@(\S*) )?:([^!]+)!\S* PRIVMSG #\S+ :(.*)$/);
+      if (!m) return;
+      const dn = (m[1] || '').match(/(?:^|;)display-name=([^;]*)/);
+      submitRequest((dn && dn[1]) || m[2], m[3], 'twitch');
+    });
+  };
+  ws.onerror = () => setTw('twitch connection error', 'err');
+  ws.onclose = () => {
+    if (S.tw !== st) return;                       // superseded by a newer connect
+    setTw('disconnected — retrying in 5s', 'err');
+    st.retry = setTimeout(() => { if (S.tw === st) twitchConnect(chan); }, 5000);
+  };
+}
+
+// --- external bridge: a chat bot, an OBS parent page, anything ---
+window.WRECKAGE = {
+  submit: (user, text) => submitRequest(user || 'bridge', text, 'bridge'),
+  next: () => cutToNext(),
+  state: () => ({
+    mode: S.cfg.backend ? 'live' : 'library',
+    onAir: S.onAir, aired: S.aired, generated: S.generated, failed: S.failed,
+    rendering: S.jobs.size, buffered: S.queue.filter(i => i.kind === 'live').length,
+    requests: S.requests.length, chained: !!S.lastFrame,
+    nowPlaying: playing && { title: playing.title, kind: playing.kind, user: playing.user }
+  })
+};
+window.addEventListener('message', e => {
+  const d = e.data;
+  if (!S.cfg.bridge || !d || d.type !== 'wreckage:prompt') return;
+  submitRequest(d.user || 'bridge', d.text, 'postmessage');
+});
+
+// =============================================================================
+// UI WIRING
+// =============================================================================
+document.querySelectorAll('.side-tab').forEach(t => t.addEventListener('click', () => {
+  document.querySelectorAll('.side-tab').forEach(x => x.classList.remove('active'));
+  document.querySelectorAll('.pane').forEach(x => x.classList.remove('active'));
+  t.classList.add('active'); $('pane-' + t.dataset.pane).classList.add('active');
+}));
+
+function sendLocal() {
+  const i = $('chatInput'); const v = i.value;
+  if (!v.trim()) return;
+  // the operator's own line always counts, prefix or not
+  const pfx = S.cfg.prefix;
+  submitRequest('YOU', pfx && v.toLowerCase().indexOf(pfx.toLowerCase()) !== 0 ? pfx + v : v, 'local');
+  i.value = '';
+}
+$('chatSend').addEventListener('click', sendLocal);
+$('chatInput').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); sendLocal(); } });
+
+$('btnAir').addEventListener('click', () => setAir(!S.onAir));
+$('btnSkip').addEventListener('click', () => cutToNext());
+$('btnMute').addEventListener('click', () => setMuted(!S.muted));
+$('btnBroadcast').addEventListener('click', () => document.body.classList.toggle('broadcast'));
+$('btnSaveCfg').addEventListener('click', saveCfg);
+$('btnResetCfg').addEventListener('click', () => {
+  try { localStorage.removeItem('wreckage.tv.cfg'); localStorage.removeItem('wreckage.tv.key'); } catch (e) {}
+  applyCfg(Object.assign({}, DEFAULTS)); toast('SETTINGS RESET', 'warn');
+});
+$('btnTwitch').addEventListener('click', () => {
+  if (S.tw) { twitchClose(); setTw('disconnected'); sysLine('twitch: disconnected'); }
+  else { syncCfg(); twitchConnect($('cfgTwitch').value); }
+});
+['cfgBackend', 'cfgKey', 'cfgModel', 'cfgPrefix', 'cfgBridge', 'cfgChain', 'cfgAuto', 'cfgFiller',
+ 'cfgBuffer', 'cfgCap', 'cfgDuration', 'cfgAspect', 'cfgRes', 'cfgRemember']
+  .forEach(id => $(id).addEventListener('change', () => { syncCfg(); capWarned = false; }));
+
+document.addEventListener('keydown', e => {
+  const t = e.target.tagName;
+  if (t === 'INPUT' || t === 'SELECT' || t === 'TEXTAREA') {
+    if (e.key === 'Escape') e.target.blur();
+    return;
+  }
+  if (e.key === ' ') { e.preventDefault(); setAir(!S.onAir); }
+  else if (e.key === 'n' || e.key === 'N') cutToNext();
+  else if (e.key === 'm' || e.key === 'M') setMuted(!S.muted);
+  else if (e.key === 'b' || e.key === 'B') document.body.classList.toggle('broadcast');
+  else if (e.key === '/') { e.preventDefault(); $('chatInput').focus(); }
+});
+
+// gate: the feed is already rolling behind it — the click just buys us sound
+function openGate() {
+  $('gate').classList.add('off');
+  setMuted(false);
+  const v = feedEl(front); v.play().catch(() => {});
+}
+$('gate').addEventListener('click', openGate);
+
+// =============================================================================
+// BOOT
+// =============================================================================
+const bootTime = Date.now();
+setInterval(() => {
+  const s = Math.floor((Date.now() - bootTime) / 1000);
+  const p = n => String(n).padStart(2, '0');
+  $('clock').textContent = p(Math.floor(s / 3600)) + ':' + p(Math.floor(s / 60) % 60) + ':' + p(s % 60);
+}, 1000);
+
+(function boot() {
+  loadCfg();
+  wireFeed('a'); wireFeed('b');
+  reshuffle();
+  setMuted(true);
+
+  sysLine('WRECKAGE.TV online — ' + DECK.length + ' reference clips in the deck.');
+  if (S.cfg.backend) sysLine('live generation via ' + S.cfg.backend, 'ok');
+  else sysLine('library mode — add a render backend in DIRECTOR to generate new footage from chat.', 'warn');
+  if (!S.cfg.key && S.cfg.backend) sysLine('no api key — shots will be composed locally instead of written by claude.', 'warn');
+  sysLine(S.cfg.prefix ? ('requests must start with "' + S.cfg.prefix + '"') : 'every chat line counts as a request');
+
+  cutToNext();
+  paintStats(); paintUpNext();
+  if (S.cfg.twitch) twitchConnect(S.cfg.twitch);
+})();
+</script>
+</body>
+</html>
