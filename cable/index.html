@@ -1,0 +1,1086 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CABLE — a channel that never stops</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Anton&family=JetBrains+Mono:wght@400;700&display=swap');
+
+  :root {
+    --bg: #08090c; --panel: #0e1014; --panel2: #14171d; --line: #1c2027; --line2: #262b34;
+    --text: #e8ecf2; --dim: #7d8794; --faint: #4a525d;
+    --signal: #00e0ff; --hot: #ff2d55; --amber: #ffb020; --good: #2ee6a8;
+    --display: 'Anton', Impact, 'Arial Narrow Bold', sans-serif;
+    --mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    --side: 380px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    background: var(--bg); color: var(--text); font-size: 13px; line-height: 1.5;
+    font-family: var(--mono); overflow: hidden; -webkit-font-smoothing: antialiased;
+  }
+  button, input, select { font-family: inherit; font-size: inherit; color: inherit; }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: var(--panel); }
+  ::-webkit-scrollbar-thumb { background: var(--line2); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--signal); }
+
+  .app {
+    display: grid; grid-template-columns: 1fr var(--side); grid-template-rows: 48px 1fr;
+    grid-template-areas: 'head side' 'stage side'; height: 100vh;
+  }
+
+  /* ---------- header ---------- */
+  .head { grid-area: head; display: flex; align-items: center; gap: 14px; padding: 0 16px;
+    border-bottom: 1px solid var(--line); background: var(--panel); }
+  .wordmark { font-family: var(--display); font-size: 26px; letter-spacing: 5px; line-height: 1;
+    color: var(--text); text-transform: uppercase; }
+  .wordmark em { color: var(--signal); font-style: normal; }
+  .tagline { font-size: 9px; letter-spacing: 2px; color: var(--faint); text-transform: uppercase; }
+  .head .gap { flex: 1; }
+  .pill { font-size: 9px; font-weight: 700; letter-spacing: 1.5px; padding: 5px 9px;
+    border: 1px solid var(--line2); border-radius: 3px; color: var(--dim); display: flex; align-items: center; gap: 6px; }
+  .pill .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--faint); }
+  .pill.on { color: var(--hot); border-color: rgba(255,45,85,.5); }
+  .pill.on .dot { background: var(--hot); box-shadow: 0 0 8px var(--hot); animation: blink 1.4s infinite; }
+  .pill.busy { color: var(--signal); border-color: rgba(0,224,255,.5); }
+  .pill.busy .dot { background: var(--signal); animation: blink .7s infinite; }
+  @keyframes blink { 0%,100% { opacity: 1 } 50% { opacity: .2 } }
+
+  /* ---------- stage ---------- */
+  .stage { grid-area: stage; display: flex; flex-direction: column; min-width: 0; background: #000; }
+  .screen { position: relative; flex: 1; min-height: 0; overflow: hidden; background: #000; }
+  .feed { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain;
+    opacity: 0; transition: opacity .15s linear; pointer-events: none; background: #000; }
+  .feed.on { opacity: 1; }
+  .screen::after { content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 7;
+    background: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,.13) 3px, rgba(0,0,0,.13) 4px); }
+  .screen.cut { animation: cut .16s steps(2); }
+  @keyframes cut {
+    0% { filter: brightness(3) saturate(0); transform: scaleY(1.015) }
+    60% { filter: brightness(.3) hue-rotate(180deg); transform: translateX(3px) }
+    100% { filter: none; transform: none }
+  }
+
+  /* standby slate — shown until the first shot lands. no borrowed footage. */
+  .slate { position: absolute; inset: 0; z-index: 5; display: none; flex-direction: column;
+    align-items: center; justify-content: center; gap: 16px; text-align: center; padding: 30px;
+    background: radial-gradient(circle at 50% 45%, #101827 0%, #05060a 70%); }
+  .slate.show { display: flex; }
+  .slate .bars { display: flex; gap: 3px; height: 54px; margin-bottom: 4px; }
+  .slate .bars i { width: 15px; border-radius: 1px; animation: bars 1.1s ease-in-out infinite; }
+  .slate .bars i:nth-child(1) { background: #6c757d } .slate .bars i:nth-child(2) { background: #e0c341; animation-delay: .1s }
+  .slate .bars i:nth-child(3) { background: #46c7c7; animation-delay: .2s } .slate .bars i:nth-child(4) { background: #47b04b; animation-delay: .3s }
+  .slate .bars i:nth-child(5) { background: #c04ac0; animation-delay: .4s } .slate .bars i:nth-child(6) { background: #c0392b; animation-delay: .5s }
+  .slate .bars i:nth-child(7) { background: #2f5fd0; animation-delay: .6s }
+  @keyframes bars { 0%,100% { transform: scaleY(1) } 50% { transform: scaleY(.62) } }
+  .slate h2 { font-family: var(--display); font-size: 38px; letter-spacing: 4px; text-transform: uppercase; font-weight: 400; }
+  .slate p { font-size: 11px; color: var(--dim); letter-spacing: 1px; max-width: 460px; line-height: 1.7; }
+  .slate .stat { font-size: 10px; color: var(--signal); letter-spacing: 2px; }
+
+  .bug { position: absolute; top: 14px; left: 16px; z-index: 8; display: flex; align-items: center; gap: 9px;
+    padding: 6px 11px; background: rgba(0,0,0,.5); backdrop-filter: blur(6px); border-radius: 3px;
+    border-left: 2px solid var(--hot); }
+  .bug .rec { width: 8px; height: 8px; border-radius: 50%; background: var(--hot); animation: blink 1.4s infinite; }
+  .bug .name { font-family: var(--display); font-size: 17px; letter-spacing: 3px; }
+  .bug .name em { color: var(--signal); font-style: normal; }
+  .bug .src { font-size: 9px; letter-spacing: 1.5px; color: var(--dim); }
+  .clock { position: absolute; top: 14px; right: 16px; z-index: 8; font-size: 10px; letter-spacing: 1.5px;
+    color: var(--dim); background: rgba(0,0,0,.5); padding: 6px 10px; border-radius: 3px; }
+
+  .l3 { position: absolute; left: 0; right: 0; bottom: 0; z-index: 8; padding: 60px 20px 16px;
+    background: linear-gradient(0deg, rgba(0,0,0,.92) 10%, rgba(0,0,0,.55) 55%, transparent 100%);
+    pointer-events: none; transition: opacity .45s, transform .45s; }
+  .l3.rest { opacity: 0; transform: translateY(12px); }
+  .screen:hover .l3 { opacity: 1; transform: none; }
+  .l3 .kicker { display: inline-block; font-size: 9px; font-weight: 700; letter-spacing: 2px;
+    padding: 3px 8px; border-radius: 2px; background: var(--signal); color: #001318; margin-bottom: 8px; }
+  .l3 .kicker.hold { background: var(--amber); color: #1a1200; }
+  .l3 h1 { font-family: var(--display); font-size: 32px; letter-spacing: 2px; font-weight: 400;
+    line-height: 1.05; text-transform: uppercase; }
+  .l3 .by { font-size: 10px; color: var(--dim); letter-spacing: 1.5px; margin-top: 7px; }
+  .l3 .by b { color: var(--signal); font-weight: 700; }
+
+  .ticker { position: absolute; left: 0; right: 0; bottom: 0; z-index: 9; height: 28px; overflow: hidden;
+    background: rgba(0,0,0,.82); border-top: 1px solid var(--line); display: none; }
+  body.broadcast .ticker { display: block; }
+  body.broadcast .l3 { padding-bottom: 40px; }
+  .rail { display: inline-block; white-space: nowrap; padding-left: 100%; animation: roll 36s linear infinite;
+    font-size: 11px; line-height: 28px; letter-spacing: 1px; }
+  .rail span { margin-right: 46px; color: var(--dim); }
+  .rail b { color: var(--signal); font-weight: 700; }
+  @keyframes roll { from { transform: translateX(0) } to { transform: translateX(-100%) } }
+
+  .toasts { position: absolute; top: 52px; left: 16px; z-index: 9; display: flex; flex-direction: column; gap: 5px; }
+  .toast { font-size: 10px; letter-spacing: 1px; padding: 5px 10px; border-radius: 2px;
+    background: rgba(0,0,0,.75); border-left: 2px solid var(--faint); color: var(--dim); animation: slide .18s ease-out; }
+  .toast.ok { border-color: var(--good); color: var(--good) } .toast.warn { border-color: var(--amber); color: var(--amber) }
+  .toast.err { border-color: var(--hot); color: var(--hot) }
+  @keyframes slide { from { transform: translateX(-12px); opacity: 0 } to { transform: none; opacity: 1 } }
+
+  /* ---------- transport ---------- */
+  .transport { border-top: 1px solid var(--line); background: var(--panel); padding: 9px 12px;
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  body.broadcast .transport, body.broadcast .head, body.broadcast .side, body.broadcast .deck { display: none }
+  body.broadcast .app { grid-template-columns: 1fr; grid-template-rows: 1fr; grid-template-areas: 'stage' }
+  .btn { font-size: 10px; font-weight: 700; letter-spacing: 1.2px; padding: 7px 12px; border-radius: 3px;
+    background: var(--panel2); border: 1px solid var(--line2); color: var(--dim); cursor: pointer; transition: .12s; }
+  .btn:hover { border-color: var(--signal); color: var(--signal) }
+  .btn.live { background: var(--signal); border-color: var(--signal); color: #001318 }
+  .btn:disabled { opacity: .4; cursor: not-allowed }
+  .meters { display: flex; gap: 15px; margin-left: auto; font-size: 9px; color: var(--faint); letter-spacing: 1px; }
+  .meters b { color: var(--text); font-weight: 700 } .meters .hot b { color: var(--signal) }
+
+  .deck { border-top: 1px solid var(--line); background: var(--bg); padding: 8px 12px;
+    display: flex; align-items: center; gap: 8px; overflow-x: auto; min-height: 36px; }
+  .deck .lbl { font-size: 9px; color: var(--faint); letter-spacing: 1.5px; flex: 0 0 auto }
+  .card { flex: 0 0 auto; font-size: 9px; letter-spacing: .8px; padding: 5px 9px; border-radius: 2px;
+    border: 1px solid var(--line2); background: var(--panel2); color: var(--dim);
+    max-width: 270px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .card.ready { border-color: var(--good); color: var(--good) }
+  .card.rendering { border-color: var(--signal); color: var(--signal) }
+  .card.waiting { border-color: var(--line2); color: var(--faint) }
+
+  /* ---------- side ---------- */
+  .side { grid-area: side; display: flex; flex-direction: column; border-left: 1px solid var(--line);
+    background: var(--panel); min-height: 0; }
+  .tabs { display: flex; border-bottom: 1px solid var(--line); flex: 0 0 auto }
+  .tab { flex: 1; padding: 12px 6px; background: none; border: none; border-bottom: 2px solid transparent;
+    font-size: 10px; font-weight: 700; letter-spacing: 1.5px; color: var(--faint); cursor: pointer }
+  .tab:hover { color: var(--dim) } .tab.sel { color: var(--signal); border-bottom-color: var(--signal); background: var(--panel2) }
+  .pane { display: none; flex: 1; min-height: 0; flex-direction: column } .pane.sel { display: flex }
+
+  .log { flex: 1; overflow-y: auto; padding: 11px; display: flex; flex-direction: column; gap: 8px }
+  .m { font-size: 12px; line-height: 1.45; word-wrap: break-word }
+  .m .who { font-size: 10px; font-weight: 700; letter-spacing: .5px; color: var(--signal) }
+  .m .from { font-size: 8px; color: var(--faint); letter-spacing: 1px; margin-left: 5px }
+  .m .tagq { font-size: 8px; letter-spacing: 1px; padding: 1px 5px; border-radius: 2px; margin-left: 5px;
+    background: var(--signal); color: #001318 }
+  .m.skip .who { color: var(--faint) } .m.skip .txt { color: var(--faint) }
+  .m.sys { font-size: 10px; color: var(--faint); letter-spacing: .5px; border-left: 2px solid var(--line2); padding-left: 8px }
+  .m.sys.ok { color: var(--good); border-color: var(--good) } .m.sys.warn { color: var(--amber); border-color: var(--amber) }
+  .m.sys.err { color: var(--hot); border-color: var(--hot) }
+
+  .composer { border-top: 1px solid var(--line); padding: 10px; background: var(--bg) }
+  .composer .row { display: flex; gap: 6px }
+  .composer input { flex: 1; padding: 10px; background: var(--panel2); border: 1px solid var(--line2);
+    border-radius: 3px; font-size: 11px; outline: none }
+  .composer input:focus { border-color: var(--signal) }
+  .composer .tip { font-size: 9px; color: var(--faint); margin-top: 7px; letter-spacing: .5px; line-height: 1.5 }
+
+  .cfg { flex: 1; overflow-y: auto; padding: 13px }
+  .grp { margin-bottom: 18px }
+  .grp h3 { font-size: 9px; font-weight: 700; letter-spacing: 2px; color: var(--signal);
+    padding-bottom: 6px; margin-bottom: 10px; border-bottom: 1px solid var(--line) }
+  .f { margin-bottom: 10px }
+  .f label { display: block; font-size: 9px; color: var(--faint); letter-spacing: 1.2px; margin-bottom: 5px }
+  .f input, .f select { width: 100%; padding: 8px 9px; background: var(--panel2); border: 1px solid var(--line2);
+    border-radius: 3px; font-size: 11px; outline: none }
+  .f input:focus, .f select:focus { border-color: var(--signal) }
+  .f .note { font-size: 9px; color: var(--faint); margin-top: 5px; line-height: 1.55 }
+  .f .note b { color: var(--dim) }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px }
+  .sw { display: flex; align-items: flex-start; gap: 9px; padding: 7px 0; cursor: pointer }
+  .sw input { accent-color: var(--signal); width: 14px; height: 14px; margin-top: 2px; cursor: pointer; flex: 0 0 auto }
+  .sw span { font-size: 10px; color: var(--dim); letter-spacing: .5px }
+  .sw .s { display: block; font-size: 9px; color: var(--faint); letter-spacing: 0; margin-top: 2px }
+  .act { width: 100%; padding: 10px; margin-top: 5px; border: none; border-radius: 3px; cursor: pointer;
+    background: var(--signal); color: #001318; font-size: 10px; font-weight: 700; letter-spacing: 1.5px }
+  .act:hover { filter: brightness(1.12) }
+  .act.ghost { background: var(--panel2); border: 1px solid var(--line2); color: var(--dim) }
+  .act.ghost:hover { border-color: var(--signal); color: var(--signal); filter: none }
+  .doc { font-size: 9px; color: var(--faint); line-height: 1.65 } .doc b { color: var(--dim) }
+  .doc code { color: var(--signal); font-size: 9px }
+
+  /* ---------- gate ---------- */
+  .gate { position: fixed; inset: 0; z-index: 999; background: rgba(4,5,8,.95); display: flex;
+    flex-direction: column; align-items: center; justify-content: center; gap: 12px; cursor: pointer }
+  .gate.off { display: none }
+  .gate .big { font-family: var(--display); font-size: 84px; letter-spacing: 12px; line-height: .9; text-transform: uppercase }
+  .gate .big em { color: var(--signal); font-style: normal }
+  .gate .sm { font-size: 11px; color: var(--dim); letter-spacing: 4px; text-transform: uppercase; text-align: center }
+  .gate .go { margin-top: 14px; font-size: 12px; font-weight: 700; letter-spacing: 3px; padding: 13px 30px;
+    border: 1px solid var(--signal); border-radius: 3px; color: var(--signal); animation: blink 2.2s infinite }
+
+  @media (max-width: 900px) {
+    .app { grid-template-columns: 1fr; grid-template-rows: 48px 1fr 300px; grid-template-areas: 'head' 'stage' 'side' }
+    .side { border-left: none; border-top: 1px solid var(--line) }
+    .gate .big { font-size: 46px; letter-spacing: 6px }
+  }
+</style>
+</head>
+<body>
+
+<div class="gate" id="gate">
+  <div class="big">CA<em>B</em>LE</div>
+  <div class="sm">a channel that never stops &nbsp;·&nbsp; the chat decides what airs next</div>
+  <div class="go" id="gateGo">CLICK TO TUNE IN</div>
+</div>
+
+<div class="app">
+
+  <div class="head">
+    <div class="wordmark">CA<em>B</em>LE</div>
+    <div class="tagline">generated live · minimax h3 max</div>
+    <div class="gap"></div>
+    <div class="pill" id="pillMode"><span class="dot"></span><span id="pillModeTxt">NO SIGNAL</span></div>
+    <div class="pill on" id="pillAir"><span class="dot"></span><span id="pillAirTxt">ON AIR</span></div>
+  </div>
+
+  <div class="stage">
+    <div class="screen" id="screen">
+      <video id="vA" class="feed" playsinline preload="auto"></video>
+      <video id="vB" class="feed" playsinline preload="auto"></video>
+
+      <div class="slate show" id="slate">
+        <div class="bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        <h2 id="slateTitle">NO SIGNAL</h2>
+        <p id="slateBody">Add a fal.ai key in SETUP and the channel starts generating. Everything you see after that is made on demand — nothing is pre-recorded.</p>
+        <div class="stat" id="slateStat"></div>
+      </div>
+
+      <div class="bug"><span class="rec"></span><span class="name">CA<em>B</em>LE</span><span class="src" id="bugSrc">STANDBY</span></div>
+      <div class="clock" id="clock">00:00:00</div>
+      <div class="toasts" id="toasts"></div>
+
+      <div class="l3 rest" id="l3">
+        <div class="kicker" id="l3Kick">STANDBY</div>
+        <h1 id="l3Title">—</h1>
+        <div class="by" id="l3By"></div>
+      </div>
+
+      <div class="ticker"><div class="rail" id="rail"><span>CABLE — type in chat to direct the channel</span></div></div>
+    </div>
+
+    <div class="transport">
+      <button class="btn live" id="bAir" title="Space">■ ON AIR</button>
+      <button class="btn" id="bNext" title="N">▶▶ NEXT</button>
+      <button class="btn" id="bMute" title="M">🔇 MUTED</button>
+      <button class="btn" id="bCast" title="B">⛶ BROADCAST</button>
+      <div class="meters">
+        <span>AIRED <b id="mAired">0</b></span>
+        <span>SHOTS <b id="mShots">0</b></span>
+        <span class="hot">RENDERING <b id="mJobs">0</b></span>
+        <span>BUFFER <b id="mBuf">0</b></span>
+        <span>QUEUE <b id="mReq">0</b></span>
+        <span>GENERATED <b id="mSecs">0s</b></span>
+      </div>
+    </div>
+
+    <div class="deck"><span class="lbl">COMING UP ▸</span><div id="deckRail" style="display:flex;gap:8px;"></div></div>
+  </div>
+
+  <div class="side">
+    <div class="tabs">
+      <button class="tab sel" data-pane="chat">💬 CHAT</button>
+      <button class="tab" data-pane="cfg">⚙ SETUP</button>
+    </div>
+
+    <div class="pane sel" id="pane-chat">
+      <div class="log" id="log"></div>
+      <div class="composer">
+        <div class="row">
+          <input type="text" id="say" placeholder="say what happens next…" autocomplete="off" maxlength="300">
+          <button class="btn live" id="bSay">SEND</button>
+        </div>
+        <div class="tip" id="tip">Whatever you write gets generated next, continuing from the shot on screen.</div>
+      </div>
+    </div>
+
+    <div class="pane" id="pane-cfg">
+      <div class="cfg">
+
+        <div class="grp">
+          <h3>FAL.AI</h3>
+          <div class="f">
+            <label>FAL KEY</label>
+            <input type="password" id="cFalKey" placeholder="key id:key secret">
+            <div class="note">Sent straight from this browser to <b>queue.fal.run</b>. Fine on your own machine; if you host this page publicly, use a proxy instead so the key never ships to viewers.</div>
+          </div>
+          <div class="f">
+            <label>OR PROXY URL</label>
+            <input type="text" id="cProxy" placeholder="/api/fal/proxy">
+            <div class="note">Any fal proxy (<b>@fal-ai/server-proxy</b>, a Cloudflare worker, an AI gateway). Requests go here with the real target in <code>x-fal-target-url</code> and your key stays server-side. Takes priority over the key above.</div>
+          </div>
+          <div class="two">
+            <div class="f"><label>SHOT LENGTH</label>
+              <select id="cDuration"><option value="5" selected>5s</option><option value="10">10s</option><option value="15">15s</option></select>
+            </div>
+            <div class="f"><label>RESOLUTION</label>
+              <select id="cRes"><option value="480P">480P — fastest</option><option value="768P" selected>768P</option></select>
+            </div>
+          </div>
+          <div class="two">
+            <div class="f"><label>ASPECT (OPENING SHOT)</label>
+              <select id="cAspect"><option value="16:9" selected>16:9</option><option value="21:9">21:9</option><option value="4:3">4:3</option><option value="1:1">1:1</option><option value="9:16">9:16</option></select>
+            </div>
+            <div class="f"><label>PROMPT EXPANSION</label>
+              <select id="cExpand"><option value="balanced" selected>balanced — ~1s</option><option value="quality">quality — ~30s</option></select>
+            </div>
+          </div>
+          <div class="f"><div class="note">Every shot after the first is image-to-video off the previous frame, so it inherits that aspect. <b>quality</b> expansion writes a richer prompt but adds ~30s per shot — too slow to keep a channel fed.</div></div>
+        </div>
+
+        <div class="grp">
+          <h3>CHANNEL</h3>
+          <label class="sw"><input type="checkbox" id="cChain" checked><span>CONTINUOUS STORY<span class="s">each shot starts on the last frame of the one before it</span></span></label>
+          <label class="sw"><input type="checkbox" id="cAuto" checked><span>KEEP ROLLING<span class="s">writes its own next shot when chat is quiet — off means it idles on the last clip</span></span></label>
+          <div class="f" style="margin-top:8px;">
+            <label>CHANNEL LOOK</label>
+            <input type="text" id="cLook" value="cinematic, film grain, natural light" placeholder="appended to every shot">
+            <div class="note">Appended to every prompt — this is what makes the channel feel like one channel. Leave it blank for none.</div>
+          </div>
+          <div class="two">
+            <div class="f"><label>BUFFER AHEAD</label><input type="number" id="cBuffer" value="2" min="1" max="6"></div>
+            <div class="f"><label>SHOT CAP / SESSION</label><input type="number" id="cCap" value="25" min="1" max="1000"></div>
+          </div>
+          <div class="f"><div class="note">Every shot is a paid render. The cap hard-stops generation for the session; the channel then idles on the last clip instead of spending.</div></div>
+        </div>
+
+        <div class="grp">
+          <h3>WHO CAN DIRECT IT</h3>
+          <div class="f">
+            <label>TWITCH CHANNEL</label>
+            <div style="display:flex;gap:6px;">
+              <input type="text" id="cTwitch" placeholder="channelname" style="flex:1;">
+              <button class="btn" id="bTwitch">CONNECT</button>
+            </div>
+            <div class="note" id="twNote">Anonymous read-only chat — no login, no token, no backend. Every viewer message becomes a shot request.</div>
+          </div>
+          <div class="f">
+            <label>COMMAND PREFIX</label>
+            <input type="text" id="cPrefix" value="!" placeholder="blank = every message counts">
+            <div class="note">With <b>!</b>, only <b>!the door opens onto a beach</b> is queued and ordinary chatter scrolls past.</div>
+          </div>
+          <label class="sw"><input type="checkbox" id="cBridge" checked><span>EXTERNAL BRIDGE<span class="s">window.CABLE.submit() and postMessage — for chat bots and OBS parents</span></span></label>
+        </div>
+
+        <div class="grp">
+          <h3>STORY DIRECTOR — OPTIONAL</h3>
+          <div class="f">
+            <label>ANTHROPIC API KEY</label>
+            <input type="password" id="cAnthKey" placeholder="sk-ant-…">
+            <div class="note">Without a key the channel still runs: requests go to the model with a continuity line attached, and H3 Max expands them itself. With one, Claude writes each shot against the story so far — better continuity, one extra second per shot.</div>
+          </div>
+          <div class="f"><label>MODEL</label><input type="text" id="cAnthModel" value="claude-opus-5"></div>
+          <label class="sw"><input type="checkbox" id="cRemember"><span>REMEMBER KEYS IN THIS BROWSER<span class="s">off by default — keys live only in this tab</span></span></label>
+          <button class="act" id="bSave">SAVE SETUP</button>
+          <button class="act ghost" id="bReset">RESET</button>
+        </div>
+
+        <div class="grp">
+          <h3>WIRING</h3>
+          <div class="doc">
+            <b>Stream it:</b> add this page as an OBS Browser Source and press <b>B</b> — chrome disappears, leaving the feed, the channel bug, the chyron and a ticker of incoming requests.<br><br>
+            <b>Bot bridge:</b> <code>window.CABLE.submit('viewer','the door opens onto a beach')</code>, or <code>postMessage({type:'cable:prompt',user,text})</code> from a parent frame. <code>window.CABLE.state()</code> reports what's on air.<br><br>
+            <b>URL params:</b> <code>?proxy=…&amp;twitch=…&amp;prefix=!&amp;broadcast=1&amp;duration=10&amp;res=480P&amp;autopilot=0</code><br><br>
+            <b>Keys:</b> SPACE on/off air · N next · M mute · B broadcast · / focus chat.
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* =============================================================================
+   CABLE — a channel that never stops.
+
+   Every shot is generated on demand by MiniMax H3 Max on fal.ai. Nothing is
+   pre-recorded and there is no clip library: the model renders faster than the
+   channel plays, so the buffer stays ahead of the broadcast.
+
+   Continuity is the model's own: shot one is text-to-video, and every shot after
+   it is image-to-video starting on the last frame of the shot before it. What
+   viewers type steers a scene that is already running.
+   ========================================================================== */
+
+const FAL_T2V = 'minimax/h3-max/text-to-video';
+const FAL_I2V = 'minimax/h3-max/image-to-video';
+const FAL_QUEUE = 'https://queue.fal.run/';
+
+// plain cinematography — the grammar a shot request gets attached to when there
+// is no story director to write one.
+const MOVES = [
+  'slow push in',
+  'steady pull back revealing more of the space',
+  'handheld follow from behind the shoulder',
+  'low tracking shot moving with the action',
+  'slow orbit around the subject',
+  'crane up and over',
+  'whip pan onto what happens next',
+  'locked-off wide, the action crossing the frame',
+  'rack focus from foreground to background',
+  'drifting overhead shot looking down',
+  'close on hands, then tilt up to the face',
+  'the camera walks forward through the space'
+];
+
+// where the channel takes itself when chat is quiet — without these, an
+// unattended channel writes the same beat over and over.
+const DRIFTS = [
+  'someone new walks into the shot',
+  'the camera follows something out of the room and into the next space',
+  'the light changes — time has moved',
+  'a sound off-screen turns everyone toward it',
+  'the space opens out into somewhere much larger',
+  'a detail in the background turns out to matter',
+  'whatever they were waiting for arrives',
+  'the weather breaks',
+  'a door that was shut is open now',
+  'the scene keeps going, but something has gone wrong with it'
+];
+
+// used only when nobody has prompted anything yet
+const SEEDS = [
+  'a night bus moving through a city where every street looks the same',
+  'a diner at the end of a highway, one customer, rain outside',
+  'a maintenance corridor under a stadium, lights coming on in sequence',
+  'a market at dawn, vendors setting up in fog',
+  'a control room where every monitor shows the same empty hallway',
+  'a small boat crossing flat water toward something on the horizon'
+];
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const pick = a => a[Math.floor(Math.random() * a.length)];
+
+// ---------- state ----------
+const S = {
+  onAir: true, muted: true, tuned: false,
+  queue: [],        // rendered shots waiting to air
+  requests: [],     // viewer prompts waiting to be rendered
+  jobs: new Map(),  // in-flight renders
+  story: [],        // beats already committed, in generation order
+  lastFrame: null,  // data URI of the previous shot's final frame
+  aired: 0, shots: 0, failed: 0, seconds: 0,
+  blobs: [], tw: null, cfg: {}
+};
+
+const DEFAULTS = {
+  falKey: '', proxy: '', duration: 5, res: '768P', aspect: '16:9', expand: 'balanced',
+  chain: true, autopilot: true, buffer: 2, cap: 25, look: 'cinematic, film grain, natural light',
+  twitch: '', prefix: '!', bridge: true,
+  anthKey: '', anthModel: 'claude-opus-5', remember: false
+};
+
+// ---------- config ----------
+function readCfg() {
+  return {
+    falKey: $('cFalKey').value.trim(),
+    proxy: $('cProxy').value.trim().replace(/\/+$/, ''),
+    duration: parseInt($('cDuration').value) || 5,
+    res: $('cRes').value, aspect: $('cAspect').value, expand: $('cExpand').value,
+    chain: $('cChain').checked, autopilot: $('cAuto').checked,
+    buffer: Math.max(1, Math.min(6, parseInt($('cBuffer').value) || 2)),
+    cap: Math.max(1, parseInt($('cCap').value) || 25),
+    look: $('cLook').value.trim(),
+    twitch: $('cTwitch').value.trim(), prefix: $('cPrefix').value.trim(), bridge: $('cBridge').checked,
+    anthKey: $('cAnthKey').value.trim(), anthModel: $('cAnthModel').value.trim() || DEFAULTS.anthModel,
+    remember: $('cRemember').checked
+  };
+}
+function applyCfg(c) {
+  $('cFalKey').value = c.falKey || ''; $('cProxy').value = c.proxy || '';
+  $('cDuration').value = String(c.duration || 5); $('cRes').value = c.res || '768P';
+  $('cAspect').value = c.aspect || '16:9'; $('cExpand').value = c.expand || 'balanced';
+  $('cChain').checked = c.chain !== false; $('cAuto').checked = c.autopilot !== false;
+  $('cBuffer').value = c.buffer || 2; $('cCap').value = c.cap || 25;
+  $('cLook').value = c.look == null ? DEFAULTS.look : c.look;
+  $('cTwitch').value = c.twitch || ''; $('cPrefix').value = c.prefix == null ? '!' : c.prefix;
+  $('cBridge').checked = c.bridge !== false;
+  $('cAnthKey').value = c.anthKey || ''; $('cAnthModel').value = c.anthModel || DEFAULTS.anthModel;
+  $('cRemember').checked = !!c.remember;
+  syncCfg();
+}
+function connected() { return !!(S.cfg.proxy || S.cfg.falKey); }
+function syncCfg() {
+  S.cfg = readCfg();
+  const ok = connected();
+  $('pillMode').className = 'pill' + (ok ? ' busy' : '');
+  $('pillModeTxt').textContent = ok ? (S.cfg.proxy ? 'FAL VIA PROXY' : 'FAL CONNECTED') : 'NO SIGNAL';
+  $('tip').textContent = ok
+    ? 'Whatever you write gets generated next, continuing from the shot on screen.'
+    : 'No fal key yet — add one in SETUP and the channel starts generating.';
+  paintMeters();
+}
+function saveCfg() {
+  const c = readCfg();
+  const store = Object.assign({}, c); delete store.falKey; delete store.anthKey;
+  try {
+    localStorage.setItem('cable.cfg', JSON.stringify(store));
+    if (c.remember) localStorage.setItem('cable.keys', JSON.stringify({ falKey: c.falKey, anthKey: c.anthKey }));
+    else localStorage.removeItem('cable.keys');
+  } catch (e) {}
+  syncCfg(); capWarned = false; toast('SETUP SAVED', 'ok');
+  if (connected()) { slate('TUNING IN', 'first shot is rendering — this takes about as long as one shot lasts.'); }
+}
+function loadCfg() {
+  let c = Object.assign({}, DEFAULTS);
+  try {
+    const raw = localStorage.getItem('cable.cfg'); if (raw) c = Object.assign(c, JSON.parse(raw));
+    const k = localStorage.getItem('cable.keys');
+    if (k) { const o = JSON.parse(k); c.falKey = o.falKey || ''; c.anthKey = o.anthKey || ''; c.remember = true; }
+  } catch (e) {}
+  const q = new URLSearchParams(location.search);
+  ['proxy', 'twitch', 'prefix', 'res', 'aspect', 'expand', 'look'].forEach(k => { if (q.has(k)) c[k] = q.get(k); });
+  ['duration', 'buffer', 'cap'].forEach(k => { if (q.has(k)) c[k] = parseInt(q.get(k)) || c[k]; });
+  ['chain', 'autopilot', 'bridge'].forEach(k => { if (q.has(k)) c[k] = q.get(k) !== '0'; });
+  applyCfg(c);
+  if (q.get('broadcast') === '1') document.body.classList.add('broadcast');
+}
+
+// ---------- chrome ----------
+function toast(txt, cls) {
+  const r = $('toasts'), d = document.createElement('div');
+  d.className = 'toast ' + (cls || ''); d.textContent = txt; r.appendChild(d);
+  setTimeout(() => d.remove(), 4500);
+  while (r.children.length > 4) r.firstChild.remove();
+}
+function say(user, text, cls, from) {
+  const d = document.createElement('div');
+  d.className = 'm ' + (cls || '');
+  d.innerHTML = `<span class="who">${esc(user)}</span>${from ? `<span class="from">${esc(from)}</span>` : ''}` +
+    `${cls === 'queued' ? '<span class="tagq">QUEUED</span>' : ''}<br><span class="txt">${esc(text)}</span>`;
+  push(d);
+}
+function sys(text, cls) { const d = document.createElement('div'); d.className = 'm sys ' + (cls || ''); d.textContent = text; push(d); }
+function push(node) {
+  const l = $('log'), stuck = l.scrollTop + l.clientHeight > l.scrollHeight - 60;
+  l.appendChild(node);
+  while (l.children.length > 240) l.firstChild.remove();
+  if (stuck) l.scrollTop = l.scrollHeight;
+}
+function slate(title, body, stat) {
+  $('slateTitle').textContent = title;
+  if (body != null) $('slateBody').textContent = body;
+  $('slateStat').textContent = stat || '';
+  $('slate').classList.add('show');
+}
+function hideSlate() { $('slate').classList.remove('show'); }
+function paintMeters() {
+  $('mAired').textContent = S.aired; $('mShots').textContent = S.shots;
+  $('mJobs').textContent = S.jobs.size; $('mBuf').textContent = S.queue.length;
+  $('mReq').textContent = S.requests.length; $('mSecs').textContent = S.seconds + 's';
+  const p = $('pillAir');
+  p.className = 'pill ' + (!S.onAir ? '' : (S.jobs.size ? 'busy' : 'on'));
+  $('pillAirTxt').textContent = !S.onAir ? 'OFF AIR' : (S.jobs.size ? 'RENDERING ' + S.jobs.size : 'ON AIR');
+}
+function paintDeck() {
+  const r = $('deckRail'); r.innerHTML = '';
+  const cards = [];
+  if (standby) cards.push(['ready', standby.title]);
+  S.queue.forEach(i => cards.push(['ready', i.title]));
+  S.jobs.forEach(j => cards.push(['rendering', (j.status || 'rendering').toLowerCase() + ' · ' + j.title]));
+  S.requests.forEach(q => cards.push(['waiting', q.user + ' · ' + q.text]));
+  if (!cards.length) cards.push(['waiting', connected() ? 'nothing queued' : 'no fal key']);
+  cards.slice(0, 12).forEach(([c, t]) => { const d = document.createElement('div'); d.className = 'card ' + c; d.textContent = t; r.appendChild(d); });
+}
+function rail(user, text) {
+  const r = $('rail'), s = document.createElement('span');
+  s.innerHTML = `<b>${esc(user)}</b> ${esc(text)}`;
+  r.appendChild(s); while (r.children.length > 14) r.firstChild.remove();
+}
+
+// =============================================================================
+// FAL — queue API. Either straight from the browser with a key, or through a
+// proxy that carries the real target in x-fal-target-url and keeps the key
+// server-side (the @fal-ai/server-proxy convention).
+// =============================================================================
+function falFetch(url, init) {
+  init = init || {};
+  const headers = Object.assign({}, init.headers);
+  let target = url;
+  if (S.cfg.proxy) { headers['x-fal-target-url'] = url; target = S.cfg.proxy; }
+  else headers['Authorization'] = 'Key ' + S.cfg.falKey;
+  return fetch(target, Object.assign({}, init, { headers }));
+}
+async function falError(res) {
+  const d = await res.json().catch(() => null);
+  if (d) {
+    if (typeof d.detail === 'string') return d.detail;
+    if (Array.isArray(d.detail) && d.detail.length) return d.detail.map(x => x.msg || x.type || JSON.stringify(x)).join('; ');
+    if (d.message) return d.message;
+  }
+  return 'fal ' + res.status;
+}
+async function falSubmit(endpoint, input) {
+  const res = await falFetch(FAL_QUEUE + endpoint, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input)
+  });
+  if (!res.ok) throw new Error(await falError(res));
+  const d = await res.json();
+  if (!d.request_id) throw new Error('fal returned no request id');
+  return d;                                   // { request_id, status_url, response_url, … }
+}
+// poll the urls fal handed us rather than rebuilding paths
+async function falAwait(sub, onStatus) {
+  const base = FAL_QUEUE + sub._endpoint + '/requests/' + sub.request_id;
+  const statusUrl = sub.status_url || base + '/status';
+  const resultUrl = sub.response_url || base;
+  for (let i = 0; i < 150; i++) {                        // ~5 min ceiling
+    await new Promise(r => setTimeout(r, i < 3 ? 1500 : 3000));
+    let d;
+    try {
+      const res = await falFetch(statusUrl, { method: 'GET' });
+      if (!res.ok) { if (res.status >= 400 && res.status < 500) throw new Error(await falError(res)); continue; }
+      d = await res.json();
+    } catch (e) {
+      if (/^fal 4/.test(e.message)) throw e;
+      continue;                                          // transient — keep polling
+    }
+    if (onStatus) onStatus(d.status, d.queue_position);
+    if (d.status === 'COMPLETED') {
+      const r = await falFetch(resultUrl, { method: 'GET' });
+      if (!r.ok) throw new Error(await falError(r));
+      const out = await r.json();
+      const url = out && out.video && out.video.url;
+      if (!url) throw new Error('fal returned no video');
+      return { url, expanded: out.expanded_prompt || '' };
+    }
+    if (d.status === 'FAILED' || d.status === 'ERROR') throw new Error((d.error && d.error.message) || 'render failed');
+  }
+  throw new Error('render timed out');
+}
+
+// Pull the mp4 down so it's same-origin: playback survives the provider URL
+// expiring, and the canvas can read frames for chaining without tainting.
+// If the fetch is refused we fall back to the raw URL and lose only the frame grab.
+async function materialize(url) {
+  try {
+    const r = await fetch(url);
+    if (!r.ok) return { src: url, local: false };
+    const b = await r.blob();
+    const obj = URL.createObjectURL(b);
+    S.blobs.push(obj);
+    while (S.blobs.length > 8) { try { URL.revokeObjectURL(S.blobs.shift()); } catch (e) {} }
+    return { src: obj, local: true };
+  } catch (e) { return { src: url, local: false }; }
+}
+
+// =============================================================================
+// PLAYER — A/B deck. One video on screen, the next already loaded. If the buffer
+// runs dry the channel holds on the last shot instead of cutting to black.
+// =============================================================================
+let front = 'a', playing = null, standby = null, lastProgress = 0, lastT = -1, errStreak = 0, retry = null, l3Timer = null;
+const feed = k => (k === 'a' ? $('vA') : $('vB'));
+const backK = () => (front === 'a' ? 'b' : 'a');
+
+function loadStandby() {
+  if (standby) return;
+  if (S.queue.length) { standby = S.queue.shift(); }
+  else if (playing) { standby = Object.assign({}, playing, { hold: true }); }   // hold rather than cut to black
+  else return;
+  const v = feed(backK());
+  v.src = standby.src; try { v.load(); } catch (e) {}
+  paintDeck(); paintMeters();
+}
+
+function next() {
+  if (!standby) loadStandby();
+  if (!standby) {                                  // nothing at all yet — sit on the slate
+    clearTimeout(retry); retry = setTimeout(() => { if (S.onAir) next(); }, 1200);
+    return;
+  }
+  clearTimeout(retry); retry = null;
+  const nk = backK(), nv = feed(nk), ov = feed(front);
+  playing = standby; standby = null; front = nk;
+
+  nv.muted = S.muted; nv.classList.add('on');
+  try { nv.currentTime = 0; } catch (e) {}
+  nv.play().catch(() => { nv.muted = true; nv.play().catch(() => {}); });
+  ov.classList.remove('on');
+  setTimeout(() => { try { ov.pause(); } catch (e) {} }, 240);
+
+  const sc = $('screen'); sc.classList.remove('cut'); void sc.offsetWidth; sc.classList.add('cut');
+  hideSlate(); lastProgress = Date.now(); lastT = -1;
+  paintNow(playing); paintMeters();
+  setTimeout(loadStandby, 180);
+}
+
+function paintNow(item) {
+  const l3 = $('l3'); l3.classList.remove('rest');
+  clearTimeout(l3Timer); l3Timer = setTimeout(() => l3.classList.add('rest'), 7000);
+  const k = $('l3Kick');
+  k.textContent = item.hold ? 'HOLDING' : 'GENERATED LIVE';
+  k.className = 'kicker' + (item.hold ? ' hold' : '');
+  $('l3Title').textContent = item.title || '—';
+  $('l3By').innerHTML = item.user ? `ASKED FOR BY <b>${esc(item.user)}</b>` : (item.hold ? 'waiting on the next shot' : 'written by the channel');
+  $('bugSrc').textContent = item.hold ? 'HOLD' : 'LIVE';
+}
+
+function wire(k) {
+  const v = feed(k);
+  v.addEventListener('ended', () => { if (k === front && S.onAir) next(); });
+  v.addEventListener('playing', () => { if (k === front && !(playing && playing.hold)) { S.aired++; paintMeters(); } errStreak = 0; lastProgress = Date.now(); });
+  v.addEventListener('timeupdate', () => { if (k === front) lastProgress = Date.now(); });
+  v.addEventListener('error', () => {
+    // swapping a src aborts the in-flight load and fires 'error' too — only act
+    // on a failure that belongs to the item this element still holds.
+    const src = v.getAttribute('src'), mine = k === front ? playing : standby;
+    if (!src || !mine || mine.src !== src) return;
+    errStreak++;
+    if (errStreak === 3) { toast('SHOT WOULD NOT PLAY', 'err'); sys('three shots in a row failed to play — the video host may be unreachable', 'err'); }
+    if (k === front) { if (S.onAir) setTimeout(next, errStreak > 3 ? 2500 : 150); }
+    else { standby = null; setTimeout(loadStandby, errStreak > 3 ? 2500 : 150); }
+  });
+}
+
+setInterval(() => {                                 // stall watchdog
+  if (!S.onAir || !playing) return;
+  const v = feed(front);
+  if (v.paused || v.ended) return;
+  if (v.currentTime !== lastT) { lastT = v.currentTime; lastProgress = Date.now(); return; }
+  if (Date.now() - lastProgress > 12000) { toast('FEED STALLED — CUTTING', 'warn'); next(); }
+}, 2000);
+
+function setAir(on) {
+  S.onAir = on;
+  const b = $('bAir'); b.classList.toggle('live', on); b.textContent = on ? '■ ON AIR' : '▶ OFF AIR';
+  const v = feed(front);
+  if (!on) { try { v.pause(); } catch (e) {} }
+  else if (!playing || v.ended) next();
+  else v.play().catch(() => {});
+  paintMeters();
+}
+function setMuted(m) {
+  S.muted = m; feed('a').muted = m; feed('b').muted = m;
+  $('bMute').textContent = m ? '🔇 MUTED' : '🔊 SOUND';
+  $('bMute').classList.toggle('live', !m);
+}
+
+// grab the closing frame so the next shot can start exactly there
+function lastFrameOf(src) {
+  return new Promise(resolve => {
+    const v = document.createElement('video');
+    let done = false;
+    const fin = out => { if (done) return; done = true; try { v.src = ''; v.remove(); } catch (e) {} resolve(out); };
+    const bail = setTimeout(() => fin(null), 20000);
+    v.crossOrigin = 'anonymous'; v.muted = true; v.preload = 'auto'; v.playsInline = true;
+    v.onloadedmetadata = () => { try { v.currentTime = Math.max(0, (v.duration || 1) - 0.06); } catch (e) { clearTimeout(bail); fin(null); } };
+    v.onseeked = () => {
+      try {
+        const c = document.createElement('canvas');
+        const sc = Math.min(1, 1280 / Math.max(v.videoWidth || 1, v.videoHeight || 1));
+        c.width = Math.round((v.videoWidth || 1280) * sc); c.height = Math.round((v.videoHeight || 720) * sc);
+        c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
+        // this rides in the request body as a data URI — keep it lean
+        let q = 0.8, out = c.toDataURL('image/jpeg', q);
+        while (out.length > 900 * 1024 && q > 0.35) { q -= 0.1; out = c.toDataURL('image/jpeg', q); }
+        clearTimeout(bail); fin(out);
+      } catch (e) { clearTimeout(bail); fin(null); }   // tainted canvas
+    };
+    v.onerror = () => { clearTimeout(bail); fin(null); };
+    v.src = src;
+  });
+}
+
+// =============================================================================
+// DIRECTOR — turns a line of chat into the next shot. H3 Max expands prompts
+// itself, so this stays deliberately light; with an Anthropic key Claude writes
+// the shot against the story so far instead.
+// =============================================================================
+function localBeat(req, chained) {
+  const bits = [];
+  if (chained) bits.push('Continuing the same scene with no cut, picking up exactly where the previous shot ended');
+  const drift = S.story.length ? pick(DRIFTS) : pick(SEEDS);
+  bits.push(req.text || drift);
+  bits.push(pick(MOVES));
+  if (S.cfg.look) bits.push(S.cfg.look);
+  const t = (req.text || (S.story.length ? drift : 'COLD OPEN')).toUpperCase();
+  return { title: t.slice(0, 48), prompt: bits.join('. ') };
+}
+
+async function claudeBeat(req, chained) {
+  const systemPrompt = `You are the director of CABLE, a television channel whose every shot is generated on demand. Viewers type requests and you write the single next shot.
+
+- Write ONE continuous shot, ${S.cfg.duration} seconds, for a text-to-video model.
+- ${chained ? 'It starts on the exact frame the last shot ended on: same place, same people, same light. Say what happens next — never re-describe what is already on screen.' : 'This is the opening shot of the channel. Establish a place worth staying in.'}
+- Fold the viewer's request in as the thing that happens next, however strange. Bend the scene to accommodate it rather than refusing it.
+- Concrete and physical: what moves, what the camera does, what we hear. 50-90 words. No shot lists, no cuts, no scene headers.
+
+Reply with ONLY a JSON object, no prose and no code fence:
+{"title":"SHORT ALL-CAPS CHYRON, MAX 6 WORDS","prompt":"the shot"}`;
+
+  const recap = S.story.slice(-5).map((b, i) => `${i + 1}. ${b.title} — ${b.prompt}`).join('\n') || '(nothing has aired yet)';
+  const user = `THE STORY SO FAR:\n${recap}\n\nVIEWER REQUEST${req.user ? ' from ' + req.user : ''}: ${req.text || ('(nobody is asking for anything — continue the scene yourself. one idea to consider, ignore it if the scene wants something else: ' + pick(DRIFTS) + ')')}\n\nChannel look: ${S.cfg.look || 'none specified'}\n\nWrite the next shot.`;
+
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json', 'x-api-key': S.cfg.anthKey,
+      'anthropic-version': '2023-06-01', 'anthropic-beta': 'server-side-fallback-2026-07-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify({
+      model: S.cfg.anthModel, max_tokens: 2000,
+      output_config: { effort: 'low' },     // a live channel can't wait on deep thinking
+      fallbacks: 'default',                 // a declined request must not stall the channel
+      system: systemPrompt, messages: [{ role: 'user', content: user }]
+    })
+  });
+  const d = await res.json();
+  if (d.error) throw new Error(d.error.message || 'director error');
+  if (d.stop_reason === 'refusal') throw new Error('director declined that request');
+  const txt = (d.content || []).map(c => c.text || '').join('').trim();
+  const raw = txt.startsWith('{') ? txt : (txt.match(/\{[\s\S]*\}/) || [''])[0];
+  let o = null; try { o = JSON.parse(raw); } catch (e) {}
+  if (!o || !o.prompt) throw new Error('director returned no usable shot');
+  return { title: String(o.title || req.text || 'UNTITLED').toUpperCase().slice(0, 48), prompt: String(o.prompt).slice(0, 2000) };
+}
+
+async function beatFor(req, chained) {
+  if (S.cfg.anthKey) {
+    try { return await claudeBeat(req, chained); }
+    catch (e) { sys('director fell back to the plain composer — ' + e.message, 'warn'); }
+  }
+  return localBeat(req, chained);
+}
+
+// =============================================================================
+// GENERATOR — keeps the buffer ahead of the broadcast. Strictly one at a time
+// while the story is chained: shot N+1 needs shot N's last frame to exist.
+// =============================================================================
+let jobSeq = 0, capWarned = false, taintWarned = false;
+
+async function runShot(req) {
+  const id = ++jobSeq;
+  const job = { title: 'WRITING…', user: req.user, status: 'writing' };
+  S.jobs.set(id, job); paintMeters(); paintDeck();
+  try {
+    const chained = !!(S.cfg.chain && S.lastFrame);
+    const beat = await beatFor(req, chained);
+    job.title = beat.title; job.status = 'submitting'; paintDeck();
+    S.story.push(beat); if (S.story.length > 12) S.story.shift();
+    sys('▸ ' + beat.title + '  ·  ' + (req.user || 'channel'));
+
+    const input = {
+      prompt: beat.prompt,
+      duration: S.cfg.duration,
+      resolution: S.cfg.res,
+      prompt_expansion_mode: S.cfg.expand,
+      seed: Math.floor(Math.random() * 1e9)
+    };
+    let endpoint = FAL_T2V;
+    if (chained) { endpoint = FAL_I2V; input.image_url = S.lastFrame; }   // fal takes the frame as a data URI
+    else input.aspect_ratio = S.cfg.aspect;                               // only settable on a text-to-video shot
+
+    const sub = await falSubmit(endpoint, input);
+    sub._endpoint = endpoint;
+    S.shots++;
+    const out = await falAwait(sub, (st, pos) => {
+      job.status = st === 'IN_QUEUE' ? ('in queue' + (pos ? ' #' + pos : '')) : 'rendering';
+      paintDeck();
+    });
+
+    const mat = await materialize(out.url);
+    S.queue.push({ src: mat.src, title: beat.title, user: req.user, prompt: beat.prompt });
+    S.seconds += S.cfg.duration;
+    nudgePlayer();
+    sys('✓ ready — ' + beat.title, 'ok');
+
+    if (S.cfg.chain) {
+      const f = await lastFrameOf(mat.src);
+      if (f) S.lastFrame = f;
+      else if (!taintWarned) {
+        taintWarned = true;
+        sys('could not read the closing frame (the video host blocks canvas reads) — shots will continue by description instead of from the frame', 'warn');
+      }
+    }
+  } catch (e) {
+    S.failed++;
+    sys('✗ ' + (e.message || 'render failed'), 'err');
+    toast('RENDER FAILED', 'err');
+    if (/unauthor|forbidden|401|403|exhaust|balance/i.test(e.message || '')) {
+      slate('NO SIGNAL', 'fal rejected the request: ' + e.message);
+    }
+  } finally { S.jobs.delete(id); paintMeters(); paintDeck(); }
+}
+
+// a fresh shot replaces a held repeat rather than queueing behind it — and if
+// nothing is on air yet, this is the shot that starts the channel.
+function nudgePlayer() {
+  if (standby && standby.hold) { standby = null; loadStandby(); }
+  if (!playing && S.onAir && S.tuned) next();
+  paintMeters(); paintDeck();
+}
+
+setInterval(() => {
+  if (!S.tuned || !connected()) return;
+  const conc = S.cfg.chain ? 1 : 2;                      // chained shots must render in order
+  if (S.jobs.size >= conc) return;
+  if (S.queue.length + S.jobs.size >= S.cfg.buffer) return;
+  if (S.shots >= S.cfg.cap) {
+    if (!capWarned) {
+      capWarned = true;
+      sys('shot cap reached (' + S.cfg.cap + ') — raise it in SETUP to keep generating', 'warn');
+      toast('SHOT CAP REACHED', 'warn');
+    }
+    return;
+  }
+  const req = S.requests.shift() || (S.cfg.autopilot ? { user: '', text: '' } : null);
+  if (!req) return;
+  paintMeters(); runShot(req);
+}, 1200);
+
+// =============================================================================
+// WHO CAN DIRECT IT — the chat box, Twitch, and any bot that can reach the page.
+// =============================================================================
+function request(user, text, from) {
+  user = String(user || 'viewer').slice(0, 24);
+  text = String(text || '').replace(/\s+/g, ' ').trim();
+  if (!text) return false;
+  const pfx = S.cfg.prefix;
+  if (pfx) {
+    if (text.toLowerCase().indexOf(pfx.toLowerCase()) !== 0) { say(user, text, 'skip', from); return false; }
+    text = text.slice(pfx.length).trim();
+    if (!text) return false;
+  }
+  if (text.length > 300) text = text.slice(0, 300);
+  say(user, text, 'queued', from); rail(user, text);
+  if (!connected()) { sys('no fal key — nothing to render this on. add one in SETUP.', 'warn'); return false; }
+  if (S.requests.length >= 30) S.requests.shift();      // a flooded queue is a stale queue
+  S.requests.push({ user, text, from, t: Date.now() });
+  paintMeters(); paintDeck();
+  return true;
+}
+
+// --- twitch: anonymous read-only IRC over websocket. no token, no backend. ---
+function twNote(msg, cls) {
+  const n = $('twNote'); n.textContent = msg;
+  n.style.color = cls === 'ok' ? 'var(--good)' : cls === 'err' ? 'var(--hot)' : '';
+}
+function twClose() {
+  if (S.tw) { try { S.tw.ws.onclose = null; S.tw.ws.close(); } catch (e) {} clearTimeout(S.tw.retry); S.tw = null; }
+  $('bTwitch').textContent = 'CONNECT';
+}
+function twConnect(chan) {
+  chan = String(chan || '').trim().replace(/^#/, '').toLowerCase();
+  if (!chan) { twClose(); twNote('no channel set'); return; }
+  twClose(); twNote('connecting to #' + chan + '…');
+  let ws; try { ws = new WebSocket('wss://irc-ws.chat.twitch.tv:443'); }
+  catch (e) { twNote('websocket blocked: ' + e.message, 'err'); return; }
+  const st = S.tw = { ws, chan, retry: null };
+  $('bTwitch').textContent = 'DISCONNECT';
+  ws.onopen = () => {
+    ws.send('CAP REQ :twitch.tv/tags');
+    ws.send('PASS SCHMOOPIIE');
+    ws.send('NICK justinfan' + Math.floor(10000 + Math.random() * 89999));
+    ws.send('JOIN #' + chan);
+    twNote('reading #' + chan + ' — viewer messages are live', 'ok'); sys('twitch: joined #' + chan, 'ok');
+  };
+  ws.onmessage = e => String(e.data).split('\r\n').forEach(line => {
+    if (!line) return;
+    if (line.indexOf('PING') === 0) { ws.send('PONG :tmi.twitch.tv'); return; }
+    const m = line.match(/^(?:@(\S*) )?:([^!]+)!\S* PRIVMSG #\S+ :(.*)$/);
+    if (!m) return;
+    const dn = (m[1] || '').match(/(?:^|;)display-name=([^;]*)/);
+    request((dn && dn[1]) || m[2], m[3], 'twitch');
+  });
+  ws.onerror = () => twNote('twitch connection error', 'err');
+  ws.onclose = () => {
+    if (S.tw !== st) return;
+    twNote('disconnected — retrying in 5s', 'err');
+    st.retry = setTimeout(() => { if (S.tw === st) twConnect(chan); }, 5000);
+  };
+}
+
+// --- bridge for bots and OBS parents ---
+window.CABLE = {
+  submit: (user, text) => request(user || 'bridge', text, 'bridge'),
+  next: () => next(),
+  state: () => ({
+    connected: connected(), onAir: S.onAir, aired: S.aired, shots: S.shots, failed: S.failed,
+    rendering: S.jobs.size, buffered: S.queue.length, waiting: S.requests.length,
+    secondsGenerated: S.seconds, chained: !!S.lastFrame,
+    nowPlaying: playing && { title: playing.title, user: playing.user, holding: !!playing.hold }
+  })
+};
+window.addEventListener('message', e => {
+  const d = e.data;
+  if (!S.cfg.bridge || !d || d.type !== 'cable:prompt') return;
+  request(d.user || 'bridge', d.text, 'postmessage');
+});
+
+// =============================================================================
+// UI
+// =============================================================================
+document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
+  document.querySelectorAll('.tab').forEach(x => x.classList.remove('sel'));
+  document.querySelectorAll('.pane').forEach(x => x.classList.remove('sel'));
+  t.classList.add('sel'); $('pane-' + t.dataset.pane).classList.add('sel');
+}));
+function sendLocal() {
+  const i = $('say'), v = i.value;
+  if (!v.trim()) return;
+  const pfx = S.cfg.prefix;                       // your own line always counts
+  request('YOU', pfx && v.toLowerCase().indexOf(pfx.toLowerCase()) !== 0 ? pfx + v : v, 'you');
+  i.value = '';
+}
+$('bSay').addEventListener('click', sendLocal);
+$('say').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); sendLocal(); } });
+$('bAir').addEventListener('click', () => setAir(!S.onAir));
+$('bNext').addEventListener('click', () => next());
+$('bMute').addEventListener('click', () => setMuted(!S.muted));
+$('bCast').addEventListener('click', () => document.body.classList.toggle('broadcast'));
+$('bSave').addEventListener('click', saveCfg);
+$('bReset').addEventListener('click', () => {
+  try { localStorage.removeItem('cable.cfg'); localStorage.removeItem('cable.keys'); } catch (e) {}
+  applyCfg(Object.assign({}, DEFAULTS)); toast('SETUP RESET', 'warn');
+});
+$('bTwitch').addEventListener('click', () => {
+  if (S.tw) { twClose(); twNote('disconnected'); sys('twitch: disconnected'); }
+  else { syncCfg(); twConnect($('cTwitch').value); }
+});
+['cFalKey','cProxy','cDuration','cRes','cAspect','cExpand','cChain','cAuto','cBuffer','cCap','cLook',
+ 'cTwitch','cPrefix','cBridge','cAnthKey','cAnthModel','cRemember']
+  .forEach(id => $(id).addEventListener('change', () => { syncCfg(); capWarned = false; }));
+
+document.addEventListener('keydown', e => {
+  const t = e.target.tagName;
+  if (t === 'INPUT' || t === 'SELECT' || t === 'TEXTAREA') { if (e.key === 'Escape') e.target.blur(); return; }
+  if (e.key === ' ') { e.preventDefault(); setAir(!S.onAir); }
+  else if (e.key === 'n' || e.key === 'N') next();
+  else if (e.key === 'm' || e.key === 'M') setMuted(!S.muted);
+  else if (e.key === 'b' || e.key === 'B') document.body.classList.toggle('broadcast');
+  else if (e.key === '/') { e.preventDefault(); $('say').focus(); }
+});
+$('gate').addEventListener('click', () => {
+  $('gate').classList.add('off'); setMuted(false);
+  S.tuned = true;                       // generation starts here, not on page load
+  feed(front).play().catch(() => {});
+  if (connected()) sys('tuned in — generating the opening shot', 'ok');
+  next();                               // arms the deck; retries until a shot is ready
+});
+
+// =============================================================================
+// BOOT
+// =============================================================================
+const t0 = Date.now();
+setInterval(() => {
+  const s = Math.floor((Date.now() - t0) / 1000), p = n => String(n).padStart(2, '0');
+  $('clock').textContent = p(Math.floor(s / 3600)) + ':' + p(Math.floor(s / 60) % 60) + ':' + p(s % 60);
+  // keep the standby slate honest about what the channel is doing
+  if (!playing) {
+    if (!connected()) slate('NO SIGNAL', 'Add a fal.ai key in SETUP and the channel starts generating. Everything you see after that is made on demand — nothing is pre-recorded.');
+    else if (S.jobs.size) { const j = S.jobs.values().next().value; slate('TUNING IN', 'The first shot is being generated. Nothing here is pre-recorded, so the channel starts the moment it lands.', (j.status || '').toUpperCase() + ' · ' + s + 's'); }
+    else if (S.failed) slate('NO SIGNAL', 'The last render failed — see the chat log for what fal said.');
+    else if (!S.tuned) slate('STANDBY', 'Click to tune in — the channel starts generating then, not before.');
+  }
+}, 1000);
+
+(function boot() {
+  loadCfg(); wire('a'); wire('b'); setMuted(true);
+  sys('CABLE — every shot on this channel is generated on demand.');
+  if (!connected()) sys('add a fal.ai key in SETUP to start the signal.', 'warn');
+  else sys(S.cfg.proxy ? ('rendering through proxy ' + S.cfg.proxy) : 'rendering on fal.ai · minimax h3 max', 'ok');
+  if (!S.cfg.anthKey) sys('no anthropic key — shots go to the model as written, expanded by h3 max itself.');
+  sys(S.cfg.prefix ? ('requests must start with "' + S.cfg.prefix + '"') : 'every chat line counts as a request');
+  paintMeters(); paintDeck();
+})();
+</script>
+</body>
+</html>

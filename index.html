@@ -129,17 +129,6 @@
   }
   .tab-special.active { border-bottom-color: var(--accent3); }
 
-  /* leaves the app: the always-on channel built out of these same moves */
-  .tab-link {
-    margin-left: auto; display: flex; align-items: center; gap: 6px;
-    font-family: var(--mono); font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase;
-    padding: 10px 16px; color: var(--text3); text-decoration: none;
-    border-bottom: 2px solid transparent; transition: all 0.15s; white-space: nowrap;
-  }
-  .tab-link:hover { color: var(--red); border-bottom-color: var(--red); }
-  .tab-link .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--red); animation: tabpulse 1.4s infinite; }
-  @keyframes tabpulse { 0%,100% { opacity: 1; } 50% { opacity: .2; } }
-
   /* MAIN CONTENT */
   .content {
     padding: 24px;
@@ -1003,7 +992,6 @@
     <button class="tab" data-tab="on-talent">TALENT</button>
     <button class="tab" data-tab="scene-builder">SEQUENCE</button>
     <button class="tab" data-tab="keywords">LIBRARY</button>
-    <a class="tab-link" href="channel.html" title="the infinite channel — viewers prompt it live"><span class="live-dot"></span>WRECKAGE.TV</a>
   </div>
 </div>
 
