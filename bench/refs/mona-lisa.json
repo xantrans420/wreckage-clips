@@ -1,0 +1,15 @@
+{
+  "slug": "mona-lisa",
+  "title": "Mona Lisa",
+  "artist": "Leonardo da Vinci",
+  "year": "c. 1503-1519",
+  "commons": "Mona_Lisa,_by_Leonardo_da_Vinci,_from_C2RMF_retouched.jpg",
+  "commonsUrl": "https://commons.wikimedia.org/wiki/File:Mona_Lisa,_by_Leonardo_da_Vinci,_from_C2RMF_retouched.jpg",
+  "sourceUrl": "https://upload.wikimedia.org/wikipedia/commons/e/ec/Mona_Lisa%2C_by_Leonardo_da_Vinci%2C_from_C2RMF_retouched.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+  "width": 7479,
+  "height": 11146,
+  "thumbWidth": 1200,
+  "thumbHeight": 1788,
+  "license": "Public domain",
+  "fetchedAt": "2026-09-05T08:01:48.733Z"
+}

@@ -1,0 +1,26 @@
+{
+  "name": "paintbench",
+  "version": "0.1.0",
+  "private": true,
+  "description": "PaintBench: AI models recreate the world's most famous paintings as SVG code; Claude Fable 5.1 judges; static leaderboard.",
+  "type": "module",
+  "bin": {
+    "paintbench": "./src/cli.mjs"
+  },
+  "scripts": {
+    "refs": "node src/cli.mjs refs",
+    "generate": "node src/cli.mjs generate",
+    "render": "node src/cli.mjs render",
+    "judge": "node src/cli.mjs judge",
+    "build": "node src/cli.mjs build",
+    "run": "node src/cli.mjs run",
+    "smoke": "node src/cli.mjs smoke"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.124.0",
+    "@resvg/resvg-js": "^2.6.2"
+  }
+}

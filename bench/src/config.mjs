@@ -1,0 +1,123 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+export const BENCH_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+export const REFS_DIR = path.join(BENCH_DIR, 'refs');
+export const RESULTS_DIR = process.env.PAINTBENCH_RESULTS_DIR
+  ? path.resolve(process.env.PAINTBENCH_RESULTS_DIR)
+  : path.join(BENCH_DIR, 'results');
+
+// Bump these when the contestant prompt or the judge rubric changes. Results
+// produced under a different version are not comparable and the leaderboard
+// builder refuses to mix them.
+export const PROMPT_VERSION = 1;
+export const RUBRIC_VERSION = 1;
+
+export const USER_AGENT = 'paintbench/0.1 (https://github.com/xantrans420/wreckage-clips)';
+export const DEFAULT_JUDGE_MODEL = 'claude-fable-5-1';
+export const DEFAULT_MAX_TOKENS = 24000;
+export const DEFAULT_RENDER_WIDTH = 1024;
+
+export function loadEnv() {
+  const file = path.join(BENCH_DIR, '.env');
+  if (!fs.existsSync(file)) return;
+  for (const line of fs.readFileSync(file, 'utf8').split('\n')) {
+    const m = line.match(/^\s*(?:export\s+)?([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
+    if (!m || line.trim().startsWith('#')) continue;
+    let v = m[2];
+    if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) v = v.slice(1, -1);
+    if (process.env[m[1]] === undefined) process.env[m[1]] = v;
+  }
+}
+
+export function readJSON(file, fallback = undefined) {
+  if (!fs.existsSync(file)) {
+    if (fallback !== undefined) return fallback;
+    throw new Error(`missing file: ${file}`);
+  }
+  return JSON.parse(fs.readFileSync(file, 'utf8'));
+}
+
+export function writeJSON(file, data) {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, JSON.stringify(data, null, 2) + '\n');
+}
+
+export function loadPaintings() {
+  return readJSON(path.join(BENCH_DIR, 'paintings.json')).paintings;
+}
+
+export function loadModels() {
+  return readJSON(path.join(BENCH_DIR, 'models.json')).models
+    .filter((m) => m.enabled !== false)
+    .map((m) => ({ ...m, slug: m.slug || slugify(`${m.provider}-${m.model}`) }));
+}
+
+export function slugify(s) {
+  return String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+}
+
+export function entryDir(modelSlug, paintingSlug) {
+  return path.join(RESULTS_DIR, modelSlug, paintingSlug);
+}
+
+// Tiny argv parser: `cmd --flag value --bool --k=v positional`
+export function parseArgs(argv) {
+  const out = { _: [] };
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
+    if (a.startsWith('--')) {
+      const eq = a.indexOf('=');
+      if (eq > -1) {
+        out[a.slice(2, eq)] = a.slice(eq + 1);
+      } else if (i + 1 < argv.length && !argv[i + 1].startsWith('--')) {
+        out[a.slice(2)] = argv[++i];
+      } else {
+        out[a.slice(2)] = true;
+      }
+    } else {
+      out._.push(a);
+    }
+  }
+  return out;
+}
+
+const csv = (v) => (typeof v === 'string' ? v.split(',').map((s) => s.trim()).filter(Boolean) : null);
+
+export function selectPaintings(all, flags) {
+  const slugs = csv(flags.paintings);
+  const tiers = csv(flags.tier)?.map((t) => t.toUpperCase());
+  return all.filter((p) => (!slugs || slugs.includes(p.slug)) && (!tiers || tiers.includes(p.tier)));
+}
+
+export function selectModels(all, flags) {
+  const slugs = csv(flags.models);
+  return all.filter((m) => !slugs || slugs.includes(m.slug));
+}
+
+// Minimal concurrency limiter (no dependency).
+export function pLimit(n) {
+  let active = 0;
+  const queue = [];
+  const next = () => {
+    if (active >= n || queue.length === 0) return;
+    active++;
+    const { fn, resolve, reject } = queue.shift();
+    fn().then(resolve, reject).finally(() => {
+      active--;
+      next();
+    });
+  };
+  return (fn) => new Promise((resolve, reject) => {
+    queue.push({ fn, resolve, reject });
+    next();
+  });
+}
+
+export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+export function log(...args) {
+  const ts = new Date().toISOString().slice(11, 19);
+  console.error(`[${ts}]`, ...args);
+}
