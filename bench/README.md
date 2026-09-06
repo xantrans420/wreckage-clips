@@ -1,8 +1,9 @@
 # PaintBench — can AI paint with code?
 
 AI models recreate the most famous paintings on Earth as **pure SVG**, from memory, with a single text prompt.
-The SVG is rasterized and shown to a vision judge (**Claude Fable 5.1**) next to the original. Scores go on a
-static leaderboard with a gallery of every attempt.
+Two things are measured: **how good the output is** and **how long it took**. The SVG is rasterized and shown to
+a vision judge (**Claude Fable 5.1**) next to the original; generation time is recorded per painting. Scores and
+times go on a static leaderboard with a speed-versus-quality plot and a gallery of every attempt.
 
 Live page (once results are committed): `https://xantrans420.github.io/wreckage-clips/bench/`
 
@@ -79,6 +80,12 @@ cut variance.
 is the single-painting headline. Models that were not run on every painting rank below models with full
 coverage, whatever their score.
 
+**Speed is a first-class axis.** Wall-clock time is recorded for every generation (average, median and range
+per model) and plotted against score. The page marks the **speed/quality frontier**: models where no other
+model is both faster *and* better. Everything off the frontier is beaten outright on both axes, which is the
+only ranking that survives the tradeoff. Models that scored 0 are excluded from the frontier however fast
+they were.
+
 ## Quickstart
 
 ```bash
@@ -142,6 +149,13 @@ frontier model is the expensive part ($0.20–$1.20 per entry).
 - **Versioning.** `PROMPT_VERSION` and `RUBRIC_VERSION` in `src/config.mjs` are stamped on every result.
   Change the prompt or rubric, bump the version, and the leaderboard builder ignores stale entries.
 
+## Other benches
+
+[`CUTBENCH.md`](CUTBENCH.md) specifies **CutBench**, the follow-up: give a model a brief and a clip library and
+make it cut a 15 second ad, then score the seams against film grammar. Track B of that spec (edit only, no
+video generation) runs for the price of a text completion and reuses the `clips/` library in this repository.
+It is specified but not running.
+
 ## Layout
 
 ```
@@ -158,7 +172,7 @@ bench/
     svg.mjs            extraction, disqualification rules, text stripping, stats
     render.mjs         SVG → PNG (resvg default, chromium optional)
     judge.mjs          Fable 5.1 rubric judge, structured output
-    leaderboard.mjs    aggregation
+    leaderboard.mjs    aggregation, speed/quality Pareto frontier
     refs.mjs           Wikimedia Commons fetcher
     config.mjs         paths, versions, arg parsing
 ```

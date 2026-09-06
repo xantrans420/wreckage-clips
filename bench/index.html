@@ -11,6 +11,9 @@
     --bg:#0a0a0a; --bg2:#111; --bg3:#1a1a1a; --bg4:#222; --border:#2a2a2a; --border2:#333;
     --text:#e0e0e0; --text2:#888; --text3:#555; --accent:#ff3c00; --accent2:#ff7a00; --accent3:#ffcc00;
     --green:#00ff88; --blue:#00aaff; --red:#ff2244;
+    /* chart marks are stepped for the dark surface (OKLCH L 0.48-0.67), unlike the
+       brighter --green used for text, where WCAG contrast is the governing check */
+    --viz-accent:#17a862; --viz-mute:#8a8a8a;
     --mono:'Space Mono',ui-monospace,monospace; --display:'Bebas Neue',Impact,sans-serif; --body:'Inter',system-ui,sans-serif;
   }
   *{box-sizing:border-box;margin:0;padding:0}
@@ -56,6 +59,26 @@
   .dim{color:var(--text3)}
   .warn{color:var(--accent3)} .bad{color:var(--red)}
 
+  /* speed vs quality scatter: emphasis form (frontier accent + de-emphasis gray),
+     mark green stepped for the dark surface, identity carried by direct labels */
+  .chart{border:1px solid var(--border);background:var(--bg2);padding:16px 16px 8px;margin-bottom:22px;position:relative}
+  .chart svg{display:block;width:100%;height:auto;overflow:visible}
+  .chart .axlabel{font-family:var(--mono);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;fill:var(--text3)}
+  .chart .tick{font-family:var(--mono);font-size:9px;fill:var(--text3)}
+  .chart .grid{stroke:var(--border);stroke-width:1}
+  .chart .axis{stroke:var(--border2);stroke-width:1}
+  .chart .dotrank{font-family:var(--mono);font-size:10px;font-weight:700;fill:var(--bg2);pointer-events:none}
+  .chart g[data-slug]{cursor:pointer}
+  .chart g[data-slug]:focus{outline:none}
+  .chart g[data-slug]:focus .dot,.chart .dot.hi{stroke:var(--text)}
+  .chart .front{stroke:var(--viz-accent);stroke-width:2;fill:none;stroke-dasharray:none;opacity:.5}
+  .chart .hit{fill:transparent}
+  .chart .corner{font-family:var(--mono);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;fill:var(--viz-accent)}
+  .chart .note{font-family:var(--mono);font-size:9px;letter-spacing:1px;color:var(--text3);padding-top:4px}
+  .tip{position:fixed;z-index:500;pointer-events:none;background:var(--bg3);border:1px solid var(--border2);padding:8px 10px;font-family:var(--mono);font-size:10px;color:var(--text2);line-height:1.7;display:none;max-width:240px}
+  .tip b{color:var(--text);font-family:var(--body);font-size:12px;display:block;margin-bottom:3px}
+  .tip .on{color:var(--viz-accent)}
+  .dotmark{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--viz-accent);margin-right:6px;vertical-align:middle}
   .gallery{margin-top:36px}
   .prow{border:1px solid var(--border);background:var(--bg2);margin-bottom:14px;display:grid;grid-template-columns:220px 1fr}
   .refcard{padding:12px;border-right:1px solid var(--border);display:flex;flex-direction:column;gap:8px}
@@ -112,6 +135,7 @@
   PaintBench · Reference images: Wikimedia Commons, public domain · Contestants paint from memory (text prompt only, no reference image) · Judge never sees the SVG source or the model name ·
   <a href="https://github.com/xantrans420/wreckage-clips/tree/main/bench">source &amp; method</a>
 </div>
+<div class="tip" id="tip"></div>
 <div class="modal" id="modal" onclick="if(event.target===this)closeModal()"><div class="mbox" id="mbox"></div></div>
 
 <script>
@@ -144,7 +168,8 @@ async function main(){
     $('#app').innerHTML = `<div class="empty">Leaderboard is empty: nothing has been judged yet.</div>`;
     return;
   }
-  $('#app').innerHTML = renderIntro(board) + renderTable(board) + renderGallery(board);
+  $('#app').innerHTML = renderIntro(board) + renderChart(board) + renderTable(board) + renderGallery(board);
+  wireChart(board);
 }
 
 function renderChips(b){
@@ -166,25 +191,105 @@ function renderIntro(b){
   <b>Overall</b> averages every painting; <b>Mona Lisa</b> is the headline single-painting score. Disqualified or broken entries count as 0.</p>`;
 }
 
+// Speed vs quality. Two measures, one dot per model, so a scatter: position carries
+// both numbers and the Pareto frontier (nobody is both faster and better) is the
+// only ranking that survives the tradeoff. Emphasis form - frontier in the accent,
+// everyone else in de-emphasis gray - with every dot direct-labeled so identity is
+// never carried by color alone. The table below is the full-data view.
+function renderChart(b){
+  const pts = b.models.filter(m => m.avgLatencyMs > 0 && m.judged > 0);
+  if(pts.length < 2) return '';
+  const W = 900, H = 380, ML = 48, MR = 28, MT = 28, MB = 46;
+  const pw = W - ML - MR, ph = H - MT - MB;
+
+  let tmin = Math.min(...pts.map(p => p.avgLatencyMs)), tmax = Math.max(...pts.map(p => p.avgLatencyMs));
+  if(tmax - tmin < 1e-6){ tmin = Math.max(0, tmin * 0.9); tmax = tmax * 1.1 + 1; }
+  const pad = (tmax - tmin) * 0.08; tmin = Math.max(0, tmin - pad); tmax = tmax + pad;
+  const x = t => ML + ((t - tmin) / (tmax - tmin)) * pw;
+  // 10px inset top and bottom so marks at exactly 0 or 100 clear the axis rules.
+  // The scale stays linear over the true 0-100 rubric range; only the pixel band insets.
+  const y = v => MT + 10 + (1 - v / 100) * (ph - 20);
+
+  // horizontal grid only; the y scale is the fixed 0-100 rubric range
+  const yticks = [0, 25, 50, 75, 100];
+  const grid = yticks.map(v => `<line class="grid" x1="${ML}" y1="${y(v).toFixed(1)}" x2="${ML + pw}" y2="${y(v).toFixed(1)}"/>
+    <text class="tick" x="${ML - 8}" y="${(y(v) + 3).toFixed(1)}" text-anchor="end">${v}</text>`).join('');
+
+  const xticks = [0, .25, .5, .75, 1].map(f => tmin + f * (tmax - tmin));
+  const xax = xticks.map(t => `<text class="tick" x="${x(t).toFixed(1)}" y="${MT + ph + 16}" text-anchor="middle">${fmtMs(t)}</text>`).join('');
+
+  // frontier polyline, walked left to right (fast to slow)
+  const front = pts.filter(p => p.pareto).sort((a, b2) => a.avgLatencyMs - b2.avgLatencyMs);
+  const frontLine = front.length > 1
+    ? `<polyline class="front" points="${front.map(p => `${x(p.avgLatencyMs).toFixed(1)},${y(p.overall).toFixed(1)}`).join(' ')}"/>` : '';
+
+  // Labels are positioned after render, from measured text widths (see layoutLabels).
+  const dots = pts.map(p => {
+    const px = x(p.avgLatencyMs), py = y(p.overall);
+    const fill = p.pareto ? 'var(--viz-accent)' : 'var(--viz-mute)';
+    return `<g data-slug="${p.slug}" tabindex="0" role="listitem" aria-label="${esc(p.label)}: score ${p.overall.toFixed(1)} of 100, average ${fmtMs(p.avgLatencyMs)} per painting${p.pareto ? ', on the speed and quality frontier' : ''}">
+      <circle class="hit" cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="18"/>
+      <circle class="dot" cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="10" fill="${fill}" stroke="var(--bg2)" stroke-width="2"/>
+      <text class="dotrank" x="${px.toFixed(1)}" y="${(py + 3.4).toFixed(1)}" text-anchor="middle">${p.rank}</text>
+    </g>`;
+  }).join('');
+
+  return `<h2>Speed vs. output <small>every model: how long it took, how good it was</small></h2>
+  <div class="chart">
+    <svg viewBox="0 0 ${W} ${H}" role="list" aria-label="Benchmark score against average generation time, one point per model. Full figures are in the leaderboard table below.">
+      ${grid}
+      <line class="axis" x1="${ML}" y1="${MT}" x2="${ML}" y2="${MT + ph}"/>
+      <line class="axis" x1="${ML}" y1="${MT + ph}" x2="${ML + pw}" y2="${MT + ph}"/>
+      ${xax}
+      <text class="corner" x="${ML + 6}" y="${MT + 12}">Fast and good</text>
+      <text class="axlabel" x="${ML}" y="${H - 6}">Average time per painting</text>
+      <text class="axlabel" transform="translate(13,${MT + ph}) rotate(-90)" x="0" y="0">Score 0-100</text>
+      ${frontLine}<g id="plot" data-ml="${ML}" data-mr="${MR}" data-mt="${MT}" data-pw="${pw}" data-ph="${ph}">${dots}</g>
+    </svg>
+    <div class="note">Numbers are leaderboard rank; the table below is the key. Green marks the speed/quality frontier: no other model is both faster and better. Grey models are beaten outright on both axes.</div>
+  </div>`;
+}
+
+function wireChart(b){
+  const tip = $('#tip');
+  document.querySelectorAll('.chart g[data-slug]').forEach(g => {
+    const m = b.models.find(x => x.slug === g.dataset.slug);
+    if(!m) return;
+    const dot = g.querySelector('.dot');
+    g.addEventListener('mousemove', ev => {
+      tip.innerHTML = `<b>${esc(m.label)}</b>score <span class="on">${m.overall.toFixed(1)}</span> / 100<br>avg ${fmtMs(m.avgLatencyMs)} · median ${fmtMs(m.medianLatencyMs)}<br>range ${fmtMs(m.minLatencyMs)} to ${fmtMs(m.maxLatencyMs)}<br>${m.judged}/${m.of} judged · ${fmtBytes(m.avgBytes)} avg SVG${m.pareto ? '<br><span class="on">on the frontier</span>' : ''}`;
+      tip.style.display = 'block';
+      const r = tip.getBoundingClientRect();
+      tip.style.left = Math.min(ev.clientX + 14, innerWidth - r.width - 8) + 'px';
+      tip.style.top = Math.min(ev.clientY + 14, innerHeight - r.height - 8) + 'px';
+      dot.classList.add('hi');
+    });
+    g.addEventListener('focus', () => { dot.classList.add('hi'); });
+    g.addEventListener('blur', () => { tip.style.display = 'none'; dot.classList.remove('hi'); });
+    g.addEventListener('mouseleave', () => { tip.style.display = 'none'; dot.classList.remove('hi'); });
+  });
+}
+
 function renderTable(b){
   const rows = b.models.map(m => {
     const cov = m.judged === m.of ? `<span class="dim">${m.judged}/${m.of}</span>` : `<span class="warn">${m.judged}/${m.of}</span>`;
     const dq = m.disqualified + m.failed;
     return `<tr>
       <td><span class="rank">${m.rank}</span></td>
-      <td><div class="model">${esc(m.label)}<small>${esc(m.provider)} · ${esc(m.model)}</small></div></td>
+      <td><div class="model">${m.pareto ? '<span class="dotmark" title="on the speed/quality frontier"></span>' : ''}${esc(m.label)}<small>${esc(m.provider)} · ${esc(m.model)}</small></div></td>
       <td><span class="score"><span class="bar" style="--c:${scoreColor(m.overall)}"><i style="width:${m.overall}%"></i></span><b style="color:${scoreColor(m.overall)}">${m.overall.toFixed(1)}</b></span></td>
       <td><b style="color:${scoreColor(m.monaLisa)}">${m.monaLisa == null ? '–' : m.monaLisa.toFixed(1)}</b></td>
       ${CRIT.map(c => `<td>${(m.criteria[c] ?? 0).toFixed(1)}</td>`).join('')}
       <td>${cov}</td>
       <td class="${dq ? 'bad' : 'dim'}">${dq}</td>
       <td class="dim">${fmtBytes(m.avgBytes)}</td>
-      <td class="dim">${fmtMs(m.avgLatencyMs)}</td>
+      <td><b>${fmtMs(m.avgLatencyMs)}</b></td>
+      <td class="dim">${fmtMs(m.medianLatencyMs)}</td>
     </tr>`;
   }).join('');
   return `<h2>Leaderboard <small>weighted score 0–100</small></h2>
   <div class="tablewrap"><table>
-    <thead><tr><th>#</th><th>Model</th><th>Overall</th><th>Mona Lisa</th>${CRIT.map(c=>`<th title="${c}">${CRIT_SHORT[c]}</th>`).join('')}<th>Judged</th><th>DQ/Fail</th><th>Avg SVG</th><th>Avg time</th></tr></thead>
+    <thead><tr><th>#</th><th>Model</th><th>Overall</th><th>Mona Lisa</th>${CRIT.map(c=>`<th title="${c}">${CRIT_SHORT[c]}</th>`).join('')}<th>Judged</th><th>DQ/Fail</th><th>Avg SVG</th><th>Avg time</th><th>Median</th></tr></thead>
     <tbody>${rows}</tbody></table></div>`;
 }
 

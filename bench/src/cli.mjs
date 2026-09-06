@@ -27,10 +27,12 @@ const allPaintings = cfg.loadPaintings();
 const paintings = selectPaintings(allPaintings, args);
 
 const MOCK_MODELS = [
-  { slug: 'mock-plain', label: 'Mock (plain)', provider: 'mock', model: 'mock' },
-  { slug: 'mock-text', label: 'Mock (text stripped)', provider: 'mock', model: 'mock', mockVariant: 'text' },
-  { slug: 'mock-image', label: 'Mock (embedded image, DQ)', provider: 'mock', model: 'mock', mockVariant: 'image' },
-  { slug: 'mock-garbage', label: 'Mock (no SVG)', provider: 'mock', model: 'mock', mockVariant: 'garbage' },
+  { slug: 'mock-plain', label: 'Mock (plain)', provider: 'mock', model: 'mock', mockLatencyMs: 42000 },
+  { slug: 'mock-fast', label: 'Mock (fast)', provider: 'mock', model: 'mock', mockLatencyMs: 9000 },
+  { slug: 'mock-slow', label: 'Mock (slow)', provider: 'mock', model: 'mock', mockLatencyMs: 310000 },
+  { slug: 'mock-text', label: 'Mock (text stripped)', provider: 'mock', model: 'mock', mockVariant: 'text', mockLatencyMs: 70000 },
+  { slug: 'mock-image', label: 'Mock (embedded image, DQ)', provider: 'mock', model: 'mock', mockVariant: 'image', mockLatencyMs: 25000 },
+  { slug: 'mock-garbage', label: 'Mock (no SVG)', provider: 'mock', model: 'mock', mockVariant: 'garbage', mockLatencyMs: 5000 },
 ];
 const allModels = cmd === 'smoke' ? MOCK_MODELS : cfg.loadModels();
 const models = selectModels(allModels, args);

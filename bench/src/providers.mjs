@@ -32,7 +32,9 @@ export async function generate(model, { system, user, maxTokens }) {
     case 'mock': out = await viaMock(model, { user }); break;
     default: throw new Error(`unknown provider "${model.provider}"`);
   }
-  return { ...out, latencyMs: Date.now() - t0 };
+  // The mock provider reports a simulated duration so pipeline tests exercise the
+  // speed axis without actually waiting; every real provider is timed for real.
+  return { ...out, latencyMs: out.fakeLatencyMs ?? Date.now() - t0, fakeLatencyMs: undefined };
 }
 
 // ---------------------------------------------------------------- Anthropic
@@ -152,7 +154,13 @@ async function viaMock(model, { user }) {
 ${extra}${dq}
 </svg>`;
   await sleep(20);
-  return { text: variant === 'garbage' ? 'I cannot draw.' : '```svg\n' + svg + '\n```', stopReason: 'stop', usage: { input: 300, output: 220 }, servedBy: 'mock' };
+  return {
+    text: variant === 'garbage' ? 'I cannot draw.' : '```svg\n' + svg + '\n```',
+    stopReason: 'stop',
+    usage: { input: 300, output: 220 },
+    servedBy: 'mock',
+    fakeLatencyMs: (model.mockLatencyMs ?? 30000) + (seed % 7000),
+  };
 }
 
 // ------------------------------------------------------------------ helpers

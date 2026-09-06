@@ -9,6 +9,26 @@ import { loadRef } from './refs.mjs';
 const rel = (abs) => path.relative(path.dirname(RESULTS_DIR), abs).split(path.sep).join('/');
 const round1 = (n) => Math.round(n * 10) / 10;
 const mean = (arr) => (arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null);
+const median = (arr) => {
+  if (!arr.length) return null;
+  const s = [...arr].sort((a, b) => a - b);
+  const m = s.length >> 1;
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+};
+
+// A model is on the speed/quality frontier when no other model is both at least
+// as fast and at least as good (and strictly better on one of the two). These are
+// the only defensible picks; everything else is beaten outright on both axes.
+function markPareto(rows) {
+  for (const a of rows) {
+    // A model that produced nothing is never a defensible pick, however fast it was.
+    a.pareto = a.overall > 0 && !rows.some((b) =>
+      b !== a &&
+      b.avgLatencyMs > 0 && a.avgLatencyMs > 0 &&
+      b.overall >= a.overall && b.avgLatencyMs <= a.avgLatencyMs &&
+      (b.overall > a.overall || b.avgLatencyMs < a.avgLatencyMs));
+  }
+}
 
 export function buildLeaderboard({ paintings, models }) {
   const judges = new Set();
@@ -53,6 +73,7 @@ export function buildLeaderboard({ paintings, models }) {
 
     const done = Object.values(perPainting).filter((e) => e.total !== null);
     if (done.length === 0) continue;
+    const times = done.filter((e) => e.latencyMs != null).map((e) => e.latencyMs);
     const criteria = Object.fromEntries(RUBRIC.map((r) => {
       const vals = done.filter((e) => e.scores).map((e) => e.scores[r.key]);
       return [r.key, vals.length ? round1(mean(vals)) : 0];
@@ -70,7 +91,10 @@ export function buildLeaderboard({ paintings, models }) {
       disqualified: done.filter((e) => e.disqualified).length,
       failed: done.filter((e) => e.status !== 'ok' && !e.disqualified).length,
       avgBytes: Math.round(mean(done.filter((e) => e.stats).map((e) => e.stats.bytes)) || 0),
-      avgLatencyMs: Math.round(mean(done.filter((e) => e.latencyMs != null).map((e) => e.latencyMs)) || 0),
+      avgLatencyMs: Math.round(mean(times) || 0),
+      medianLatencyMs: Math.round(median(times) ?? 0),
+      minLatencyMs: times.length ? Math.min(...times) : null,
+      maxLatencyMs: times.length ? Math.max(...times) : null,
       avgOutputTokens: Math.round(mean(done.filter((e) => e.usage?.output != null).map((e) => e.usage.output)) || 0),
     });
   }
@@ -78,6 +102,7 @@ export function buildLeaderboard({ paintings, models }) {
   // Full coverage ranks above partial coverage; within a group, by overall.
   rows.sort((a, b) => (b.judged === b.of) - (a.judged === a.of) || b.overall - a.overall || (b.monaLisa ?? -1) - (a.monaLisa ?? -1));
   rows.forEach((r, i) => (r.rank = i + 1));
+  markPareto(rows);
 
   const board = {
     generatedAt: new Date().toISOString(),

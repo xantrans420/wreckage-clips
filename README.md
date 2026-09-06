@@ -10,5 +10,7 @@ Filenames match `clipSlug(name)` in the app so each picker cell resolves its cli
 
 ---
 
-**PaintBench** (`bench/`): AI models recreate the most famous paintings on Earth as SVG code, judged by
-Claude Fable 5.1, with a static leaderboard at `bench/index.html`. See [bench/README.md](bench/README.md).
+**PaintBench** (`bench/`): AI models recreate the most famous paintings on Earth as SVG code, scored on both
+output quality (judged by Claude Fable 5.1) and generation time, with a static leaderboard at
+`bench/index.html`. See [bench/README.md](bench/README.md). [`bench/CUTBENCH.md`](bench/CUTBENCH.md) specs the
+follow-up bench: cut a 15 second ad from a brief.
