@@ -22,14 +22,14 @@ export function providerReady(model) {
 
 const DEFAULT_KEY_ENV = { openai: 'OPENAI_API_KEY', google: 'GEMINI_API_KEY' };
 
-export async function generate(model, { system, user, maxTokens }) {
+export async function generate(model, { system, user, maxTokens, run }) {
   const t0 = Date.now();
   let out;
   switch (model.provider) {
     case 'anthropic': out = await viaAnthropic(model, { system, user, maxTokens }); break;
     case 'openai': out = await viaOpenAICompatible(model, { system, user, maxTokens }); break;
     case 'google': out = await viaGemini(model, { system, user, maxTokens }); break;
-    case 'mock': out = await viaMock(model, { user }); break;
+    case 'mock': out = await viaMock(model, { user, run }); break;
     default: throw new Error(`unknown provider "${model.provider}"`);
   }
   // The mock provider reports a simulated duration so pipeline tests exercise the
@@ -137,11 +137,13 @@ async function viaGemini(model, { system, user, maxTokens }) {
 // -------------------------------------------------------------------- Mock
 // Deterministic stand-in for pipeline tests (`paintbench smoke`). Never appears
 // on a real leaderboard: the builder tags mock runs and the page shows a banner.
-async function viaMock(model, { user }) {
+async function viaMock(model, { user, run }) {
   const vb = user.match(/viewBox="0 0 (\d+) (\d+)"/);
   const w = vb ? +vb[1] : 1000;
   const h = vb ? +vb[2] : 1000;
-  const seed = [...user].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7);
+  // Seeded by the run too, so a pipeline test produces a plausible time series
+  // rather than the same picture at every date.
+  const seed = [...(user + (run || '') + model.slug)].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7);
   const hue = seed % 360;
   const variant = model.mockVariant || 'plain';
   const extra = variant === 'text' ? `<text x="20" y="40" font-size="40">${user.match(/"([^"]+)"/)?.[1] || ''}</text>` : '';

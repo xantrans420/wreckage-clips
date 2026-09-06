@@ -3,68 +3,65 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PAINTBENCH — Can AI paint with code?</title>
-<meta name="description" content="AI models recreate the most famous paintings on Earth as SVG code. Judged by Claude Fable 5.1. Leaderboard and gallery.">
+<title>THE BENCH</title>
+<meta name="description" content="Five benchmarks for whether AI can actually do creative work. PaintBench: one painting, recreated as SVG code, tracked over time.">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700&family=Bebas+Neue&family=Inter:wght@300;400;500;600&display=swap">
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700&family=Bebas+Neue&family=Inter:wght@300;400;500;600&display=swap');
   :root {
     --bg:#0a0a0a; --bg2:#111; --bg3:#1a1a1a; --bg4:#222; --border:#2a2a2a; --border2:#333;
     --text:#e0e0e0; --text2:#888; --text3:#555; --accent:#ff3c00; --accent2:#ff7a00; --accent3:#ffcc00;
     --green:#00ff88; --blue:#00aaff; --red:#ff2244;
-    /* chart marks are stepped for the dark surface (OKLCH L 0.48-0.67), unlike the
-       brighter --green used for text, where WCAG contrast is the governing check */
+    /* Chart marks are stepped for the dark surface (OKLCH L 0.48-0.67); the brighter
+       --green above is text, where WCAG contrast is the governing check. */
     --viz-accent:#17a862; --viz-mute:#8a8a8a;
-    /* surface behind artwork; entries must paint their full canvas, so this shows
-       only at the edges and behind any entry that left the canvas transparent */
+    /* Surface behind artwork. Entries must paint their full canvas, so this shows
+       only at the edges and behind anything that left the canvas transparent. */
     --mat:#161616;
     --mono:'Space Mono',ui-monospace,monospace; --display:'Bebas Neue',Impact,sans-serif; --body:'Inter',system-ui,sans-serif;
   }
-  *{box-sizing:border-box;margin:0;padding:0}
+  /* Committed single-theme design: the page paints its own ground so it holds on
+     any host background. */
   html{color-scheme:dark;background:var(--bg)}
+  *{box-sizing:border-box;margin:0;padding:0}
   body{background:var(--bg);color:var(--text);font-family:var(--body);font-size:13px;line-height:1.6;min-height:100vh;overflow-x:hidden}
   a{color:var(--blue);text-decoration:none} a:hover{text-decoration:underline}
+  :focus-visible{outline:2px solid var(--accent3);outline-offset:2px}
   body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.03) 2px,rgba(0,0,0,.03) 4px);pointer-events:none;z-index:9999}
 
-  .header{padding:22px 24px 18px;border-bottom:1px solid var(--border);display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px 24px}
-  .logo{font-family:var(--display);font-size:44px;letter-spacing:4px;color:var(--accent);line-height:1}
-  .logo span{color:var(--text)}
-  .tag{font-family:var(--mono);font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text3)}
-  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-left:auto}
+  /* ---------------------------------------------------------------- header */
+  .header{padding:20px 24px 0;border-bottom:1px solid var(--border);background:var(--bg);position:sticky;top:0;z-index:100}
+  .header-top{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px 20px;margin-bottom:14px}
+  .logo{font-family:var(--display);font-size:40px;letter-spacing:5px;color:var(--accent);line-height:.9}
+  .tagline{font-family:var(--mono);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);padding-bottom:3px}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-left:auto;padding-bottom:2px}
   .chip{font-family:var(--mono);font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:3px 8px;border:1px solid var(--border2);color:var(--text2);background:var(--bg2)}
   .chip b{color:var(--text);font-weight:700}
   .chip.judge{border-color:var(--accent);color:var(--accent)}
 
-  .banner{margin:16px 24px 0;padding:10px 14px;border:1px solid var(--accent3);color:var(--accent3);font-family:var(--mono);font-size:11px;letter-spacing:1px;background:rgba(255,204,0,.06)}
-  .banner.err{border-color:var(--red);color:var(--red);background:rgba(255,34,68,.06)}
+  .tabs{display:flex;gap:0;overflow-x:auto;scrollbar-width:none}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{font-family:var(--mono);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;padding:10px 15px;border:none;background:transparent;color:var(--text3);cursor:pointer;border-bottom:2px solid transparent;transition:color .15s,border-color .15s;white-space:nowrap;display:flex;align-items:center;gap:7px}
+  .tab:hover{color:var(--text)}
+  .tab[aria-selected="true"]{color:var(--accent);border-bottom-color:var(--accent)}
+  .tab .st{width:6px;height:6px;border-radius:50%;background:var(--text3);flex:none}
+  .tab .st.live{background:var(--viz-accent)}
+  .tab .st.spec{background:var(--accent3)}
+
+  .banner{margin:16px 24px 0;padding:10px 14px;border:1px solid var(--accent3);color:var(--accent3);font-family:var(--mono);font-size:11px;letter-spacing:.5px;line-height:1.7;background:rgba(255,204,0,.06)}
   .banner code{color:var(--text)}
 
-  .content{padding:24px;max-width:1400px;margin:0 auto}
-  h2{font-family:var(--display);font-size:26px;letter-spacing:3px;color:var(--text);margin:8px 0 12px}
+  .content{padding:24px;max-width:1320px;margin:0 auto}
+  .panel[hidden]{display:none}
+  h2{font-family:var(--display);font-size:26px;letter-spacing:3px;color:var(--text);margin:34px 0 12px}
+  h2:first-child{margin-top:0}
   h2 small{font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--text3);margin-left:12px;text-transform:uppercase}
-  .intro{color:var(--text2);max-width:820px;margin-bottom:22px;font-size:13px}
+  .intro{color:var(--text2);max-width:78ch;margin-bottom:6px}
   .intro b{color:var(--text)}
+  .empty{padding:60px 24px;text-align:center;color:var(--text2);font-family:var(--mono);font-size:12px;line-height:2}
+  .empty code{color:var(--accent3)}
 
-  .tablewrap{overflow-x:auto;border:1px solid var(--border);background:var(--bg2)}
-  table{border-collapse:collapse;width:100%;min-width:900px;font-family:var(--mono);font-size:11px}
-  th,td{padding:9px 10px;border-bottom:1px solid var(--border);text-align:right;white-space:nowrap}
-  th{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);font-weight:400;background:var(--bg3);position:sticky;top:0}
-  th:nth-child(2),td:nth-child(2){text-align:left}
-  th:first-child,td:first-child{text-align:center;width:44px}
-  tr:hover td{background:var(--bg3)}
-  .rank{font-family:var(--display);font-size:20px;color:var(--text2)}
-  tr:nth-child(1) .rank{color:var(--accent3)} tr:nth-child(2) .rank{color:var(--text)} tr:nth-child(3) .rank{color:var(--accent2)}
-  .model{font-family:var(--body);font-size:13px;font-weight:600;color:var(--text)}
-  .model small{display:block;font-family:var(--mono);font-size:9px;color:var(--text3);letter-spacing:.5px;font-weight:400}
-  .score{display:inline-flex;align-items:center;gap:8px;justify-content:flex-end}
-  .score b{font-size:14px;min-width:38px;text-align:right}
-  .bar{width:90px;height:6px;background:var(--bg4);position:relative;overflow:hidden}
-  .bar i{position:absolute;left:0;top:0;bottom:0;background:var(--c,var(--accent))}
-  .dim{color:var(--text3)}
-  .warn{color:var(--accent3)} .bad{color:var(--red)}
-
-  /* speed vs quality scatter: emphasis form (frontier accent + de-emphasis gray),
-     mark green stepped for the dark surface, identity carried by direct labels */
-  .chart{border:1px solid var(--border);background:var(--bg2);padding:16px 16px 8px;margin-bottom:22px;position:relative}
+  /* ---------------------------------------------------------------- charts */
+  .chart{border:1px solid var(--border);background:var(--bg2);padding:16px 16px 8px;position:relative}
   .chart svg{display:block;width:100%;height:auto;overflow:visible}
   .chart .axlabel{font-family:var(--mono);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;fill:var(--text3)}
   .chart .tick{font-family:var(--mono);font-size:9px;fill:var(--text3)}
@@ -74,43 +71,81 @@
   .chart g[data-slug]{cursor:pointer}
   .chart g[data-slug]:focus{outline:none}
   .chart g[data-slug]:focus .dot,.chart .dot.hi{stroke:var(--text)}
-  .chart .front{stroke:var(--viz-accent);stroke-width:2;fill:none;stroke-dasharray:none;opacity:.5}
+  .chart .front{stroke:var(--viz-accent);stroke-width:2;fill:none;opacity:.45}
   .chart .hit{fill:transparent}
   .chart .corner{font-family:var(--mono);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;fill:var(--viz-accent)}
-  .chart .note{font-family:var(--mono);font-size:9px;letter-spacing:1px;color:var(--text3);padding-top:4px}
-  .tip{position:fixed;z-index:500;pointer-events:none;background:var(--bg3);border:1px solid var(--border2);padding:8px 10px;font-family:var(--mono);font-size:10px;color:var(--text2);line-height:1.7;display:none;max-width:240px}
+  .chart .note{font-family:var(--mono);font-size:9px;letter-spacing:.5px;color:var(--text3);padding-top:6px;line-height:1.7}
+  .chart .series{fill:none;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+  .chart .endlabel{font-family:var(--mono);font-size:10px;dominant-baseline:middle}
+  .tip{position:fixed;z-index:500;pointer-events:none;background:var(--bg3);border:1px solid var(--border2);padding:8px 10px;font-family:var(--mono);font-size:10px;color:var(--text2);line-height:1.7;display:none;max-width:250px}
   .tip b{color:var(--text);font-family:var(--body);font-size:12px;display:block;margin-bottom:3px}
   .tip .on{color:var(--viz-accent)}
-  .dotmark{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--viz-accent);margin-right:6px;vertical-align:middle}
-  .gallery{margin-top:36px}
-  .prow{border:1px solid var(--border);background:var(--bg2);margin-bottom:14px;display:grid;grid-template-columns:220px 1fr}
-  .refcard{padding:12px;border-right:1px solid var(--border);display:flex;flex-direction:column;gap:8px}
-  .refcard .thumb{width:100%;aspect-ratio:var(--ar,1);background:var(--mat);display:flex;align-items:center;justify-content:center;overflow:hidden}
-  .refcard img{width:100%;height:100%;object-fit:contain}
-  .ptitle{font-family:var(--body);font-weight:600;font-size:13px;line-height:1.3}
-  .pmeta{font-family:var(--mono);font-size:9px;color:var(--text3);letter-spacing:.5px;text-transform:uppercase}
-  .tier{display:inline-block;font-family:var(--display);font-size:13px;letter-spacing:1px;padding:0 6px;border:1px solid var(--border2);color:var(--text2);margin-right:6px;vertical-align:middle}
-  .tier.S{border-color:var(--accent3);color:var(--accent3)} .tier.A{border-color:var(--accent2);color:var(--accent2)}
-  .cells{display:flex;gap:10px;padding:12px;overflow-x:auto;scrollbar-width:thin}
-  .cell{flex:0 0 190px;display:flex;flex-direction:column;gap:6px;cursor:pointer;border:1px solid transparent;padding:6px;transition:border-color .15s,background .15s}
-  .cell:hover{border-color:var(--border2);background:var(--bg3)}
-  .cell .thumb{width:100%;aspect-ratio:var(--ar,1);background:var(--mat);display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
-  .cell .thumb img{width:100%;height:100%;object-fit:contain;display:block}
-  .cell .thumb .fail{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:var(--bg4);color:var(--text3);font-family:var(--mono);font-size:10px;letter-spacing:1px;text-transform:uppercase;text-align:center;padding:8px}
-  .cell .who{font-family:var(--mono);font-size:10px;color:var(--text2);display:flex;justify-content:space-between;gap:6px;align-items:baseline}
-  .cell .who b{font-family:var(--display);font-size:18px;letter-spacing:1px;color:var(--c,var(--text))}
-  .empty{padding:60px 24px;text-align:center;color:var(--text2);font-family:var(--mono);font-size:12px;line-height:2}
-  .empty code{color:var(--accent3)}
 
-  .modal{position:fixed;inset:0;background:rgba(0,0,0,.88);display:none;align-items:center;justify-content:center;z-index:10000;padding:20px}
+  /* ----------------------------------------------------------------- table */
+  .tablewrap{overflow-x:auto;border:1px solid var(--border);background:var(--bg2)}
+  table{border-collapse:collapse;width:100%;min-width:940px;font-family:var(--mono);font-size:11px;font-variant-numeric:tabular-nums}
+  th,td{padding:9px 10px;border-bottom:1px solid var(--border);text-align:right;white-space:nowrap}
+  th{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);font-weight:400;background:var(--bg3);position:sticky;top:0}
+  th:nth-child(2),td:nth-child(2){text-align:left}
+  th:first-child,td:first-child{text-align:center;width:44px}
+  tbody tr:hover td{background:var(--bg3)}
+  .rank{font-family:var(--display);font-size:20px;color:var(--text2)}
+  tbody tr:nth-child(1) .rank{color:var(--accent3)} tbody tr:nth-child(2) .rank{color:var(--text)} tbody tr:nth-child(3) .rank{color:var(--accent2)}
+  .model{font-family:var(--body);font-size:13px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:7px}
+  .model small{display:block;font-family:var(--mono);font-size:9px;color:var(--text3);letter-spacing:.5px;font-weight:400}
+  .swatch{width:8px;height:8px;border-radius:50%;flex:none}
+  .score{display:inline-flex;align-items:center;gap:8px;justify-content:flex-end}
+  .score b{font-size:14px;min-width:38px;text-align:right}
+  .bar{width:80px;height:6px;background:var(--bg4);position:relative;overflow:hidden}
+  .bar i{position:absolute;left:0;top:0;bottom:0;background:var(--c,var(--accent))}
+  .dim{color:var(--text3)} .warn{color:var(--accent3)} .bad{color:var(--red)} .good{color:var(--viz-accent)}
+
+  /* --------------------------------------------------------------- gallery */
+  .subject{display:grid;grid-template-columns:220px 1fr;gap:18px;align-items:start;border:1px solid var(--border);background:var(--bg2);padding:16px;margin-bottom:14px}
+  .subject .plate{width:100%;aspect-ratio:var(--ar,1);max-height:300px;background:var(--mat);overflow:hidden}
+  .subject .plate img{width:100%;height:100%;object-fit:contain;display:block}
+  .subject h3{font-family:var(--display);font-size:30px;letter-spacing:2px;line-height:1;margin-bottom:4px}
+  .pmeta{font-family:var(--mono);font-size:9px;color:var(--text3);letter-spacing:.5px;text-transform:uppercase;line-height:1.9}
+  .tier{display:inline-block;font-family:var(--display);font-size:13px;letter-spacing:1px;padding:0 6px;border:1px solid var(--accent3);color:var(--accent3);margin-right:6px;vertical-align:middle}
+
+  .evorow{border:1px solid var(--border);background:var(--bg2);margin-bottom:10px;display:grid;grid-template-columns:190px 1fr}
+  .evorow .who{padding:12px;border-right:1px solid var(--border);display:flex;flex-direction:column;gap:4px;justify-content:center}
+  .evorow .who .nm{font-weight:600;font-size:13px;display:flex;align-items:center;gap:7px}
+  .evorow .shots{display:flex;gap:8px;padding:12px;overflow-x:auto;scrollbar-width:thin}
+  .shot{flex:0 0 132px;display:flex;flex-direction:column;gap:5px;cursor:pointer;border:1px solid transparent;padding:5px;background:none;text-align:left;font:inherit;color:inherit}
+  .shot:hover{border-color:var(--border2);background:var(--bg3)}
+  .shot .fr{width:100%;aspect-ratio:var(--ar,1);background:var(--mat);overflow:hidden;position:relative}
+  .shot .fr img{width:100%;height:100%;object-fit:contain;display:block}
+  .shot .fail{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:var(--bg4);color:var(--text3);font-family:var(--mono);font-size:9px;letter-spacing:1px;text-transform:uppercase;text-align:center;padding:6px}
+  .shot .cap{font-family:var(--mono);font-size:9px;color:var(--text3);display:flex;justify-content:space-between;gap:6px;align-items:baseline}
+  .shot .cap b{font-family:var(--display);font-size:16px;letter-spacing:1px;color:var(--c,var(--text))}
+
+  /* ------------------------------------------------------------ spec cards */
+  .spec{max-width:82ch}
+  .spec .q{font-family:var(--display);font-size:38px;letter-spacing:2px;line-height:1.05;color:var(--text);margin-bottom:10px;text-wrap:balance}
+  .spec .lede{color:var(--text2);font-size:14px;margin-bottom:22px}
+  .spec .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--border);border:1px solid var(--border);margin-bottom:22px}
+  .spec .grid div{background:var(--bg2);padding:11px 13px}
+  .spec .grid dt{font-family:var(--mono);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);margin-bottom:3px}
+  .spec .grid dd{color:var(--text);font-size:12px;line-height:1.55}
+  .spec h4{font-family:var(--mono);font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text3);margin:0 0 8px}
+  .spec ul{list-style:none;display:flex;flex-direction:column;gap:7px;margin-bottom:22px}
+  .spec li{padding-left:18px;position:relative;color:var(--text2)}
+  .spec li::before{content:'';position:absolute;left:0;top:8px;width:7px;height:1px;background:var(--accent)}
+  .quote{border-left:2px solid var(--accent);padding:2px 0 2px 14px;font-size:17px;line-height:1.45;color:var(--text);font-weight:300;margin-bottom:20px;text-wrap:balance}
+  .statustag{display:inline-block;font-family:var(--mono);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;padding:2px 8px;border:1px solid var(--border2);color:var(--text2);margin-bottom:14px}
+  .statustag.live{border-color:var(--viz-accent);color:var(--viz-accent)}
+  .statustag.spec{border-color:var(--accent3);color:var(--accent3)}
+
+  /* ----------------------------------------------------------------- modal */
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.9);display:none;align-items:center;justify-content:center;z-index:10000;padding:20px}
   .modal.open{display:flex}
-  .mbox{background:var(--bg2);border:1px solid var(--border2);max-width:1200px;width:100%;max-height:100%;overflow:auto;padding:18px;display:grid;grid-template-columns:1fr 1fr;gap:16px}
-  .mbox .pane{background:var(--bg);display:flex;align-items:center;justify-content:center;aspect-ratio:var(--ar,1);max-height:70vh}
-  .mbox .pane img{max-width:100%;max-height:70vh;object-fit:contain;background:var(--mat)}
-  .mbox .pane.ref img{background:var(--mat)}
+  .mbox{background:var(--bg2);border:1px solid var(--border2);max-width:1180px;width:100%;max-height:100%;overflow:auto;padding:18px;display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .mbox .pane{background:var(--bg);display:flex;align-items:center;justify-content:center;aspect-ratio:var(--ar,1);max-height:68vh}
+  .mbox .pane img{max-width:100%;max-height:68vh;object-fit:contain;background:var(--mat)}
   .mhead{grid-column:1/-1;display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
   .mhead h3{font-family:var(--display);font-size:28px;letter-spacing:2px;line-height:1}
-  .mhead .close{font-family:var(--mono);color:var(--text2);cursor:pointer;border:1px solid var(--border2);padding:4px 10px;background:none;font-size:12px}
+  .close{font-family:var(--mono);color:var(--text2);cursor:pointer;border:1px solid var(--border2);padding:4px 10px;background:none;font-size:12px}
   .mfoot{grid-column:1/-1;display:grid;grid-template-columns:2fr 1fr;gap:16px;font-size:12px}
   .verdict{color:var(--text);line-height:1.6;border-left:2px solid var(--accent);padding-left:12px}
   .kv{font-family:var(--mono);font-size:10px;color:var(--text2);display:grid;grid-template-columns:auto 1fr;gap:3px 12px}
@@ -120,234 +155,351 @@
   .crit{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:10px}
   .crit div{background:var(--bg3);padding:6px 8px;font-family:var(--mono);font-size:10px;color:var(--text2)}
   .crit b{display:block;font-family:var(--display);font-size:22px;color:var(--text);letter-spacing:1px}
+
   .footer{padding:30px 24px;border-top:1px solid var(--border);color:var(--text3);font-family:var(--mono);font-size:10px;letter-spacing:1px;line-height:1.9}
-  @media (max-width:800px){.prow{grid-template-columns:1fr}.refcard{border-right:none;border-bottom:1px solid var(--border);flex-direction:row;align-items:center}.refcard .thumb{width:90px;flex:none}.mbox{grid-template-columns:1fr}.mfoot{grid-template-columns:1fr}}
+  @media (max-width:620px){.spec .grid{grid-template-columns:1fr}}
+  @media (max-width:820px){
+    .subject{grid-template-columns:1fr}
+    .evorow{grid-template-columns:1fr}
+    .evorow .who{border-right:none;border-bottom:1px solid var(--border);flex-direction:row;align-items:center;gap:10px}
+    .mbox{grid-template-columns:1fr}
+    .mfoot{grid-template-columns:1fr}
+    .logo{font-size:32px}
+  }
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
 <body>
 <div class="header">
-  <div>
-    <div class="logo">PAINT<span>BENCH</span></div>
-    <div class="tag">Can AI paint with code? · Famous paintings → SVG · Judged by Claude Fable 5.1</div>
+  <div class="header-top">
+    <div>
+      <div class="logo" id="suiteName">THE BENCH</div>
+      <div class="tagline" id="suiteTagline"></div>
+    </div>
+    <div class="chips" id="chips"></div>
   </div>
-  <div class="chips" id="chips"></div>
+  <div class="tabs" role="tablist" id="tabs"></div>
 </div>
 <div id="banner"></div>
 <div class="content" id="app"><div class="empty">loading…</div></div>
-<div class="footer">
-  PaintBench · Reference images: Wikimedia Commons, public domain · Contestants paint from memory (text prompt only, no reference image) · Judge never sees the SVG source or the model name ·
-  <a href="https://github.com/xantrans420/wreckage-clips/tree/main/bench">source &amp; method</a>
-</div>
+<div class="footer" id="footer"></div>
 <div class="tip" id="tip"></div>
-<div class="modal" id="modal" onclick="if(event.target===this)closeModal()"><div class="mbox" id="mbox"></div></div>
+<div class="modal" id="modal"><div class="mbox" id="mbox"></div></div>
 
 <script>
-const $ = (s, el=document) => el.querySelector(s);
+const $ = (s, el = document) => el.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const fmtBytes = (n) => n == null ? '–' : n > 1e6 ? (n/1e6).toFixed(1)+' MB' : n > 1e3 ? (n/1e3).toFixed(0)+' KB' : n+' B';
 const fmtMs = (n) => n == null ? '–' : n >= 60e3 ? (n/60e3).toFixed(1)+' min' : (n/1e3).toFixed(1)+' s';
+const fmtDate = (d) => new Date(d + 'T00:00:00Z').toLocaleDateString('en-GB', { month: 'short', year: '2-digit', timeZone: 'UTC' });
 const scoreColor = (t) => t == null ? 'var(--text3)' : t >= 70 ? 'var(--green)' : t >= 45 ? 'var(--accent3)' : t >= 20 ? 'var(--accent2)' : 'var(--red)';
 const CRIT = ['recognizability','composition','color','craft','impression'];
-const CRIT_SHORT = {recognizability:'Recog',composition:'Comp',color:'Color',craft:'Craft',impression:'Impr'};
+const CRIT_SHORT = { recognizability:'Recog', composition:'Comp', color:'Color', craft:'Craft', impression:'Impr' };
+
+// Validated categorical steps for a dark surface, assigned in fixed order by the
+// model's stable roster position - never by rank, so re-sorting never repaints.
+const SERIES = ['#3987e5','#d95926','#199e70','#c98500','#d55181','#008300','#9085e9','#e66767'];
+const hueOf = (m) => SERIES[(m.order ?? 0) % SERIES.length];
 
 const params = new URLSearchParams(location.search);
-const RESULTS = (params.get('results') || 'results').replace(/[^a-z0-9_-]/gi,'');
-let DATA = null;
+const RESULTS = (params.get('results') || 'results').replace(/[^a-z0-9_-]/gi, '');
+let DATA = null, SUITE = null, ACTIVE = 'paint';
 
 async function main(){
-  let board;
-  try {
-    const r = await fetch(`${RESULTS}/leaderboard.json`, {cache:'no-store'});
-    if(!r.ok) throw new Error(r.status);
-    board = await r.json();
-  } catch(e){
-    $('#app').innerHTML = `<div class="empty">No results published yet.<br><br>Run <code>cd bench && npm install && npm run refs && npm run run</code>, then commit <code>bench/results/</code>.<br><small>(${esc(e.message)})</small></div>`;
-    return;
-  }
+  const [suite, board] = await Promise.all([
+    fetch('benches.json', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).catch(() => null),
+    fetch(`${RESULTS}/leaderboard.json`, { cache: 'no-store' }).then(r => r.ok ? r.json() : null).catch(() => null),
+  ]);
+  SUITE = suite || { suite: { name: 'THE BENCH', tagline: '' }, benches: [] };
   DATA = board;
-  renderChips(board);
-  if(board.mock) $('#banner').innerHTML = `<div class="banner">MOCK RUN · pipeline test data from <code>paintbench smoke</code> · scores are meaningless</div>`;
-  if(!board.models.length){
-    $('#app').innerHTML = `<div class="empty">Leaderboard is empty: nothing has been judged yet.</div>`;
-    return;
-  }
-  $('#app').innerHTML = renderIntro(board) + renderChart(board) + renderTable(board) + renderGallery(board);
-  wireChart(board);
+  $('#suiteName').textContent = SUITE.suite.name;
+  $('#suiteTagline').textContent = SUITE.suite.tagline;
+  $('#footer').innerHTML = `Reference images: Wikimedia Commons, public domain · Contestants work from a text prompt only, never a reference image · The judge never sees the SVG source or the model name · <a href="https://github.com/xantrans420/wreckage-clips/tree/main/bench">source &amp; method</a>`;
+  renderTabs();
+  renderChips();
+  show(location.hash.slice(1) || 'paint');
 }
 
-function renderChips(b){
-  const judge = b.judge.models.length ? b.judge.models.join(', ') : '–';
+function renderTabs(){
+  $('#tabs').innerHTML = SUITE.benches.map(b =>
+    `<button class="tab" role="tab" id="tab-${b.slug}" aria-controls="panel-${b.slug}" aria-selected="false" onclick="show('${b.slug}')"><span class="st ${b.status}"></span>${esc(b.name)}</button>`).join('');
+}
+
+function renderChips(){
+  if(!DATA){ $('#chips').innerHTML = ''; return; }
+  const runs = DATA.runs.length;
   $('#chips').innerHTML = [
-    `<span class="chip judge">judge <b>${esc(judge)}</b></span>`,
-    `<span class="chip"><b>${b.models.length}</b> models</span>`,
-    `<span class="chip"><b>${b.paintings.length}</b> paintings</span>`,
-    `<span class="chip">prompt v<b>${b.promptVersion}</b> · rubric v<b>${b.rubricVersion}</b></span>`,
-    `<span class="chip">${esc(new Date(b.generatedAt).toISOString().slice(0,10))}</span>`,
+    `<span class="chip judge">judge <b>${esc(DATA.judge.models.join(', ') || '–')}</b></span>`,
+    `<span class="chip"><b>${runs}</b> run${runs === 1 ? '' : 's'}</span>`,
+    `<span class="chip">latest <b>${esc(DATA.latestRun || '–')}</b></span>`,
+    `<span class="chip">prompt v<b>${DATA.promptVersion}</b> · rubric v<b>${DATA.rubricVersion}</b></span>`,
   ].join('');
 }
 
-function renderIntro(b){
-  const w = Object.fromEntries(b.judge.rubric.map(r=>[r.key, Math.round(r.weight*100)]));
-  return `<p class="intro">Each model gets the <b>same text prompt</b>: recreate a named painting as a single SVG, from memory, no reference image, no raster, no text.
-  The SVG is rasterized and shown to the judge next to the original. Score is a weighted 0–100:
-  <b>recognizability ${w.recognizability}%</b>, composition ${w.composition}%, color ${w.color}%, craft ${w.craft}%, impression ${w.impression}%.
-  <b>Overall</b> averages every painting; <b>Mona Lisa</b> is the headline single-painting score. Disqualified or broken entries count as 0.</p>`;
+function show(slug){
+  if(!SUITE.benches.some(b => b.slug === slug)) slug = 'paint';
+  ACTIVE = slug;
+  history.replaceState(null, '', '#' + slug);
+  for(const b of SUITE.benches){
+    const t = $('#tab-' + b.slug);
+    if(t) t.setAttribute('aria-selected', String(b.slug === slug));
+  }
+  const bench = SUITE.benches.find(b => b.slug === slug);
+  // The mock notice is about the figures, so it rides with the tab that has them.
+  $('#banner').innerHTML = (slug === 'paint' && DATA?.mock)
+    ? `<div class="banner">MOCK RUN · every figure below comes from <code>paintbench smoke</code> pipeline-test data. The contestants are stand-ins and the scores are derived from image bytes, not judged. The scoring, the frontier, the history and the gallery are the real thing.</div>` : '';
+  $('#app').innerHTML = slug === 'paint' ? renderPaint(bench) : renderSpec(bench);
+  if(slug === 'paint' && DATA?.models?.length) wireCharts();
+}
+window.show = show;
+
+/* ============================================================== PaintBench */
+function renderPaint(bench){
+  if(!DATA) return `<div class="empty">No results published yet.<br><br>Run <code>cd bench &amp;&amp; npm install &amp;&amp; npm run refs &amp;&amp; npm run run</code>, then commit <code>bench/results/</code>.</div>`;
+  if(!DATA.models.length) return `<div class="empty">No runs recorded yet.</div>`;
+  const w = Object.fromEntries(DATA.judge.rubric.map(r => [r.key, Math.round(r.weight * 100)]));
+  const s = DATA.subject;
+  return `
+  <p class="intro">Every model gets the <b>same text prompt</b>: recreate <b>${esc(s.title)}</b> as a single SVG, from memory. No reference image, no raster, no text.
+  The SVG is rasterized and shown to the judge beside the original. Score is a weighted 0&ndash;100:
+  <b>recognizability ${w.recognizability}%</b>, composition ${w.composition}%, colour ${w.color}%, craft ${w.craft}%, impression ${w.impression}%.
+  The subject never changes, so re-running it is how you watch models improve. Disqualified or broken entries count as 0.</p>
+  ${renderEvolution()}
+  ${renderScatter()}
+  ${renderTable()}
+  ${renderGallery()}`;
 }
 
-// Speed vs quality. Two measures, one dot per model, so a scatter: position carries
-// both numbers and the Pareto frontier (nobody is both faster and better) is the
-// only ranking that survives the tradeoff. Emphasis form - frontier in the accent,
-// everyone else in de-emphasis gray - with every dot direct-labeled so identity is
-// never carried by color alone. The table below is the full-data view.
-function renderChart(b){
-  const pts = b.models.filter(m => m.avgLatencyMs > 0 && m.judged > 0);
-  if(pts.length < 2) return '';
-  const W = 900, H = 380, ML = 48, MR = 28, MT = 28, MB = 46;
+/* The headline view: the same painting, the same prompt, scored again each run. */
+function renderEvolution(){
+  const pts = DATA.models.filter(m => m.history.length);
+  const runs = DATA.runs.map(r => r.id);
+  if(!pts.length || runs.length < 2){
+    return `<h2>Progress over time <small>the same painting, run after run</small></h2>
+    <div class="chart"><div class="note" style="padding:26px 4px;text-align:center;font-size:11px">
+      Only ${runs.length} run recorded. The trend line appears from the second run onward &mdash; that comparison is the point of holding the subject fixed.</div></div>`;
+  }
+  const W = 900, H = 340, ML = 46, MR = 132, MT = 22, MB = 42;
   const pw = W - ML - MR, ph = H - MT - MB;
+  const x = i => ML + (runs.length === 1 ? pw / 2 : (i / (runs.length - 1)) * pw);
+  const y = v => MT + 8 + (1 - v / 100) * (ph - 16);
 
-  let tmin = Math.min(...pts.map(p => p.avgLatencyMs)), tmax = Math.max(...pts.map(p => p.avgLatencyMs));
-  if(tmax - tmin < 1e-6){ tmin = Math.max(0, tmin * 0.9); tmax = tmax * 1.1 + 1; }
-  const pad = (tmax - tmin) * 0.08; tmin = Math.max(0, tmin - pad); tmax = tmax + pad;
-  const x = t => ML + ((t - tmin) / (tmax - tmin)) * pw;
-  // 10px inset top and bottom so marks at exactly 0 or 100 clear the axis rules.
-  // The scale stays linear over the true 0-100 rubric range; only the pixel band insets.
-  const y = v => MT + 10 + (1 - v / 100) * (ph - 20);
+  const grid = [0,25,50,75,100].map(v => `<line class="grid" x1="${ML}" y1="${y(v).toFixed(1)}" x2="${ML+pw}" y2="${y(v).toFixed(1)}"/>
+    <text class="tick" x="${ML-8}" y="${(y(v)+3).toFixed(1)}" text-anchor="end">${v}</text>`).join('');
+  // Label every run, thinning to at most 8 ticks so dates never collide.
+  const step = Math.ceil(runs.length / 8);
+  const xax = runs.map((r, i) => (i % step === 0 || i === runs.length - 1)
+    ? `<text class="tick" x="${x(i).toFixed(1)}" y="${MT+ph+16}" text-anchor="middle">${esc(fmtDate(r))}</text>` : '').join('');
 
-  // horizontal grid only; the y scale is the fixed 0-100 rubric range
-  const yticks = [0, 25, 50, 75, 100];
-  const grid = yticks.map(v => `<line class="grid" x1="${ML}" y1="${y(v).toFixed(1)}" x2="${ML + pw}" y2="${y(v).toFixed(1)}"/>
-    <text class="tick" x="${ML - 8}" y="${(y(v) + 3).toFixed(1)}" text-anchor="end">${v}</text>`).join('');
-
-  const xticks = [0, .25, .5, .75, 1].map(f => tmin + f * (tmax - tmin));
-  const xax = xticks.map(t => `<text class="tick" x="${x(t).toFixed(1)}" y="${MT + ph + 16}" text-anchor="middle">${fmtMs(t)}</text>`).join('');
-
-  // frontier polyline, walked left to right (fast to slow)
-  const front = pts.filter(p => p.pareto).sort((a, b2) => a.avgLatencyMs - b2.avgLatencyMs);
-  const frontLine = front.length > 1
-    ? `<polyline class="front" points="${front.map(p => `${x(p.avgLatencyMs).toFixed(1)},${y(p.overall).toFixed(1)}`).join(' ')}"/>` : '';
-
-  // Labels are positioned after render, from measured text widths (see layoutLabels).
-  const dots = pts.map(p => {
-    const px = x(p.avgLatencyMs), py = y(p.overall);
-    const fill = p.pareto ? 'var(--viz-accent)' : 'var(--viz-mute)';
-    return `<g data-slug="${p.slug}" tabindex="0" role="listitem" aria-label="${esc(p.label)}: score ${p.overall.toFixed(1)} of 100, average ${fmtMs(p.avgLatencyMs)} per painting${p.pareto ? ', on the speed and quality frontier' : ''}">
-      <circle class="hit" cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="18"/>
-      <circle class="dot" cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="10" fill="${fill}" stroke="var(--bg2)" stroke-width="2"/>
-      <text class="dotrank" x="${px.toFixed(1)}" y="${(py + 3.4).toFixed(1)}" text-anchor="middle">${p.rank}</text>
+  // Endpoint labels dodge downward on collision; 4+ series make them mandatory.
+  const ends = [];
+  const lines = pts.map(m => {
+    const hue = hueOf(m);
+    const pxs = m.history.map(h => ({ i: runs.indexOf(h.run), v: h.total })).filter(p => p.i >= 0);
+    if(!pxs.length) return '';
+    const d = pxs.map(p => `${x(p.i).toFixed(1)},${y(p.v).toFixed(1)}`).join(' ');
+    const last = pxs[pxs.length - 1];
+    let ly = y(last.v);
+    while(ends.some(e => Math.abs(e - ly) < 13)) ly += 13;
+    ends.push(ly);
+    return `<g data-slug="${m.slug}" tabindex="0" role="listitem" aria-label="${esc(m.label)}: ${pxs.map(p => `${fmtDate(runs[p.i])} scored ${p.v}`).join(', ')}">
+      <polyline class="series" points="${d}" stroke="${hue}"/>
+      ${pxs.map(p => `<circle cx="${x(p.i).toFixed(1)}" cy="${y(p.v).toFixed(1)}" r="3.5" fill="${hue}" stroke="var(--bg2)" stroke-width="1.5"/>`).join('')}
+      <text class="endlabel" x="${(x(last.i)+11).toFixed(1)}" y="${ly.toFixed(1)}" fill="${hue}">${esc(m.label)}</text>
     </g>`;
   }).join('');
 
-  return `<h2>Speed vs. output <small>every model: how long it took, how good it was</small></h2>
+  return `<h2>Progress over time <small>the same painting, run after run</small></h2>
   <div class="chart">
-    <svg viewBox="0 0 ${W} ${H}" role="list" aria-label="Benchmark score against average generation time, one point per model. Full figures are in the leaderboard table below.">
+    <svg viewBox="0 0 ${W} ${H}" role="list" aria-label="Benchmark score for each model across every recorded run.">
       ${grid}
-      <line class="axis" x1="${ML}" y1="${MT}" x2="${ML}" y2="${MT + ph}"/>
-      <line class="axis" x1="${ML}" y1="${MT + ph}" x2="${ML + pw}" y2="${MT + ph}"/>
+      <line class="axis" x1="${ML}" y1="${MT}" x2="${ML}" y2="${MT+ph}"/>
+      <line class="axis" x1="${ML}" y1="${MT+ph}" x2="${ML+pw}" y2="${MT+ph}"/>
       ${xax}
-      <text class="corner" x="${ML + 6}" y="${MT + 28}">Fast and good</text>
-      <text class="axlabel" x="${ML}" y="${H - 6}">Average time per painting</text>
-      <text class="axlabel" transform="translate(13,${MT + ph}) rotate(-90)" x="0" y="0">Score 0-100</text>
-      ${frontLine}<g id="plot" data-ml="${ML}" data-mr="${MR}" data-mt="${MT}" data-pw="${pw}" data-ph="${ph}">${dots}</g>
+      <text class="axlabel" transform="translate(12,${MT+ph}) rotate(-90)" x="0" y="0">Score 0-100</text>
+      ${lines}
+    </svg>
+    <div class="note">Each line is one model on the identical task. A line that climbs is a model getting better at something it was measured on before; a new line is a model that did not exist at the earlier runs.</div>
+  </div>`;
+}
+
+/* Speed against quality for the most recent run, with the frontier marked. */
+function renderScatter(){
+  const pts = DATA.models.filter(m => m.avgLatencyMs > 0 && m.judged > 0);
+  if(pts.length < 2) return '';
+  const W = 900, H = 340, ML = 46, MR = 26, MT = 24, MB = 44;
+  const pw = W - ML - MR, ph = H - MT - MB;
+  let tmin = Math.min(...pts.map(p => p.avgLatencyMs)), tmax = Math.max(...pts.map(p => p.avgLatencyMs));
+  if(tmax - tmin < 1e-6){ tmin = Math.max(0, tmin * 0.9); tmax = tmax * 1.1 + 1; }
+  const pad = (tmax - tmin) * 0.08; tmin = Math.max(0, tmin - pad); tmax += pad;
+  const x = t => ML + ((t - tmin) / (tmax - tmin)) * pw;
+  const y = v => MT + 10 + (1 - v / 100) * (ph - 20);
+
+  const grid = [0,25,50,75,100].map(v => `<line class="grid" x1="${ML}" y1="${y(v).toFixed(1)}" x2="${ML+pw}" y2="${y(v).toFixed(1)}"/>
+    <text class="tick" x="${ML-8}" y="${(y(v)+3).toFixed(1)}" text-anchor="end">${v}</text>`).join('');
+  const xax = [0,.25,.5,.75,1].map(f => tmin + f * (tmax - tmin))
+    .map(t => `<text class="tick" x="${x(t).toFixed(1)}" y="${MT+ph+16}" text-anchor="middle">${fmtMs(t)}</text>`).join('');
+  const front = pts.filter(p => p.pareto).sort((a,b) => a.avgLatencyMs - b.avgLatencyMs);
+  const frontLine = front.length > 1
+    ? `<polyline class="front" points="${front.map(p => `${x(p.avgLatencyMs).toFixed(1)},${y(p.overall).toFixed(1)}`).join(' ')}"/>` : '';
+  const dots = pts.map(p => {
+    const px = x(p.avgLatencyMs), py = y(p.overall);
+    return `<g data-slug="${p.slug}" tabindex="0" role="listitem" aria-label="${esc(p.label)}: score ${p.overall.toFixed(1)} of 100, ${fmtMs(p.avgLatencyMs)} on average${p.pareto ? ', on the speed and quality frontier' : ''}">
+      <circle class="hit" cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="18"/>
+      <circle class="dot" cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="10" fill="${p.pareto ? 'var(--viz-accent)' : 'var(--viz-mute)'}" stroke="var(--bg2)" stroke-width="2"/>
+      <text class="dotrank" x="${px.toFixed(1)}" y="${(py+3.4).toFixed(1)}" text-anchor="middle">${p.rank}</text>
+    </g>`;
+  }).join('');
+
+  return `<h2>Speed vs. output <small>latest run: how long it took, how good it was</small></h2>
+  <div class="chart">
+    <svg viewBox="0 0 ${W} ${H}" role="list" aria-label="Score against average generation time, one point per model. Full figures are in the table below.">
+      ${grid}
+      <line class="axis" x1="${ML}" y1="${MT}" x2="${ML}" y2="${MT+ph}"/>
+      <line class="axis" x1="${ML}" y1="${MT+ph}" x2="${ML+pw}" y2="${MT+ph}"/>
+      ${xax}
+      <text class="corner" x="${ML+6}" y="${MT+28}">Fast and good</text>
+      <text class="axlabel" x="${ML}" y="${H-6}">Average time per painting</text>
+      <text class="axlabel" transform="translate(12,${MT+ph}) rotate(-90)" x="0" y="0">Score 0-100</text>
+      ${frontLine}${dots}
     </svg>
     <div class="note">Numbers are leaderboard rank; the table below is the key. Green marks the speed/quality frontier: no other model is both faster and better. Grey models are beaten outright on both axes.</div>
   </div>`;
 }
 
-function wireChart(b){
-  const tip = $('#tip');
-  document.querySelectorAll('.chart g[data-slug]').forEach(g => {
-    const m = b.models.find(x => x.slug === g.dataset.slug);
-    if(!m) return;
-    const dot = g.querySelector('.dot');
-    g.addEventListener('mousemove', ev => {
-      tip.innerHTML = `<b>${esc(m.label)}</b>score <span class="on">${m.overall.toFixed(1)}</span> / 100<br>avg ${fmtMs(m.avgLatencyMs)} · median ${fmtMs(m.medianLatencyMs)}<br>range ${fmtMs(m.minLatencyMs)} to ${fmtMs(m.maxLatencyMs)}<br>${m.judged}/${m.of} judged · ${fmtBytes(m.avgBytes)} avg SVG${m.pareto ? '<br><span class="on">on the frontier</span>' : ''}`;
-      tip.style.display = 'block';
-      const r = tip.getBoundingClientRect();
-      tip.style.left = Math.min(ev.clientX + 14, innerWidth - r.width - 8) + 'px';
-      tip.style.top = Math.min(ev.clientY + 14, innerHeight - r.height - 8) + 'px';
-      dot.classList.add('hi');
-    });
-    g.addEventListener('focus', () => { dot.classList.add('hi'); });
-    g.addEventListener('blur', () => { tip.style.display = 'none'; dot.classList.remove('hi'); });
-    g.addEventListener('mouseleave', () => { tip.style.display = 'none'; dot.classList.remove('hi'); });
-  });
-}
-
-function renderTable(b){
-  const rows = b.models.map(m => {
-    const cov = m.judged === m.of ? `<span class="dim">${m.judged}/${m.of}</span>` : `<span class="warn">${m.judged}/${m.of}</span>`;
+function renderTable(){
+  const rows = DATA.models.map(m => {
     const dq = m.disqualified + m.failed;
+    const d = m.delta;
     return `<tr>
       <td><span class="rank">${m.rank}</span></td>
-      <td><div class="model">${m.pareto ? '<span class="dotmark" title="on the speed/quality frontier"></span>' : ''}${esc(m.label)}<small>${esc(m.provider)} · ${esc(m.model)}</small></div></td>
+      <td><div class="model"><span class="swatch" style="background:${hueOf(m)}"></span><span>${esc(m.label)}<small>${esc(m.provider)} · ${esc(m.model)}</small></span></div></td>
       <td><span class="score"><span class="bar" style="--c:${scoreColor(m.overall)}"><i style="width:${m.overall}%"></i></span><b style="color:${scoreColor(m.overall)}">${m.overall.toFixed(1)}</b></span></td>
-      <td><b style="color:${scoreColor(m.monaLisa)}">${m.monaLisa == null ? '–' : m.monaLisa.toFixed(1)}</b></td>
+      <td class="${d == null ? 'dim' : d > 0 ? 'good' : d < 0 ? 'bad' : 'dim'}">${d == null ? 'first run' : (d > 0 ? '+' : '') + d.toFixed(1)}</td>
       ${CRIT.map(c => `<td>${(m.criteria[c] ?? 0).toFixed(1)}</td>`).join('')}
-      <td>${cov}</td>
       <td class="${dq ? 'bad' : 'dim'}">${dq}</td>
       <td class="dim">${fmtBytes(m.avgBytes)}</td>
       <td><b>${fmtMs(m.avgLatencyMs)}</b></td>
       <td class="dim">${fmtMs(m.medianLatencyMs)}</td>
+      <td class="dim">${esc(m.firstSeen ? fmtDate(m.firstSeen) : '–')}</td>
     </tr>`;
   }).join('');
-  return `<h2>Leaderboard <small>weighted score 0–100</small></h2>
+  return `<h2>Leaderboard <small>latest run · weighted score 0&ndash;100</small></h2>
   <div class="tablewrap"><table>
-    <thead><tr><th>#</th><th>Model</th><th>Overall</th><th>Mona Lisa</th>${CRIT.map(c=>`<th title="${c}">${CRIT_SHORT[c]}</th>`).join('')}<th>Judged</th><th>DQ/Fail</th><th>Avg SVG</th><th>Avg time</th><th>Median</th></tr></thead>
+    <thead><tr><th>#</th><th>Model</th><th>Score</th><th title="change since this model's first run">Δ since first</th>${CRIT.map(c => `<th title="${c}">${CRIT_SHORT[c]}</th>`).join('')}<th>DQ/Fail</th><th>Avg SVG</th><th>Avg time</th><th>Median</th><th>Since</th></tr></thead>
     <tbody>${rows}</tbody></table></div>`;
 }
 
-function renderGallery(b){
-  const rows = b.paintings.map(p => {
-    const cells = b.models.map(m => {
-      const e = b.entries[m.slug]?.[p.slug];
-      const has = e && e.png && e.status === 'ok' && !e.disqualified;
-      const total = e ? e.total : null;
-      const inner = has ? `<img loading="lazy" src="${esc(e.png)}" alt="${esc(m.label)} · ${esc(p.title)}">`
-        : `<div class="fail">${e ? esc(e.disqualified ? 'disqualified' : e.status.replace('_',' ')) : 'not run'}</div>`;
-      return `<div class="cell" style="--ar:${p.aspect};--c:${scoreColor(total)}" onclick="openModal('${m.slug}','${p.slug}')">
-        <div class="thumb">${inner}</div>
-        <div class="who"><span>${esc(m.label)}</span><b>${total == null ? '–' : total.toFixed(0)}</b></div></div>`;
+/* One row per model: every attempt at the subject, oldest run to newest. */
+function renderGallery(){
+  const s = DATA.subject;
+  const rows = DATA.models.map(m => {
+    const shots = DATA.timeline[m.slug] || [];
+    if(!shots.length) return '';
+    const cells = shots.map(e => {
+      const ok = e.png && e.status === 'ok' && !e.disqualified;
+      return `<button class="shot" style="--ar:${s.aspect};--c:${scoreColor(e.total)}" onclick="openModal('${m.slug}','${e.run}')">
+        <span class="fr">${ok ? `<img loading="lazy" src="${esc(e.png)}" alt="${esc(m.label)}, ${esc(e.run)}">`
+          : `<span class="fail">${esc(e.disqualified ? 'disqualified' : e.status.replace(/_/g, ' '))}</span>`}</span>
+        <span class="cap"><span>${esc(fmtDate(e.run))}</span><b>${e.total == null ? '–' : e.total.toFixed(0)}</b></span>
+      </button>`;
     }).join('');
-    return `<div class="prow">
-      <div class="refcard" style="--ar:${p.aspect}">
-        <div class="thumb">${p.ref ? `<img loading="lazy" src="${esc(p.ref)}" alt="${esc(p.title)}">` : ''}</div>
-        <div><span class="tier ${p.tier}">${p.tier}</span><span class="ptitle">${esc(p.title)}</span><div class="pmeta">${esc(p.artist)} · ${esc(p.year)}</div></div>
-      </div>
-      <div class="cells">${cells}</div></div>`;
+    return `<div class="evorow">
+      <div class="who"><span class="nm"><span class="swatch" style="background:${hueOf(m)}"></span>${esc(m.label)}</span>
+        <span class="pmeta">${esc(m.provider)} · ${shots.length} run${shots.length === 1 ? '' : 's'}</span></div>
+      <div class="shots">${cells}</div></div>`;
   }).join('');
-  return `<div class="gallery"><h2>Gallery <small>original vs. every model · click to inspect</small></h2>${rows}</div>`;
+  return `<h2>Every attempt <small>oldest run to newest · click any frame</small></h2>
+  <div class="subject" style="--ar:${s.aspect}">
+    <div class="plate">${s.ref ? `<img src="${esc(s.ref)}" alt="${esc(s.title)}">` : ''}</div>
+    <div><span class="tier">${esc(s.tier)}</span><h3 style="display:inline">${esc(s.title)}</h3>
+      <div class="pmeta">${esc(s.artist)} · ${esc(s.year)} · ${esc(s.medium || '')}<br>
+      ${s.commonsUrl ? `<a href="${esc(s.commonsUrl)}" target="_blank" rel="noopener">Wikimedia Commons</a> · ${esc(s.license || '')}` : ''}</div>
+      <p class="intro" style="margin-top:12px">The constant. Every run asks every model for this one painting, so the only thing that changes between runs is the models themselves.</p>
+    </div>
+  </div>
+  ${rows}`;
 }
 
-function openModal(ms, ps){
-  const m = DATA.models.find(x=>x.slug===ms), p = DATA.paintings.find(x=>x.slug===ps), e = DATA.entries[ms]?.[ps];
-  if(!m||!p) return;
-  const ok = e && e.status==='ok' && !e.disqualified;
-  const crit = e?.scores ? `<div class="crit">${CRIT.map(c=>`<div>${CRIT_SHORT[c]}<b>${e.scores[c]}</b></div>`).join('')}</div>` : '';
+/* ============================================================ spec panels */
+function renderSpec(b){
+  return `<div class="spec">
+    <span class="statustag ${b.status}">${b.status === 'live' ? 'Running' : b.status === 'spec' ? 'Specified, not running' : 'Planned'}</span>
+    <div class="q">${esc(b.question)}</div>
+    <p class="lede">${esc(b.summary)}</p>
+    <dl class="grid">
+      <div><dt>Role</dt><dd>${esc(b.role)}</dd></div>
+      <div><dt>Judge</dt><dd>${esc(b.judge)}</dd></div>
+      <div><dt>Cost</dt><dd>${esc(b.cost)}</dd></div>
+      <div><dt>Reach</dt><dd>${esc(b.virality)} virality</dd></div>
+    </dl>
+    <h4>What it measures</h4>
+    <ul>${b.measures.map(m => `<li>${esc(m)}</li>`).join('')}</ul>
+    <h4>The finding it is chasing</h4>
+    <blockquote class="quote">${esc(b.headline)}</blockquote>
+    ${b.doc ? `<p class="pmeta"><a href="${esc(b.doc)}">Read the full specification &rarr;</a></p>` : ''}
+  </div>`;
+}
+
+/* ================================================================= wiring */
+function wireCharts(){
+  const tip = $('#tip');
+  document.querySelectorAll('.chart g[data-slug]').forEach(g => {
+    const m = DATA.models.find(x => x.slug === g.dataset.slug);
+    if(!m) return;
+    const dot = g.querySelector('.dot');
+    const move = ev => {
+      const hist = m.history.length > 1
+        ? `<br>${m.history.length} runs · ${m.delta > 0 ? '+' : ''}${m.delta ?? 0} since ${esc(fmtDate(m.firstSeen))}` : '';
+      tip.innerHTML = `<b>${esc(m.label)}</b>score <span class="on">${m.overall.toFixed(1)}</span> / 100<br>avg ${fmtMs(m.avgLatencyMs)} · median ${fmtMs(m.medianLatencyMs)}<br>${fmtBytes(m.avgBytes)} avg SVG${hist}${m.pareto ? '<br><span class="on">on the frontier</span>' : ''}`;
+      tip.style.display = 'block';
+      const r = tip.getBoundingClientRect();
+      tip.style.left = Math.min((ev.clientX ?? 40) + 14, innerWidth - r.width - 8) + 'px';
+      tip.style.top = Math.min((ev.clientY ?? 40) + 14, innerHeight - r.height - 8) + 'px';
+      dot?.classList.add('hi');
+    };
+    g.addEventListener('mousemove', move);
+    g.addEventListener('focus', move);
+    const off = () => { tip.style.display = 'none'; dot?.classList.remove('hi'); };
+    g.addEventListener('mouseleave', off);
+    g.addEventListener('blur', off);
+  });
+}
+
+function openModal(mslug, run){
+  const m = DATA.models.find(x => x.slug === mslug);
+  const s = DATA.subject;
+  const e = (DATA.timeline[mslug] || []).find(x => x.run === run);
+  if(!m || !e) return;
+  const ok = e.status === 'ok' && !e.disqualified;
   $('#mbox').innerHTML = `
-    <div class="mhead"><div><h3>${esc(p.title)} <span style="color:var(--text3)">/</span> ${esc(m.label)}</h3>
-      <div class="pmeta">${esc(p.artist)} · ${esc(p.year)} · ${esc(p.medium||'')}</div></div>
-      <div style="display:flex;gap:10px;align-items:center"><span style="font-family:var(--display);font-size:40px;letter-spacing:2px;color:${scoreColor(e?.total)}">${e?.total==null?'–':e.total.toFixed(1)}</span>
+    <div class="mhead"><div><h3>${esc(m.label)} <span style="color:var(--text3)">/</span> ${esc(fmtDate(e.run))}</h3>
+      <div class="pmeta">${esc(s.title)} · ${esc(s.artist)}, ${esc(s.year)}</div></div>
+      <div style="display:flex;gap:10px;align-items:center"><span style="font-family:var(--display);font-size:40px;letter-spacing:2px;color:${scoreColor(e.total)}">${e.total == null ? '–' : e.total.toFixed(1)}</span>
       <button class="close" onclick="closeModal()">ESC</button></div></div>
-    <div class="pane ref" style="--ar:${p.aspect}">${p.ref?`<img src="${esc(p.ref)}" alt="original">`:''}</div>
-    <div class="pane" style="--ar:${p.aspect}">${ok && e.svg ? `<img src="${esc(e.svg)}" alt="candidate SVG">` : `<div class="fail" style="color:var(--text2);font-family:var(--mono)">${esc(e ? (e.disqualified ? 'DISQUALIFIED: '+e.reasons.join(', ') : e.status) : 'not run')}</div>`}</div>
+    <div class="pane" style="--ar:${s.aspect}">${s.ref ? `<img src="${esc(s.ref)}" alt="original">` : ''}</div>
+    <div class="pane" style="--ar:${s.aspect}">${ok && e.svg ? `<img src="${esc(e.svg)}" alt="candidate">`
+      : `<div class="pmeta" style="padding:20px;text-align:center">${esc(e.disqualified ? 'DISQUALIFIED: ' + e.reasons.join(', ') : e.status)}</div>`}</div>
     <div class="mfoot">
-      <div><div class="verdict">${esc(e?.verdict || 'No verdict.')}</div>
-        ${e?.issues?.length ? `<div class="issues">${e.issues.map(i=>`<span class="issue">${esc(i)}</span>`).join('')}</div>` : ''}
-        ${crit}</div>
+      <div><div class="verdict">${esc(e.verdict || 'No verdict.')}</div>
+        ${e.issues?.length ? `<div class="issues">${e.issues.map(i => `<span class="issue">${esc(i)}</span>`).join('')}</div>` : ''}
+        ${e.scores ? `<div class="crit">${CRIT.map(c => `<div>${CRIT_SHORT[c]}<b>${e.scores[c]}</b></div>`).join('')}</div>` : ''}</div>
       <div class="kv">
-        <span>status</span><b>${esc(e?.status||'–')}${e?.disqualified?' · DQ':''}</b>
-        <span>svg</span><b>${e?.svg?`<a href="${esc(e.svg)}" target="_blank">open source</a> · ${fmtBytes(e.stats?.bytes)}`:'–'}</b>
-        <span>elements</span><b>${e?.stats?`${e.stats.elements} (${e.stats.paths} paths, ${e.stats.gradients} gradients, ${e.stats.filters} filters)`:'–'}</b>
-        <span>text stripped</span><b>${e?.strippedText||0}</b>
-        <span>gen time</span><b>${fmtMs(e?.latencyMs)}</b>
-        <span>tokens</span><b>${e?.usage?`${e.usage.input ?? '?'} in / ${e.usage.output ?? '?'} out`:'–'}</b>
-        <span>served by</span><b>${esc(e?.servedBy||m.model)}</b>
-        <span>original</span><b>${p.commonsUrl?`<a href="${esc(p.commonsUrl)}" target="_blank">Wikimedia Commons</a> · ${esc(p.license||'')}`:'–'}</b>
+        <span>run</span><b>${esc(e.run)}</b>
+        <span>status</span><b>${esc(e.status)}${e.disqualified ? ' · DQ' : ''}</b>
+        <span>svg</span><b>${e.svg ? `<a href="${esc(e.svg)}" target="_blank" rel="noopener">open source</a> · ${fmtBytes(e.stats?.bytes)}` : '–'}</b>
+        <span>elements</span><b>${e.stats ? `${e.stats.elements} (${e.stats.paths} paths, ${e.stats.gradients} gradients)` : '–'}</b>
+        <span>text stripped</span><b>${e.strippedText || 0}</b>
+        <span>gen time</span><b>${fmtMs(e.latencyMs)}</b>
+        <span>tokens</span><b>${e.usage ? `${e.usage.input ?? '?'} in / ${e.usage.output ?? '?'} out` : '–'}</b>
+        <span>served by</span><b>${esc(e.servedBy || m.model)}</b>
       </div></div>`;
   $('#modal').classList.add('open');
 }
 function closeModal(){ $('#modal').classList.remove('open'); }
-document.addEventListener('keydown', e => { if(e.key==='Escape') closeModal(); });
+window.openModal = openModal; window.closeModal = closeModal;
+$('#modal').addEventListener('click', ev => { if(ev.target.id === 'modal') closeModal(); });
+document.addEventListener('keydown', ev => { if(ev.key === 'Escape') closeModal(); });
 main();
 </script>
 </body>

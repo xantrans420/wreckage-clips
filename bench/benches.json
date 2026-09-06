@@ -1,0 +1,99 @@
+{
+  "$comment": "The bench suite. One page, one tab per bench. `status` is live | spec | planned. Rename `suite.name` freely; the page reads it from here.",
+  "suite": {
+    "name": "THE BENCH",
+    "tagline": "Can AI actually do the creative work? Five benchmarks, one page."
+  },
+  "benches": [
+    {
+      "slug": "paint",
+      "name": "PaintBench",
+      "status": "live",
+      "role": "Front door",
+      "virality": "high",
+      "question": "Can a model paint with code?",
+      "summary": "One painting, the most famous on Earth, recreated as pure SVG from memory. Re-run over time so you can watch models get better at a task that never changes.",
+      "measures": [
+        "Recognizability: would anyone name the painting without being told",
+        "Composition, colour, craft and artistic impression",
+        "Wall-clock time to produce the SVG",
+        "Progress on the identical task, run over run"
+      ],
+      "judge": "Claude Fable 5.1, blind to model identity and to the SVG source",
+      "cost": "Under $30 a run",
+      "headline": "The best model on Earth draws the Mona Lisa like a confident twelve year old."
+    },
+    {
+      "slug": "cut",
+      "name": "CutBench",
+      "status": "spec",
+      "role": "The moat",
+      "virality": "high",
+      "doc": "CUTBENCH.md",
+      "question": "Can a model speak film grammar?",
+      "summary": "One brief: cut a 15 second ad. Every video benchmark scores a single clip in isolation. Films are made of cuts, and nobody measures the cut.",
+      "measures": [
+        "180 degree line: do subjects swap sides across the cut",
+        "Eyeline match and match on action across the splice",
+        "Screen direction, the 30 degree rule, state continuity",
+        "Pacing: shot length variance and where the hook lands"
+      ],
+      "judge": "Objective gates and grammar checks first, then Fable 5.1 on the rendered cut",
+      "cost": "Track B, edit only, is the price of a text completion. Track A, generating every shot, is $300 to $800 a run",
+      "headline": "Six frontier video models. Not one can cut."
+    },
+    {
+      "slug": "taste",
+      "name": "TasteBench",
+      "status": "planned",
+      "role": "Validates the others",
+      "virality": "high",
+      "question": "Does a model know what is good?",
+      "summary": "Two creative variants that ran head to head in a controlled split. Which one won, and how sure are you? Every other benchmark asks models to make things. This one asks whether they can judge.",
+      "measures": [
+        "Accuracy at picking the winner",
+        "Calibration, scored by Brier, because confidence is the real question",
+        "Margin weighting: missing a blowout costs more than missing a coin flip",
+        "A human baseline: your creative directors sit the same test"
+      ],
+      "judge": "Real campaign outcomes, not an opinion",
+      "cost": "Under $30 a run. The pairs are the work, not the compute",
+      "headline": "Fable picked the winner 64% of the time. Senior creative directors picked it 61%."
+    },
+    {
+      "slug": "fidelity",
+      "name": "FidelityBench",
+      "status": "planned",
+      "role": "The one clients pay for",
+      "virality": "low",
+      "question": "Does the product survive the pipeline?",
+      "summary": "Feed a real packshot through image and video generation and measure what is left of it. Two tracks, one set of metrics: a still, and identity across four to ten seconds of video.",
+      "measures": [
+        "Label text still readable, by OCR against the source",
+        "Logo geometry and brand colour delta",
+        "Hallucinated text and invented packaging detail",
+        "Identity decay curve across frames"
+      ],
+      "judge": "Almost entirely objective; Fable 5.1 only breaks ties",
+      "cost": "$150 to $400 a run",
+      "headline": "The number a CPG client asks for before they sign anything."
+    },
+    {
+      "slug": "range",
+      "name": "RangeBench",
+      "status": "planned",
+      "role": "The honest one",
+      "virality": "medium",
+      "question": "How many ideas before it starts repeating itself?",
+      "summary": "Hit regenerate a hundred times on one brief and cluster the results. Every practitioner has felt a model run out of ideas; nobody has published the curve.",
+      "measures": [
+        "Distinct concepts before the output collapses into one mode",
+        "Diversity curve across a hundred generations",
+        "Cost per genuinely new idea"
+      ],
+      "judge": "None. Pure embedding clustering, no model in the loop",
+      "cost": "$50 to $200 a run",
+      "headline": "Proof the suite is not just vibes at scale."
+    }
+  ]
+}

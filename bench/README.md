@@ -1,18 +1,37 @@
-# PaintBench — can AI paint with code?
+# THE BENCH
 
-AI models recreate the most famous paintings on Earth as **pure SVG**, from memory, with a single text prompt.
-Two things are measured: **how good the output is** and **how long it took**. The SVG is rasterized and shown to
-a vision judge (**Claude Fable 5.1**) next to the original; generation time is recorded per painting. Scores and
-times go on a static leaderboard with a speed-versus-quality plot and a gallery of every attempt.
+Five benchmarks for whether AI can actually do creative work, published on one page
+(`index.html`, tab per bench, defined in `benches.json`). One is live; the rest are specified.
+
+| Bench | Question | Status |
+|---|---|---|
+| **PaintBench** | Can a model paint with code? | **Live** (this repo) |
+| **CutBench** | Can a model speak film grammar? Cut a 15 second ad. | Specified — [`CUTBENCH.md`](CUTBENCH.md) |
+| **TasteBench** | Does a model know what is good? | Planned |
+| **FidelityBench** | Does the product survive the pipeline? | Planned |
+| **RangeBench** | How many ideas before it repeats itself? | Planned |
+
+## PaintBench — can AI paint with code?
+
+**One painting, re-run over time.** Every model gets the same text prompt: recreate the **Mona Lisa** as
+**pure SVG**, from memory, no reference image. Two things are measured — **how good the output is** and
+**how long it took**. The SVG is rasterized and shown to a vision judge (**Claude Fable 5.1**) beside the
+original.
+
+Because the subject never changes, re-running the benchmark is how you watch models improve: the only thing
+that differs between runs is the models themselves. Every result is written under a dated run and old runs
+are never overwritten, so the leaderboard carries a score history per model alongside the current standings.
 
 Live page (once results are committed): `https://xantrans420.github.io/wreckage-clips/bench/`
 
-## The canon
+### The subject
 
 **The most famous painting to mankind is the Mona Lisa.** It is the most visited artwork in the world
 (the Louvre alone draws ~9M visitors a year, most of them for one panel), the most parodied, and the one
-painting that people on every continent can name from a thumbnail. It is Tier S and the headline score of
-the benchmark. The rest of the canon covers the next most recognizable works, all public domain:
+painting that people on every continent can name from a thumbnail. It is the fixed subject of every run.
+
+The rest of the canon below is **opt-in** (`--all`, `--tier`, `--paintings`) and exists for one-off
+comparisons. It is deliberately not part of the time series, which needs the task held constant:
 
 | Tier | Painting | Artist |
 |---|---|---|
@@ -40,16 +59,17 @@ The Persistence of Memory are famous but still under copyright, so they are out.
 paintings.json + models.json
         │
         ▼
-   generate ─── same prompt to every model ──► results/<model>/<painting>/response.txt
-        │        (text only, no reference image)                       art.svg  (sanitized)
-        ▼                                                              meta.json
+   generate ─── same prompt to every model ──► results/runs/<date>/<model>/<painting>/
+        │        (text only, no reference image)        response.txt · art.svg · meta.json
+        ▼
    render ───── SVG → PNG (resvg, 1024px, white bg) ──────────────────► art.png
         │
         ▼
    judge ────── Claude Fable 5.1 sees ORIGINAL + CANDIDATE ───────────► score.json
         │        (never the SVG source, never the model name)
         ▼
-   build ────── results/leaderboard.json ◄── index.html reads this
+   build ────── every run folded into results/leaderboard.json ◄── index.html reads this
+                (current standings + per-model score history + subject timeline)
 ```
 
 **Rules for contestants** (enforced mechanically in `src/svg.mjs`, not by the judge):
@@ -76,9 +96,9 @@ returns structured JSON (`output_config.format`), so parsing never fails. It run
 server-side refusal fallbacks enabled. `--samples 3` averages three independent judgments per entry to
 cut variance.
 
-**Leaderboard:** *Overall* is the mean total across judged paintings (DQ and failures count 0). *Mona Lisa*
-is the single-painting headline. Models that were not run on every painting rank below models with full
-coverage, whatever their score.
+**Leaderboard:** standings come from the **latest run only** — mixing runs would compare one model's new
+release against another's old one. Alongside them the page plots each model's score across every run, which
+is the point of holding the subject fixed. DQ and failures count 0.
 
 **Speed is a first-class axis.** Wall-clock time is recorded for every generation (average, median and range
 per model) and plotted against score. The page marks the **speed/quality frontier**: models where no other
@@ -95,9 +115,10 @@ cp .env.example .env        # add ANTHROPIC_API_KEY (judge) + keys for the conte
 npm run refs                # fetch the 12 reference images from Wikimedia Commons (once)
 node src/cli.mjs list       # shows which contestants have keys
 
-node src/cli.mjs run --tier S             # Mona Lisa only: quick, cheap first run
-node src/cli.mjs run                      # full canon, every enabled model
-node src/cli.mjs run --judge-model claude-fable-5-1 --samples 3   # lower-variance judging
+node src/cli.mjs run                      # the subject painting, every enabled model
+node src/cli.mjs run --samples 3          # lower-variance judging
+node src/cli.mjs run --all                # the wider canon too, for a one-off comparison
+node src/cli.mjs runs                     # list recorded runs
 
 node src/cli.mjs serve                    # http://localhost:8787/
 ```
@@ -160,11 +181,13 @@ It is specified but not running.
 
 ```
 bench/
-  paintings.json       the canon (title, artist, Commons file title, tier)
+  benches.json         the five-bench suite definition the page renders its tabs from
+  paintings.json       the canon; the first entry is the fixed subject
   models.json          contestants
   refs/                reference JPGs + metadata (public domain, from Commons)
-  results/             one folder per model/painting; leaderboard.json at the root
-  index.html           static leaderboard + gallery (GitHub Pages)
+  results/runs/<date>/ one folder per run, then per model/painting
+  results/leaderboard.json   every run folded into the file the page reads
+  index.html           the suite page: leaderboard, history, gallery (GitHub Pages)
   src/
     cli.mjs            commands
     prompt.mjs         the contestant prompt (versioned)
@@ -172,7 +195,7 @@ bench/
     svg.mjs            extraction, disqualification rules, text stripping, stats
     render.mjs         SVG → PNG (resvg default, chromium optional)
     judge.mjs          Fable 5.1 rubric judge, structured output
-    leaderboard.mjs    aggregation, speed/quality Pareto frontier
+    leaderboard.mjs    cross-run aggregation, history, speed/quality Pareto frontier
     refs.mjs           Wikimedia Commons fetcher
     config.mjs         paths, versions, arg parsing
 ```

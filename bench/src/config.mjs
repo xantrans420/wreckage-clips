@@ -7,6 +7,12 @@ export const REFS_DIR = path.join(BENCH_DIR, 'refs');
 export const RESULTS_DIR = process.env.PAINTBENCH_RESULTS_DIR
   ? path.resolve(process.env.PAINTBENCH_RESULTS_DIR)
   : path.join(BENCH_DIR, 'results');
+export const RUNS_DIR = path.join(RESULTS_DIR, 'runs');
+
+// The benchmark is longitudinal: one painting, re-run over time, so the interesting
+// number is how a model's score on the SAME task moves release over release. Every
+// result therefore lives under a dated run and old runs are never overwritten.
+export const SUBJECT = 'mona-lisa';
 
 // Bump these when the contestant prompt or the judge rubric changes. Results
 // produced under a different version are not comparable and the leaderboard
@@ -58,8 +64,20 @@ export function slugify(s) {
   return String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 }
 
-export function entryDir(modelSlug, paintingSlug) {
-  return path.join(RESULTS_DIR, modelSlug, paintingSlug);
+export function entryDir(runId, modelSlug, paintingSlug) {
+  return path.join(RUNS_DIR, runId, modelSlug, paintingSlug);
+}
+
+export function todayRunId() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+// Run ids sort lexicographically because they are ISO dates (an optional -2, -3
+// suffix keeps a second run on the same day distinct and still ordered).
+export function listRuns() {
+  if (!fs.existsSync(RUNS_DIR)) return [];
+  return fs.readdirSync(RUNS_DIR, { withFileTypes: true })
+    .filter((d) => d.isDirectory()).map((d) => d.name).sort();
 }
 
 // Tiny argv parser: `cmd --flag value --bool --k=v positional`
@@ -85,9 +103,13 @@ export function parseArgs(argv) {
 
 const csv = (v) => (typeof v === 'string' ? v.split(',').map((s) => s.trim()).filter(Boolean) : null);
 
+// Default subject is the one constant painting. The rest of the canon is opt-in
+// (--paintings / --tier / --all) and exists for one-off comparisons, never for the
+// time series, which needs the task held fixed.
 export function selectPaintings(all, flags) {
   const slugs = csv(flags.paintings);
   const tiers = csv(flags.tier)?.map((t) => t.toUpperCase());
+  if (!slugs && !tiers && !flags.all) return all.filter((p) => p.slug === SUBJECT);
   return all.filter((p) => (!slugs || slugs.includes(p.slug)) && (!tiers || tiers.includes(p.tier)));
 }
 

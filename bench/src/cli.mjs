@@ -25,6 +25,9 @@ const args = parseArgs(rawArgs);
 const cmd = args._[0] || 'help';
 const allPaintings = cfg.loadPaintings();
 const paintings = selectPaintings(allPaintings, args);
+// Every result belongs to a dated run so the same painting can be re-benchmarked
+// over time without overwriting history.
+const runId = () => String(args.run || cfg.todayRunId());
 
 const MOCK_MODELS = [
   { slug: 'mock-plain', label: 'Mock (plain)', provider: 'mock', model: 'mock', mockLatencyMs: 42000 },
@@ -41,6 +44,7 @@ const HELP = `PaintBench: AI models recreate famous paintings as SVG; Claude Fab
 
   paintbench refs      [--force]                      fetch reference images from Wikimedia Commons
   paintbench list                                     show contestants (with key status) and paintings
+  paintbench runs                                     list recorded runs
   paintbench generate  [filters] [--force] [--concurrency 3] [--max-tokens ${cfg.DEFAULT_MAX_TOKENS}]
   paintbench render    [filters] [--force] [--renderer resvg|chromium] [--width ${cfg.DEFAULT_RENDER_WIDTH}]
   paintbench judge     [filters] [--rejudge] [--judge-model ${cfg.DEFAULT_JUDGE_MODEL}] [--effort high] [--samples 1] [--concurrency 2]
@@ -49,11 +53,16 @@ const HELP = `PaintBench: AI models recreate famous paintings as SVG; Claude Fab
   paintbench smoke                                    full pipeline with mock models + mock judge into results-mock/
   paintbench serve     [--port 8787]                  static server for the leaderboard page
 
-filters:  --models slug,slug   --paintings slug,slug   --tier S,A,B
+The benchmark subject is ONE painting (${cfg.SUBJECT}), re-run over time so model
+progress on a fixed task is visible. Pass --all (or --tier/--paintings) to also run
+the wider canon for a one-off comparison.
+
+filters:  --models slug,slug   --paintings slug,slug   --tier S,A,B   --all
+run:      --run ${cfg.todayRunId()}   (dated bucket every result is written under)
 results:  ${cfg.RESULTS_DIR}
 `;
 
-const commands = { refs, list, generate: cmdGenerate, render: cmdRender, judge: cmdJudge, build: cmdBuild, run: cmdRun, smoke: cmdRun, serve };
+const commands = { refs, list, runs: cmdRuns, generate: cmdGenerate, render: cmdRender, judge: cmdJudge, build: cmdBuild, run: cmdRun, smoke: cmdRun, serve };
 if (!commands[cmd]) {
   console.log(HELP);
   process.exit(cmd === 'help' ? 0 : 1);
@@ -81,6 +90,17 @@ function list() {
   }
 }
 
+function cmdRuns() {
+  const runs = cfg.listRuns();
+  if (!runs.length) return console.log('No runs recorded yet.');
+  for (const id of runs) {
+    const models = fs.readdirSync(path.join(cfg.RUNS_DIR, id)).filter((d) => !d.startsWith('.'));
+    const scored = models.reduce((n, m) => n + fs.readdirSync(path.join(cfg.RUNS_DIR, id, m))
+      .filter((p) => fs.existsSync(path.join(cfg.RUNS_DIR, id, m, p, 'score.json'))).length, 0);
+    console.log(`  ${id}   ${String(models.length).padStart(2)} models   ${String(scored).padStart(3)} scored entries`);
+  }
+}
+
 async function cmdGenerate() {
   const maxTokens = Number(args['max-tokens'] || cfg.DEFAULT_MAX_TOKENS);
   const limit = pLimit(Number(args.concurrency || 3));
@@ -94,12 +114,12 @@ async function cmdGenerate() {
     for (const p of paintings) {
       const ref = loadRef(p.slug);
       if (!ref) throw new Error(`no reference for ${p.slug}; run \`paintbench refs\` first`);
-      const dir = entryDir(model.slug, p.slug);
+      const dir = entryDir(runId(), model.slug, p.slug);
       if (!args.force && fs.existsSync(path.join(dir, 'meta.json'))) continue;
       jobs.push(limit(() => generateOne(model, p, ref, dir, maxTokens)));
     }
   }
-  log(`generate: ${jobs.length} entries`);
+  log(`generate: ${jobs.length} entries into run ${runId()}`);
   const results = await Promise.allSettled(jobs);
   const failed = results.filter((r) => r.status === 'rejected');
   for (const f of failed) log(`generate: ERROR ${f.reason?.message || f.reason}`);
@@ -109,12 +129,13 @@ async function cmdGenerate() {
 async function generateOne(model, painting, ref, dir, maxTokens) {
   const user = buildUserPrompt(painting, ref, { maxTokens });
   log(`generate: ${model.slug} / ${painting.slug} ...`);
-  const res = await generate(model, { system: SYSTEM_PROMPT, user, maxTokens });
+  const res = await generate(model, { system: SYSTEM_PROMPT, user, maxTokens, run: runId() });
   fs.mkdirSync(dir, { recursive: true });
   for (const stale of ['art.svg', 'art.png', 'art.partial.svg', 'score.json']) fs.rmSync(path.join(dir, stale), { force: true });
   fs.writeFileSync(path.join(dir, 'response.txt'), res.text || '');
 
   const meta = {
+    run: runId(),
     model: model.slug, provider: model.provider, modelId: model.model, servedBy: res.servedBy,
     painting: painting.slug, promptVersion: cfg.PROMPT_VERSION, maxTokens,
     status: 'ok', disqualified: false, reasons: [], strippedText: 0, stats: null,
@@ -147,7 +168,7 @@ async function cmdRender() {
   let n = 0, errs = 0;
   for (const model of models) {
     for (const p of paintings) {
-      const dir = entryDir(model.slug, p.slug);
+      const dir = entryDir(runId(), model.slug, p.slug);
       const metaFile = path.join(dir, 'meta.json');
       const meta = readJSON(metaFile, null);
       if (!meta || meta.status !== 'ok') continue;
@@ -179,7 +200,7 @@ async function cmdJudge() {
   const jobs = [];
   for (const model of models) {
     for (const p of paintings) {
-      const dir = entryDir(model.slug, p.slug);
+      const dir = entryDir(runId(), model.slug, p.slug);
       const meta = readJSON(path.join(dir, 'meta.json'), null);
       if (!meta || meta.status !== 'ok' || meta.disqualified) continue;
       const png = path.join(dir, 'art.png');
@@ -193,7 +214,7 @@ async function cmdJudge() {
       }));
     }
   }
-  log(`judge: ${jobs.length} entries with ${judgeModel} (effort ${effort}, ${samples} sample${samples > 1 ? 's' : ''})`);
+  log(`judge: run ${runId()}, ${jobs.length} entries with ${judgeModel} (effort ${effort}, ${samples} sample${samples > 1 ? 's' : ''})`);
   const results = await Promise.allSettled(jobs);
   const failed = results.filter((r) => r.status === 'rejected');
   for (const f of failed) log(`judge: ERROR ${f.reason?.message || f.reason}`);
@@ -208,12 +229,26 @@ async function cmdRun() {
   if (cmd === 'smoke') {
     args['judge-model'] = 'mock';
     log(`smoke: mock models + mock judge -> ${cfg.RESULTS_DIR}`);
+    if (!args.run) {
+      // A single run shows no trend, so seed a handful of dated ones.
+      const today = new Date();
+      for (let back = 5; back >= 0; back--) {
+        const d = new Date(today);
+        d.setMonth(d.getMonth() - back * 2);
+        args.run = d.toISOString().slice(0, 10);
+        await oneRun();
+      }
+      return cmdBuild();
+    }
   }
+  await oneRun();
+  await cmdBuild();
+}
+
+async function oneRun() {
   await cmdGenerate();
   await cmdRender();
   await cmdJudge();
-  await cmdBuild();
-  if (cmd === 'smoke') log(`smoke: open the page with ?results=results-mock to inspect (paintbench serve)`);
 }
 
 function serve() {
