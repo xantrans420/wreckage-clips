@@ -12,19 +12,20 @@ if (rawArgs[0] === 'smoke' && !process.env.PAINTBENCH_RESULTS_DIR) {
 
 const cfg = await import('./config.mjs');
 const { fetchRefs, loadRef, refImagePath } = await import('./refs.mjs');
-const { SYSTEM_PROMPT, buildUserPrompt } = await import('./prompt.mjs');
+const { SYSTEM_PROMPT, BRIEF_SYSTEM_PROMPT, buildUserPrompt, buildBriefUserPrompt } = await import('./prompt.mjs');
 const { generate, providerReady } = await import('./providers.mjs');
 const { extractSvg, sanitizeSvg, svgStats } = await import('./svg.mjs');
 const { renderSvgToPng, closeRenderer } = await import('./render.mjs');
 const { judgeEntry } = await import('./judge.mjs');
 const { buildLeaderboard } = await import('./leaderboard.mjs');
-const { log, readJSON, writeJSON, entryDir, pLimit, parseArgs, selectPaintings, selectModels } = cfg;
+const { log, readJSON, writeJSON, entryDir, pLimit, parseArgs, selectSubjects, selectModels } = cfg;
 
 cfg.loadEnv();
 const args = parseArgs(rawArgs);
 const cmd = args._[0] || 'help';
 const allPaintings = cfg.loadPaintings();
-const paintings = selectPaintings(allPaintings, args);
+const allSubjects = cfg.loadSubjects();
+const subjects = selectSubjects(allSubjects, args);
 // Every result belongs to a dated run so the same painting can be re-benchmarked
 // over time without overwriting history.
 const runId = () => String(args.run || cfg.todayRunId());
@@ -53,11 +54,12 @@ const HELP = `PaintBench: AI models recreate famous paintings as SVG; Claude Fab
   paintbench smoke                                    full pipeline with mock models + mock judge into results-mock/
   paintbench serve     [--port 8787]                  static server for the leaderboard page
 
-The benchmark subject is ONE painting (${cfg.SUBJECT}), re-run over time so model
-progress on a fixed task is visible. Pass --all (or --tier/--paintings) to also run
-the wider canon for a one-off comparison.
+Two tracks, both re-run over time so progress on a fixed task is visible:
+  recall  ${cfg.SUBJECT} - one famous painting, drawn from memory
+  brief   ${cfg.BRIEF_SUBJECT} - one written brief, no reference of any kind
+A default run does exactly those two. Pass --all for the wider canon as a one-off.
 
-filters:  --models slug,slug   --paintings slug,slug   --tier S,A,B   --all
+filters:  --models slug,slug   --track recall,brief   --subjects slug,slug   --tier S,A,B   --all
 run:      --run ${cfg.todayRunId()}   (dated bucket every result is written under)
 results:  ${cfg.RESULTS_DIR}
 `;
@@ -84,10 +86,17 @@ function list() {
     const r = providerReady(m);
     console.log(`  ${r.ok ? 'ready  ' : 'NO KEY '} ${m.slug.padEnd(22)} ${m.provider.padEnd(10)} ${m.model}${r.ok ? '' : `   (${r.why})`}`);
   }
-  console.log('\nPaintings:');
+  console.log('\nRecall track (drawn from memory, judged against the original):');
   for (const p of allPaintings) {
-    console.log(`  [${p.tier}] ${p.slug.padEnd(28)} ${p.title} - ${p.artist}, ${p.year}${loadRef(p.slug) ? '' : '   (no ref yet: run `refs`)'}`);
+    const star = p.slug === cfg.SUBJECT ? ' *' : '  ';
+    console.log(` ${star}[${p.tier}] ${p.slug.padEnd(28)} ${p.title} - ${p.artist}, ${p.year}${loadRef(p.slug) ? '' : '   (no ref yet: run `refs`)'}`);
   }
+  console.log('\nBrief track (no reference of any kind, judged against the words):');
+  for (const b of cfg.loadBriefs()) {
+    const star = b.slug === cfg.BRIEF_SUBJECT ? ' *' : '  ';
+    console.log(` ${star}     ${b.slug.padEnd(28)} ${b.title} - ${b.format}, ${b.checklist.length} named elements`);
+  }
+  console.log('\n  * = the fixed subject a default run uses');
 }
 
 function cmdRuns() {
@@ -111,9 +120,10 @@ async function cmdGenerate() {
       log(`generate: skipping ${model.slug}: ${ready.why}`);
       continue;
     }
-    for (const p of paintings) {
-      const ref = loadRef(p.slug);
-      if (!ref) throw new Error(`no reference for ${p.slug}; run \`paintbench refs\` first`);
+    for (const p of subjects) {
+      // Only the recall track needs a reference image, and only the judge ever sees it.
+      const ref = p.track === 'recall' ? loadRef(p.slug) : null;
+      if (p.track === 'recall' && !ref) throw new Error(`no reference for ${p.slug}; run \`paintbench refs\` first`);
       const dir = entryDir(runId(), model.slug, p.slug);
       if (!args.force && fs.existsSync(path.join(dir, 'meta.json'))) continue;
       jobs.push(limit(() => generateOne(model, p, ref, dir, maxTokens)));
@@ -126,10 +136,11 @@ async function cmdGenerate() {
   log(`generate: done, ${results.length - failed.length} written, ${failed.length} errored (re-run to retry)`);
 }
 
-async function generateOne(model, painting, ref, dir, maxTokens) {
-  const user = buildUserPrompt(painting, ref, { maxTokens });
-  log(`generate: ${model.slug} / ${painting.slug} ...`);
-  const res = await generate(model, { system: SYSTEM_PROMPT, user, maxTokens, run: runId() });
+async function generateOne(model, subject, ref, dir, maxTokens) {
+  const isBrief = subject.track === 'brief';
+  const user = isBrief ? buildBriefUserPrompt(subject, { maxTokens }) : buildUserPrompt(subject, ref, { maxTokens });
+  log(`generate: ${model.slug} / ${subject.slug} [${subject.track}] ...`);
+  const res = await generate(model, { system: isBrief ? BRIEF_SYSTEM_PROMPT : SYSTEM_PROMPT, user, maxTokens, run: runId() });
   fs.mkdirSync(dir, { recursive: true });
   for (const stale of ['art.svg', 'art.png', 'art.partial.svg', 'score.json']) fs.rmSync(path.join(dir, stale), { force: true });
   fs.writeFileSync(path.join(dir, 'response.txt'), res.text || '');
@@ -137,7 +148,7 @@ async function generateOne(model, painting, ref, dir, maxTokens) {
   const meta = {
     run: runId(),
     model: model.slug, provider: model.provider, modelId: model.model, servedBy: res.servedBy,
-    painting: painting.slug, promptVersion: cfg.PROMPT_VERSION, maxTokens,
+    painting: subject.slug, subject: subject.slug, track: subject.track, promptVersion: cfg.PROMPT_VERSION, maxTokens,
     status: 'ok', disqualified: false, reasons: [], strippedText: 0, stats: null,
     latencyMs: res.latencyMs, usage: res.usage, stopReason: res.stopReason, stopDetails: res.stopDetails,
     generatedAt: new Date().toISOString(),
@@ -159,7 +170,7 @@ async function generateOne(model, painting, ref, dir, maxTokens) {
     meta.stats = svgStats(clean.svg);
   }
   writeJSON(path.join(dir, 'meta.json'), meta);
-  log(`generate: ${model.slug} / ${painting.slug} -> ${meta.status}${meta.disqualified ? ' DQ ' + meta.reasons.join(',') : ''} (${(res.latencyMs / 1000).toFixed(1)}s, ${meta.stats?.bytes ?? 0} bytes)`);
+  log(`generate: ${model.slug} / ${subject.slug} -> ${meta.status}${meta.disqualified ? ' DQ ' + meta.reasons.join(',') : ''} (${(res.latencyMs / 1000).toFixed(1)}s, ${meta.stats?.bytes ?? 0} bytes)`);
 }
 
 async function cmdRender() {
@@ -167,7 +178,7 @@ async function cmdRender() {
   const width = Number(args.width || cfg.DEFAULT_RENDER_WIDTH);
   let n = 0, errs = 0;
   for (const model of models) {
-    for (const p of paintings) {
+    for (const p of subjects) {
       const dir = entryDir(runId(), model.slug, p.slug);
       const metaFile = path.join(dir, 'meta.json');
       const meta = readJSON(metaFile, null);
@@ -199,7 +210,7 @@ async function cmdJudge() {
   const limit = pLimit(Number(args.concurrency || 2));
   const jobs = [];
   for (const model of models) {
-    for (const p of paintings) {
+    for (const p of subjects) {
       const dir = entryDir(runId(), model.slug, p.slug);
       const meta = readJSON(path.join(dir, 'meta.json'), null);
       if (!meta || meta.status !== 'ok' || meta.disqualified) continue;
@@ -208,9 +219,9 @@ async function cmdJudge() {
       if (!args.rejudge && fs.existsSync(path.join(dir, 'score.json'))) continue;
       jobs.push(limit(async () => {
         log(`judge: ${model.slug} / ${p.slug} ...`);
-        const score = await judgeEntry({ painting: p, refImagePath: refImagePath(p.slug), pngBuffer: fs.readFileSync(png), judgeModel, effort, samples });
+        const score = await judgeEntry({ subject: p, refImagePath: p.track === 'recall' ? refImagePath(p.slug) : null, pngBuffer: fs.readFileSync(png), judgeModel, effort, samples });
         writeJSON(path.join(dir, 'score.json'), score);
-        log(`judge: ${model.slug} / ${p.slug} = ${score.total}  ${Object.entries(score.scores).map(([k, v]) => `${k.slice(0, 5)}:${v}`).join(' ')}`);
+        log(`judge: ${model.slug} / ${p.slug} [${p.track}] = ${score.total}  ${Object.entries(score.scores).map(([k, v]) => `${k.slice(0, 5)}:${v}`).join(' ')}`);
       }));
     }
   }
@@ -222,7 +233,7 @@ async function cmdJudge() {
 }
 
 async function cmdBuild() {
-  buildLeaderboard({ paintings: allPaintings, models: allModels });
+  buildLeaderboard({ subjects: allSubjects, models: allModels });
 }
 
 async function cmdRun() {

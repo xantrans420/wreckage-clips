@@ -12,13 +12,19 @@ export const RUNS_DIR = path.join(RESULTS_DIR, 'runs');
 // The benchmark is longitudinal: one painting, re-run over time, so the interesting
 // number is how a model's score on the SAME task moves release over release. Every
 // result therefore lives under a dated run and old runs are never overwritten.
-export const SUBJECT = 'mona-lisa';
+export const SUBJECT = 'mona-lisa';        // recall track: the fixed painting
+export const BRIEF_SUBJECT = 'the-salon';  // brief track: the fixed brief
+
+export const TRACKS = {
+  recall: { key: 'recall', label: 'Recall', blurb: 'One famous painting, drawn from memory. Tests whether a model knows the picture and can draw it.' },
+  brief:  { key: 'brief',  label: 'Brief',  blurb: 'One written brief, no reference of any kind. Tests whether a model can invent and construct a scene it has never seen.' },
+};
 
 // Bump these when the contestant prompt or the judge rubric changes. Results
 // produced under a different version are not comparable and the leaderboard
 // builder refuses to mix them.
-export const PROMPT_VERSION = 1;
-export const RUBRIC_VERSION = 1;
+export const PROMPT_VERSION = 2;   // v2: two tracks; system prompt reworded for both
+export const RUBRIC_VERSION = 2;   // v2: brief track adds adherence + likeness
 
 export const USER_AGENT = 'paintbench/0.1 (https://github.com/xantrans420/wreckage-clips)';
 export const DEFAULT_JUDGE_MODEL = 'claude-fable-5-1';
@@ -51,7 +57,16 @@ export function writeJSON(file, data) {
 }
 
 export function loadPaintings() {
-  return readJSON(path.join(BENCH_DIR, 'paintings.json')).paintings;
+  return readJSON(path.join(BENCH_DIR, 'paintings.json')).paintings.map((p) => ({ ...p, track: 'recall' }));
+}
+
+export function loadBriefs() {
+  return readJSON(path.join(BENCH_DIR, 'briefs.json')).briefs.map((b) => ({ ...b, track: 'brief' }));
+}
+
+// Everything a run can be asked to produce, across both tracks.
+export function loadSubjects() {
+  return [...loadPaintings(), ...loadBriefs()];
 }
 
 export function loadModels() {
@@ -103,14 +118,19 @@ export function parseArgs(argv) {
 
 const csv = (v) => (typeof v === 'string' ? v.split(',').map((s) => s.trim()).filter(Boolean) : null);
 
-// Default subject is the one constant painting. The rest of the canon is opt-in
-// (--paintings / --tier / --all) and exists for one-off comparisons, never for the
-// time series, which needs the task held fixed.
-export function selectPaintings(all, flags) {
-  const slugs = csv(flags.paintings);
+// By default a run does exactly two things: the one painting and the one brief.
+// The rest of the canon is opt-in (--all / --tier / --paintings) and exists for
+// one-off comparisons, never for the time series, which needs the task held fixed.
+export function selectSubjects(all, flags) {
+  const slugs = csv(flags.paintings) || csv(flags.subjects);
   const tiers = csv(flags.tier)?.map((t) => t.toUpperCase());
-  if (!slugs && !tiers && !flags.all) return all.filter((p) => p.slug === SUBJECT);
-  return all.filter((p) => (!slugs || slugs.includes(p.slug)) && (!tiers || tiers.includes(p.tier)));
+  const tracks = csv(flags.track);
+  let out = all;
+  if (tracks) out = out.filter((s) => tracks.includes(s.track));
+  if (slugs) return out.filter((s) => slugs.includes(s.slug));
+  if (tiers) return out.filter((s) => tiers.includes(s.tier));
+  if (flags.all) return out;
+  return out.filter((s) => s.slug === SUBJECT || s.slug === BRIEF_SUBJECT);
 }
 
 export function selectModels(all, flags) {

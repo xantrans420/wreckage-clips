@@ -1,0 +1,27 @@
+{
+  "$comment": "The BRIEF track. No reference image exists and none is shown to anyone: contestants build the scene from these words alone, and the judge scores the render against the same words. That removes the memorisation shortcut the recall track depends on, so this track measures construction and invention instead of recall. `canvas` is the viewBox handed to contestants.",
+  "briefs": [
+    {
+      "slug": "the-salon",
+      "track": "brief",
+      "title": "The Salon",
+      "format": "Portrait 3:5",
+      "canvas": [600, 1000],
+      "subject": "Kanye West",
+      "brief": "A grand 18th-century salon gone to ruin. A vast gilt-framed portrait dominates the back wall above a grey marble fireplace; tall arched windows flank it, cool daylight entering from the right. The floor is buried in heavy white drapery, painted in thick impasto folds. A large black dog lies stretched across the foreground. Kanye West walks left to right in profile, mid-stride: oversized cream hoodie, dark cargo trousers, tall olive boots. Behind him, deeper in the room, a chestnut horse and a standing figure in a dark green coat. Palette: bone white, gilt ochre, deep umber, black-green. Everything outside the window light falls into shadow. Visible oil brushwork throughout, heaviest in the whites.",
+      "checklist": [
+        "Gilt-framed portrait on the back wall",
+        "Grey marble fireplace beneath it",
+        "Tall arched windows flanking, light from the right",
+        "White drapery covering the floor in thick folds",
+        "Large black dog lying across the foreground",
+        "Kanye West in profile, mid-stride, walking left to right",
+        "Cream hoodie, dark cargo trousers, olive boots",
+        "Chestnut horse deeper in the room",
+        "Standing figure in a dark green coat",
+        "Bone white, gilt ochre, deep umber and black-green palette",
+        "Visible oil brushwork, heaviest in the whites"
+      ]
+    }
+  ]
+}

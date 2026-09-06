@@ -13,18 +13,28 @@ Five benchmarks for whether AI can actually do creative work, published on one p
 
 ## PaintBench — can AI paint with code?
 
-**One painting, re-run over time.** Every model gets the same text prompt: recreate the **Mona Lisa** as
-**pure SVG**, from memory, no reference image. Two things are measured — **how good the output is** and
-**how long it took**. The SVG is rasterized and shown to a vision judge (**Claude Fable 5.1**) beside the
-original.
+Models paint using **nothing but SVG code**. Two things are measured on every entry: **how good the output
+is** and **how long it took**. Two tracks, deliberately testing opposite abilities:
 
-Because the subject never changes, re-running the benchmark is how you watch models improve: the only thing
-that differs between runs is the models themselves. Every result is written under a dated run and old runs
-are never overwritten, so the leaderboard carries a score history per model alongside the current standings.
+| Track | Input | What it tests | Judge sees |
+|---|---|---|---|
+| **Recall** | The name of a painting | Does the model *know* the picture, and can it draw | The original beside the candidate |
+| **Brief** | A written brief, nothing else | Can the model *invent* a scene it has never seen | The brief text beside the candidate |
+
+The recall track leans on memorisation: every model has the Mona Lisa in its weights, so the score separates
+knowing it from being able to draw it. The brief track removes that shortcut entirely — no reference image
+exists, so every element has to be constructed from a description.
+
+Both tracks are **fixed and re-run over time**. Because the task never changes, re-running is how you watch
+models improve: the only thing that differs between runs is the models themselves. Every result is written
+under a dated run and old runs are never overwritten, so each track carries a per-model score history
+alongside its current standings.
+
+The two tracks are scored on different rubrics and their numbers are never pooled.
 
 Live page (once results are committed): `https://xantrans420.github.io/wreckage-clips/bench/`
 
-### The subject
+### Recall subject
 
 **The most famous painting to mankind is the Mona Lisa.** It is the most visited artwork in the world
 (the Louvre alone draws ~9M visitors a year, most of them for one panel), the most parodied, and the one
@@ -80,15 +90,36 @@ paintings.json + models.json
 - No SVG in the reply, or an SVG cut off by the token budget: **scores 0**.
 - Output budget defaults to 24k tokens and the prompt tells the model so.
 
-**Judge rubric** (`src/judge.mjs`, five integers 0–10, weighted to a 0–100 total):
+### Brief subject
 
-| Criterion | Weight | Question |
+**THE SALON** — portrait 3:5. One paragraph describing a ruined 18th-century salon: a gilt-framed portrait
+over a marble fireplace, arched windows with light from the right, white drapery buried across the floor,
+a black dog in the foreground, **Kanye West** walking through it in profile in an oversized cream hoodie,
+a chestnut horse and a figure in a green coat deeper in the room. Eleven named elements, listed in
+`briefs.json` as the checklist the judge scores against.
+
+Naming a real, extremely well-known person is deliberate: it adds a second measurable axis. A model can
+build the room correctly and still fail the likeness, or land the likeness in an empty room. Those are
+scored separately.
+
+**Judge rubrics** (`src/judge.mjs`, five integers 0–10 each, weighted to a 0–100 total). Different tracks
+ask different questions, so they have different rubrics:
+
+| Recall | Weight | Question |
 |---|---|---|
 | Recognizability | 30% | Would an average person identify it as this painting without being told? |
 | Composition | 25% | Placement, proportions, scale of main subjects and background structures |
 | Color | 20% | Palette, value structure, lighting mood |
 | Craft | 15% | Quality of the vector drawing: coherent shapes, no glitches |
 | Impression | 10% | Does it carry the feeling and style; does it stand as art |
+
+| Brief | Weight | Question |
+|---|---|---|
+| Adherence | 30% | Is every element the brief names present, and placed as described? |
+| Likeness | 15% | Is the named person recognisable as that person, allowing for flat vector art? |
+| Composition | 20% | Does it read as a staged picture with depth and a clear focal subject? |
+| Color | 20% | Palette, values, and the direction and quality of light, against the brief |
+| Craft | 15% | Quality of the vector drawing: coherent shapes, no glitches |
 
 The judge gets an anchored scale (10 = skilled human vector illustration, 5 = clearly the same painting
 with obvious deviations, 0 = no relation), is told text earns nothing and complexity earns nothing, and
@@ -115,7 +146,8 @@ cp .env.example .env        # add ANTHROPIC_API_KEY (judge) + keys for the conte
 npm run refs                # fetch the 12 reference images from Wikimedia Commons (once)
 node src/cli.mjs list       # shows which contestants have keys
 
-node src/cli.mjs run                      # the subject painting, every enabled model
+node src/cli.mjs run                      # both tracks, every enabled model
+node src/cli.mjs run --track brief        # one track only
 node src/cli.mjs run --samples 3          # lower-variance judging
 node src/cli.mjs run --all                # the wider canon too, for a one-off comparison
 node src/cli.mjs runs                     # list recorded runs
@@ -182,7 +214,8 @@ It is specified but not running.
 ```
 bench/
   benches.json         the five-bench suite definition the page renders its tabs from
-  paintings.json       the canon; the first entry is the fixed subject
+  paintings.json       the recall canon; the first entry is the fixed subject
+  briefs.json          the brief track: the brief text and the checklist the judge scores
   models.json          contestants
   refs/                reference JPGs + metadata (public domain, from Commons)
   results/runs/<date>/ one folder per run, then per model/painting
@@ -190,12 +223,12 @@ bench/
   index.html           the suite page: leaderboard, history, gallery (GitHub Pages)
   src/
     cli.mjs            commands
-    prompt.mjs         the contestant prompt (versioned)
+    prompt.mjs         the contestant prompts, one per track (versioned)
     providers.mjs      anthropic | openai-compatible | google | mock
     svg.mjs            extraction, disqualification rules, text stripping, stats
     render.mjs         SVG → PNG (resvg default, chromium optional)
-    judge.mjs          Fable 5.1 rubric judge, structured output
-    leaderboard.mjs    cross-run aggregation, history, speed/quality Pareto frontier
+    judge.mjs          Fable 5.1 rubric judge (one rubric per track), structured output
+    leaderboard.mjs    per-track cross-run aggregation, history, speed/quality frontier
     refs.mjs           Wikimedia Commons fetcher
     config.mjs         paths, versions, arg parsing
 ```
